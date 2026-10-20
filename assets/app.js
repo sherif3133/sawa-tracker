@@ -244,9 +244,9 @@
       + '<button class="btn ghost sm-btn" data-act="share">' + ico('mega') + ' شارك على Skool</button></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="النهارده ' + s.todayMinutes + ' من ' + s.goal + ' دقيقة"><span><b>' + s.todayMinutes + '</b>من ' + s.goal + ' د</span></div></section>'
       + statCards(s)
-      + '<div class="grid"><div class="col main">' + questCard() + characterCard() + bossCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'
+      + '<div class="grid"><div class="col main">' + questCard() + lensCard() + characterCard() + bossCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'
       + '<div class="col side">' + boardCard() + feedCard() + '</div></div>';
-    paintBoard(); paintFeed();
+    paintBoard(); paintFeed(); loadLens();
   }
 
   function questCard() {
@@ -381,6 +381,34 @@
       return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' كارت' : '') + (x.notes ? ' · <span dir="auto">' + esc(x.notes) + '</span>' : '') + '</small></div>'
         + '<span class="r-min">' + hm(x.minutes) + '</span>' + (x.canDelete ? '<button class="icon-btn sm" data-act="del-log" data-id="' + x.id + '" aria-label="امسح النشاط ده" title="امسح">' + ico('x') + '</button>' : '<span class="icon-btn sm ghost"></span>') + '</li>';
     }).join('') + '</ul></section>';
+  }
+
+
+  /* ------------------------------------------------------------ Language Lens (words learned and sentences saved) */
+  function lensCard() {
+    if (!cfg.lens) return '';
+    return '<section class="card lens" id="lens-card"><div class="card-h"><h3>' + ico('eye') + ' Language Lens</h3><span class="muted small">آخر ١٤ يوم</span></div><div id="lens-body"><p class="muted small">بيحمّل…</p></div></section>';
+  }
+  function loadLens() {
+    if (!cfg.lens) return;
+    var opt = { credentials: 'same-origin', headers: {} };
+    if (cfg.nonce) opt.headers['X-WP-Nonce'] = cfg.nonce;
+    fetch(cfg.lens.progress, opt).then(function (r) { return r.ok ? r.json() : null; }).then(function (p) {
+      var el = $('#lens-body'); if (!el) return;
+      if (!p) { el.innerHTML = '<p class="muted small">مش قادرين نجيب تقدمك في Language Lens دلوقتي.</p>'; return; }
+      if (!p.wordsKnown && !p.wordsLearning && !p.sentences) {
+        el.innerHTML = '<p>اتعلم كلمات من يوتيوب وأي موقع بالإنجليزي: معنى الكلمة بالعربي لما تقف عليها، وتحفظ الجمل كبطاقات مراجعة. كل كلمة وجملة بتظهر هنا.</p>'
+          + (cfg.lens.install ? '<a class="btn primary" style="margin-top:12px" href="' + esc(cfg.lens.install) + '" target="_blank" rel="noopener">ثبّت Language Lens</a>' : '<p class="muted small" style="margin-top:8px">الإضافة في النسخة التجريبية دلوقتي.</p>');
+        return;
+      }
+      var max = Math.max(1, Math.max.apply(null, p.daily.map(function (d) { return d.words + d.sentences; })));
+      var bars = p.daily.map(function (d) {
+        var h = Math.round((d.words + d.sentences) / max * 100);
+        return '<i title="' + fmtDay(d.day) + ': ' + d.words + ' كلمة، ' + d.sentences + ' جملة"' + (d.day === S.data.today ? ' class="now"' : '') + '><b style="height:' + h + '%"></b></i>';
+      }).join('');
+      el.innerHTML = '<div class="lens-stats"><div><b>' + p.todayWords + '</b><span>كلمة النهارده</span></div><div><b>' + p.todaySentences + '</b><span>جملة النهارده</span></div><div><b>' + p.wordsKnown.toLocaleString(LOC) + '</b><span>كلمة بتعرفها</span></div><div><b>' + p.sentences.toLocaleString(LOC) + '</b><span>جملة محفوظة</span></div></div>'
+        + '<div class="lens-bars" role="img" aria-label="كلمات وجمل آخر ١٤ يوم">' + bars + '</div>';
+    }, function () {});
   }
 
   /* ------------------------------------------------------------ leaderboard */

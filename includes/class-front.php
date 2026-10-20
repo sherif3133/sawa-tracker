@@ -59,6 +59,8 @@ final class Sawa_Tracker_Front {
 			'levels'     => Sawa_Tracker_Game::LEVELS,
 			'site'       => get_bloginfo( 'name' ),
 		);
+		// Other Sawa plugins (Language Lens) add their own data here.
+		$cfg = apply_filters( 'sawa_tracker_front_cfg', $cfg, $uid );
 		wp_enqueue_script( 'sawa-tracker', SAWA_TR_URL . 'assets/app.js', array(), SAWA_TR_VER, true );
 		return '<div class="sawa-tracker-app" style="min-height:70vh"></div><script type="application/json" class="sawa-tracker-config">'
 			. wp_json_encode( $cfg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>';
