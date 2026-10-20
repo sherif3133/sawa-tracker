@@ -483,16 +483,16 @@ final class Sawa_Tracker_Game {
 
 	public static function add_log( $uid, $activity, $minutes, $cards, $notes, $day, $quiet = false ) {
 		if ( ! isset( self::ACTIVITIES[ $activity ] ) ) {
-			return new WP_Error( 'activity', 'Choose an activity.' );
+			return new WP_Error( 'activity', 'اختار النشاط.' );
 		}
 		$minutes = (int) $minutes;
 		if ( $minutes < 1 || $minutes > 720 ) {
-			return new WP_Error( 'minutes', 'Enter the minutes you spent, from 1 to 720.' );
+			return new WP_Error( 'minutes', 'اكتب الدقايق من 1 لـ 720.' );
 		}
 		$today = self::today();
 		$yday  = self::add_days( $today, -1 );
 		if ( $day !== $today && $day !== $yday ) {
-			return new WP_Error( 'day', 'You can log activities for today or yesterday.' );
+			return new WP_Error( 'day', 'تقدر تسجّل أنشطة النهارده أو امبارح بس.' );
 		}
 		self::ensure_started( $uid );
 		self::process_user( $uid );
@@ -576,12 +576,12 @@ final class Sawa_Tracker_Game {
 		global $wpdb;
 		$log = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table( 'logs' ) . ' WHERE id = %d AND user_id = %d', $id, $uid ), ARRAY_A ); // phpcs:ignore
 		if ( ! $log ) {
-			return new WP_Error( 'missing', 'That activity was not found.' );
+			return new WP_Error( 'missing', 'ملقيناش النشاط ده.' );
 		}
 		$today = self::today();
 		$yday  = self::add_days( $today, -1 );
 		if ( $log['day'] !== $today && $log['day'] !== $yday ) {
-			return new WP_Error( 'old', 'Only activities from today or yesterday can be removed.' );
+			return new WP_Error( 'old', 'تقدر تمسح أنشطة النهارده أو امبارح بس.' );
 		}
 		self::process_user( $uid );
 		if ( $log['day'] === $yday ) {
@@ -650,31 +650,31 @@ final class Sawa_Tracker_Game {
 		$class = (string) self::m( $uid, 'class' );
 		$sk    = self::skill( $class, $skill_id );
 		if ( ! $sk ) {
-			return new WP_Error( 'skill', 'That skill belongs to another class.' );
+			return new WP_Error( 'skill', 'المهارة دي بتاعة كلاس تاني.' );
 		}
 		self::ensure_started( $uid );
 		self::process_user( $uid );
 		$me    = self::live( $uid );
 		$today = self::today();
 		if ( $me['level'] < $sk['unlock'] ) {
-			return new WP_Error( 'locked', sprintf( '%s unlocks at level %d.', $sk['name'], $sk['unlock'] ) );
+			return new WP_Error( 'locked', sprintf( '%s بتتفتح في مستوى %d.', $sk['name'], $sk['unlock'] ) );
 		}
 		if ( $me['sp'] < $sk['cost'] ) {
-			return new WP_Error( 'sp', sprintf( 'You need %d skill points for %s. You have %d. You earn 1 for each activity you log.', $sk['cost'], $sk['name'], $me['sp'] ) );
+			return new WP_Error( 'sp', sprintf( 'محتاج %d SP عشان %s. معاك %d. كل نشاط بتسجّله بيديك نقطة.', $sk['cost'], $sk['name'], $me['sp'] ) );
 		}
 		$cds = (array) self::m( $uid, 'cooldowns', array() );
 		if ( ! empty( $cds[ $skill_id ] ) && $cds[ $skill_id ] > $today ) {
-			return new WP_Error( 'cooldown', sprintf( '%s is resting. It is ready again on %s.', $sk['name'], wp_date( 'M j', strtotime( $cds[ $skill_id ] . ' 12:00' ) ) ) );
+			return new WP_Error( 'cooldown', sprintf( '%s بتستريح. جاهزة تاني يوم %s.', $sk['name'], wp_date( 'M j', strtotime( $cds[ $skill_id ] . ' 12:00' ) ) ) );
 		}
 		if ( 'self' === $sk['target'] ) {
 			$target = $uid;
 		} else {
 			$target = (int) $target;
 			if ( $target === $uid ) {
-				return new WP_Error( 'target', 'This skill is for helping another student. Pick someone from the leaderboard.' );
+				return new WP_Error( 'target', 'المهارة دي لمساعدة زميل. اختار حد من الترتيب.' );
 			}
 			if ( ! self::is_member( $target ) ) {
-				return new WP_Error( 'target', 'That student was not found.' );
+				return new WP_Error( 'target', 'ملقيناش الطالب ده.' );
 			}
 			self::ensure_started( $target );
 			self::process_user( $target );
@@ -697,7 +697,7 @@ final class Sawa_Tracker_Game {
 				break;
 			case 'nudge':
 				if ( self::live( $target )['studiedToday'] ) {
-					return new WP_Error( 'nudge', 'They already studied today. Save your Rally for someone who needs it.' );
+					return new WP_Error( 'nudge', 'ذاكر النهارده خلاص. خلي الـ Rally لحد محتاجها.' );
 				}
 				break;
 			case 'health_self_10':

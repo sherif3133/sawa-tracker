@@ -88,7 +88,7 @@ final class Sawa_Tracker_Rest_Social {
 	public static function messages( WP_REST_Request $r ) {
 		$room = self::room_or_fail( $r );
 		if ( ! $room ) {
-			return self::fail( 'You are not in this chat.', 403 );
+			return self::fail( 'إنت مش في الشات ده.', 403 );
 		}
 		$msgs = Sawa_Tracker_Social::messages( (int) $room['id'], (int) $r->get_param( 'after' ), (int) $r->get_param( 'before' ) );
 		if ( $msgs && ! $r->get_param( 'before' ) ) {
@@ -101,16 +101,16 @@ final class Sawa_Tracker_Rest_Social {
 		$uid  = self::uid();
 		$room = self::room_or_fail( $r );
 		if ( ! $room ) {
-			return self::fail( 'You are not in this chat.', 403 );
+			return self::fail( 'إنت مش في الشات ده.', 403 );
 		}
 		$audio = '';
 		$files = $r->get_file_params();
 		if ( ! empty( $files['audio'] ) ) {
 			if ( ! empty( $files['audio']['error'] ) || (int) $files['audio']['size'] > 4 * MB_IN_BYTES ) {
-				return self::fail( 'That voice message is too long. Keep it under 2 minutes.' );
+				return self::fail( 'الرسالة الصوتية طويلة. خليها أقل من دقيقتين.' );
 			}
 			if ( ! preg_match( '~^(audio|video)/~', (string) $files['audio']['type'] ) ) {
-				return self::fail( 'Only voice messages can be attached.' );
+				return self::fail( 'تقدر تبعت رسايل صوتية بس.' );
 			}
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -120,7 +120,7 @@ final class Sawa_Tracker_Rest_Social {
 			remove_filter( 'upload_mimes', array( __CLASS__, 'mimes' ) );
 			remove_filter( 'wp_check_filetype_and_ext', array( __CLASS__, 'allow_voice' ), 10 );
 			if ( empty( $up['url'] ) ) {
-				return self::fail( 'The voice message could not be saved: ' . ( $up['error'] ?? 'unknown error' ) );
+				return self::fail( 'الرسالة الصوتية متحفظتش: ' . ( $up['error'] ?? 'unknown error' ) );
 			}
 			$audio = esc_url_raw( $up['url'] );
 		}
@@ -194,7 +194,7 @@ final class Sawa_Tracker_Rest_Social {
 		global $wpdb;
 		$m = self::message_row( (int) $r['id'] );
 		if ( ! $m || ! Sawa_Tracker_Social::can_access( self::uid(), Sawa_Tracker_Social::room( (int) $m['room_id'] ) ) ) {
-			return self::fail( 'Message not found.' );
+			return self::fail( 'ملقيناش الرسالة.' );
 		}
 		$wpdb->insert( // phpcs:ignore
 			Sawa_Tracker_Game::table( 'reports' ),
@@ -215,7 +215,7 @@ final class Sawa_Tracker_Rest_Social {
 		global $wpdb;
 		$m = self::message_row( (int) $r['id'] );
 		if ( ! $m || ( (int) $m['user_id'] !== self::uid() && ! current_user_can( 'manage_options' ) ) ) {
-			return self::fail( 'You can only delete your own messages.' );
+			return self::fail( 'تقدر تمسح رسايلك إنت بس.' );
 		}
 		$wpdb->update( Sawa_Tracker_Game::table( 'messages' ), array( 'deleted' => 1 ), array( 'id' => (int) $m['id'] ) ); // phpcs:ignore
 		return array( 'ok' => true );

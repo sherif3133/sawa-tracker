@@ -1,4 +1,5 @@
-/* Sawa Tracker: the student app. Renders into a shadow root so the site theme can't break it. */
+/* Sawa Tracker: the student app. Arabic, RTL, Sawa visual identity.
+   Renders into a shadow root so the site theme can't break it. */
 (function () {
   'use strict';
   var host = document.querySelector('.sawa-tracker-app');
@@ -6,41 +7,132 @@
   var cfgEl = host.nextElementSibling;
   var cfg = JSON.parse(cfgEl.textContent);
 
-  if (!document.getElementById('sawa-tr-fonts')) {
+  if (!document.getElementById('sawa-brand-fonts-tr')) {
     var lf = document.createElement('link');
-    lf.id = 'sawa-tr-fonts'; lf.rel = 'stylesheet';
-    lf.href = 'https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Cairo:wght@400;600;700&display=swap';
+    lf.id = 'sawa-brand-fonts-tr'; lf.rel = 'stylesheet';
+    lf.href = 'https://fonts.googleapis.com/css2?family=Changa:wght@500;800&family=IBM+Plex+Sans+Arabic:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap';
     document.head.appendChild(lf);
   }
 
   var root = host.attachShadow({ mode: 'open' });
-  root.innerHTML = '<link rel="stylesheet" href="' + cfg.css + '"><div class="app" id="app" aria-live="polite"><div class="loading"><span class="spin"></span>Loading your tracker…</div></div><div id="modal"></div><div class="toast" id="toast" role="status"></div>';
+  root.innerHTML = '<link rel="stylesheet" href="' + cfg.css + '"><div class="app" id="app" dir="rtl" lang="ar" aria-live="polite"><div class="loading"><span class="spin"></span>بنجهز التراكر…</div></div><div id="modal" dir="rtl" lang="ar"></div><div class="toast" id="toast" role="status" dir="rtl"></div>';
   var $ = function (s) { return root.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
 
+  /* ------------------------------------------------------------ icons (line icons, currentColor) */
+  var P = {
+    home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
+    shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+    chat: 'M4 5h16v11H9l-5 4z',
+    cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+    plus: 'M12 5v14M5 12h14',
+    bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4',
+    flame: 'M12 3c.5 3.5 5 5.5 5 10.5a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5.5.5 2 1.5 3 2.5 3.5 1-2 .5-5 0-8.5z',
+    heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+    clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+    info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5v.1',
+    bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+    lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
+    hourglass: 'M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9',
+    mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM18 11a6 6 0 0 1-12 0M12 17v4',
+    trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+    flag: 'M5 21V4M5 4h12l-2 4 2 4H5',
+    mega: 'M3 10v4h4l9 5V5l-9 5zM19 9a4 4 0 0 1 0 6',
+    globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+    users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 3.5a4 4 0 0 1 0 7.5M18 15c2.5.6 4 2.6 4 6',
+    x: 'M6 6l12 12M18 6L6 18',
+    check: 'M5 12l5 5 9-10',
+    target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11.2a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6z',
+    sword: 'M14.5 3.5H20.5V9.5L9 21 3 15zM6 12l6 6M3 21l3-3',
+    spark: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z',
+    lotus: 'M12 21c-4-3-7-7-7-12 4 0 7 3 7 7 0-4 3-7 7-7 0 5-3 9-7 12z',
+    crown: 'M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z',
+    medal: 'M8 3l4 6 4-6M12 21a6 6 0 1 0 0-12 6 6 0 0 0 0 12z',
+    trophy: 'M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8',
+    cards: 'M8 3h12v14H8zM4 7v14h12',
+    eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+    headph: 'M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v5H4zM17 15h3v5h-3z',
+    music: 'M9 18V6l11-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    pen: 'M4 20h4L19 9l-4-4L4 16z',
+    star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
+    snow: 'M12 2v20M3.5 7l17 10M20.5 7l-17 10',
+    boss: 'M12 3C7 3 4 6 4 11c0 3 2 5 3 6v4h10v-4c1-1 3-3 3-6 0-5-3-8-8-8zM9 11.5h.01M15 11.5h.01M10 21v-3M14 21v-3',
+    tower: 'M5 21V9h14v12M5 9V5h3v2h3V5h2v2h3V5h3v4M10 21v-4h4v4',
+    gem: 'M6 3h12l3 6-9 12L3 9zM3 9h18M9 3l3 18M15 3l-3 18',
+    columns: 'M3 9l9-5 9 5M5 9v9M10 9v9M14 9v9M19 9v9M3 21h18',
+    wings: 'M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 10v10M12 12c-3-3-7-3-10-1 2 4 6 5 10 4M12 12c3-3 7-3 10-1-2 4-6 5-10 4',
+    heartplus: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10zM12 9v5M9.5 11.5h5',
+    back: 'M9 6l6 6-6 6',
+    send: 'M20 4L3 11l7 2.5L12.5 21z',
+    copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+    download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+    ext: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+    up: 'M6 15l6-6 6 6',
+    down: 'M6 9l6 6 6-6',
+    flat: 'M5 12h14'
+  };
+  function ico(n, cls) { return '<svg class="ic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (P[n] || P.spark) + '"/></svg>'; }
+
+  var ACT = {
+    'Flashcards': { ic: 'cards', ar: 'فلاش كاردز' },
+    'Active Immersion': { ic: 'eye', ar: 'تعرّض نشط' },
+    'Passive Immersion': { ic: 'headph', ar: 'تعرّض سلبي' },
+    'Music': { ic: 'music', ar: 'مزيكا' },
+    'Pronunciation/Grammar': { ic: 'mic', ar: 'نطق وجرامر' },
+    'Others': { ic: 'pen', ar: 'حاجة تانية' }
+  };
+  var GRAYS = ['#0F0F10', '#3D3B3A', '#625F5E', '#8A8584', '#B3AEAB', '#D6D2CF'];
+  var CLASS = {
+    warrior: { ic: 'sword', ar: 'المحارب', tag: 'بيحمي الستريك. بيدافع عن زمايله عشان محدش يخسر تقدمه.' },
+    healer: { ic: 'heart', ar: 'المعالج', tag: 'بيرجّع الصحة. بيشد زمايله اللي بيقعوا ويرجعهم للطريق.' }
+  };
+  var SKILL_IC = { battle_stance: 'shield', shield_ally: 'shield', rally: 'mega', war_cry: 'sword', fortify: 'tower', unbreakable: 'gem', inner_peace: 'lotus', heal: 'heart', empower: 'spark', revitalize: 'heartplus', sanctuary: 'columns', guardian_angel: 'wings' };
+  var BADGE = {
+    first_log: ['lotus', 'أول خطوة', 'سجّلت أول نشاط'],
+    streak_7: ['flame', 'ستريك ٧ أيام', 'ذاكرت ٧ أيام ورا بعض'],
+    streak_30: ['bolt', 'ستريك ٣٠ يوم', 'ذاكرت ٣٠ يوم ورا بعض'],
+    streak_100: ['crown', 'ستريك ١٠٠ يوم', 'ذاكرت ١٠٠ يوم ورا بعض'],
+    hours_10: ['clock', '١٠ ساعات', '١٠ ساعات مذاكرة في المجموع'],
+    hours_50: ['medal', '٥٠ ساعة', '٥٠ ساعة مذاكرة في المجموع'],
+    hours_100: ['trophy', '١٠٠ ساعة', '١٠٠ ساعة مذاكرة في المجموع'],
+    cards_1000: ['cards', '١٠٠٠ كارت', 'راجعت ١٠٠٠ فلاش كارد'],
+    helper_10: ['users', 'إيد بتساعد', 'استخدمت ١٠ مهارات على زمايلك'],
+    boss_slayer: ['sword', 'هازم الوحش', 'ساعدت في هزيمة وحش الأسبوع']
+  };
+  var BOSS_AR = {
+    'The Procrastination Dragon': 'تنين التسويف', 'The Grammar Goblin': 'عفريت الجرامر', 'The Silent Ghost': 'شبح السكوت', 'The Forgetful Fog': 'ضباب النسيان',
+    'The Accent Ogre': 'غول اللكنة', 'The Scroll Serpent': 'تعبان السكرول', 'The Perfectionist Golem': 'تمثال الكمالية', 'The Fear Kraken': 'أخطبوط الخوف'
+  };
+  function bossName(n) { return BOSS_AR[n] || n; }
+  function badgeInfo(id, fallbackName) { var b = BADGE[id]; return b ? { ic: b[0], name: b[1], about: b[2] } : { ic: 'medal', name: fallbackName || '', about: '' }; }
+  function badgeByName(n) { for (var k in BADGE) if (BADGE.hasOwnProperty(k)) { var en = { first_log: 'First step', streak_7: '7-day streak', streak_30: '30-day streak', streak_100: '100-day streak', hours_10: '10 hours', hours_50: '50 hours', hours_100: '100 hours', cards_1000: '1,000 cards', helper_10: 'Helping hand', boss_slayer: 'Boss slayer' }[k]; if (en === n) return badgeInfo(k); } return { ic: 'medal', name: n }; }
+  function cls(k) { return CLASS[k] || { ic: 'spark', ar: '', tag: '' }; }
+
   /* ------------------------------------------------------------ helpers */
+  var LOC = 'ar-EG-u-nu-latn';
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function initials(n) { return String(n || '?').trim().split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase() || '?'; }
-  function hue(id) { return (Number(id) * 47) % 360; }
   function avatar(p, size) {
     size = size || 40;
     var st = 'width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.38) + 'px';
     if (p && p.avatar) return '<img class="av" src="' + esc(p.avatar) + '" alt="" style="' + st + '" loading="lazy">';
-    return '<span class="av" aria-hidden="true" style="' + st + ';background:hsl(' + hue(p ? p.id : 0) + ' 55% 46%)">' + esc(initials(p && p.name)) + '</span>';
+    return '<span class="av" aria-hidden="true" style="' + st + '">' + esc(initials(p && p.name)) + '</span>';
   }
-  function hm(min) { min = Math.round(min || 0); var h = Math.floor(min / 60), m = min % 60; return h ? h + 'h ' + m + 'm' : m + 'm'; }
-  function act(name) { for (var i = 0; i < cfg.activities.length; i++) if (cfg.activities[i].name === name) return cfg.activities[i]; return { name: name, emoji: '📝', color: '#8a8f98' }; }
-  var rtf = window.Intl && Intl.RelativeTimeFormat ? new Intl.RelativeTimeFormat('en', { numeric: 'auto' }) : null;
+  function hm(min) { min = Math.round(min || 0); var h = Math.floor(min / 60), m = min % 60; return h ? h + 'س ' + m + 'د' : m + 'د'; }
+  function act(name) { var a = ACT[name] || { ic: 'pen', ar: name }; for (var i = 0; i < cfg.activities.length; i++) if (cfg.activities[i].name === name) return { name: name, ic: a.ic, ar: a.ar, cards: cfg.activities[i].cards }; return { name: name, ic: a.ic, ar: a.ar }; }
+  function actLabel(name) { var a = act(name); return '<span class="act">' + ico(a.ic) + '<span>' + esc(a.ar) + '</span></span>'; }
+  var rtf = window.Intl && Intl.RelativeTimeFormat ? new Intl.RelativeTimeFormat(LOC, { numeric: 'auto' }) : null;
   function ago(iso) {
     var s = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (s < 45) return 'just now';
+    if (s < 45) return 'دلوقتي';
     var units = [['minute', 60], ['hour', 3600], ['day', 86400], ['week', 604800]], u = units[0];
     for (var i = 0; i < units.length; i++) if (s >= units[i][1]) u = units[i];
     var n = Math.round(s / u[1]);
-    return rtf ? rtf.format(-n, u[0]) : n + ' ' + u[0] + 's ago';
+    return rtf ? rtf.format(-n, u[0]) : 'من ' + n;
   }
-  function fmtDay(d, opts) { return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', opts || { day: 'numeric', month: 'short' }); }
-  function healthColor(h) { return h >= 70 ? 'var(--good)' : h >= 40 ? 'var(--warn)' : 'var(--bad)'; }
+  function fmtDay(d, opts) { return new Date(d + 'T12:00:00').toLocaleDateString(LOC, opts || { day: 'numeric', month: 'short' }); }
+  function low(h) { return h < 30; }
+  function hpFill(h) { return low(h) ? 'var(--red)' : 'var(--fg)'; }
   function url(path, q) {
     var u = cfg.rest + path, qs = q ? Object.keys(q).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(q[k]); }).join('&') : '';
     return qs ? u + (u.indexOf('?') >= 0 ? '&' : '?') + qs : u;
@@ -53,11 +145,11 @@
     if (o.form) opt.body = o.form;
     return fetch(url(path, o.query), opt).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
-        if (r.status === 401 || (j && j.code === 'rest_cookie_invalid_nonce')) { throw new Error('Your session expired. Reload the page to continue.'); }
-        if (!r.ok || j.ok === false) throw new Error((j && j.message) || 'Something went wrong. Please try again.');
+        if (r.status === 401 || (j && j.code === 'rest_cookie_invalid_nonce')) { throw new Error('الجلسة خلصت. اعمل ريفريش للصفحة وكمّل.'); }
+        if (!r.ok || j.ok === false) throw new Error((j && j.message) || 'حصلت مشكلة. جرب تاني.');
         return j;
       });
-    }, function () { throw new Error('No connection. Check your internet and try again.'); });
+    }, function () { throw new Error('مفيش نت. اتأكد من الاتصال وجرب تاني.'); });
   }
   var toastT;
   function toast(msg, kind) {
@@ -66,69 +158,71 @@
   }
   function busy(btn, on, label) {
     if (!btn) return;
-    if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spin sm"></span>' + (label || 'Saving…'); }
+    if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spin sm"></span>' + (label || 'بيتحفظ…'); }
     else { btn.disabled = false; if (btn.dataset.label) btn.innerHTML = btn.dataset.label; }
   }
+  function plural(n, one, two, many) { return n === 1 ? one : n === 2 ? two : n + ' ' + many; }
 
   /* ------------------------------------------------------------ state */
   var S = { data: null, board: { tab: 'consistency', rows: [], total: 0, me: null }, feed: [], lastId: 0, oldestId: 0, feedDone: false, timers: [] };
 
   /* ------------------------------------------------------------ signed-out, pending */
+  function brand(big) { return '<div class="brand' + (big ? ' big' : '') + '"><span class="wm">سوا</span><span class="wm-en">Tracker</span></div>'; }
   function renderGuest() {
     $('#app').innerHTML = '<div class="auth">'
-      + '<section class="auth-hero"><div class="brand big"><span class="logo">S</span>Sawa Tracker</div>'
-      + '<h1>Level up your English, together.</h1>'
-      + '<ul class="perks"><li><span>🔥</span>Build a daily study streak and keep your habit health high</li>'
-      + '<li><span>⚔️</span>Choose a class and use skills to protect and heal your classmates</li>'
-      + '<li><span>🐉</span>Fight a weekly boss with the whole community: every minute you study is a hit</li>'
-      + '<li><span>🏆</span>Earn badges and climb the consistency leaderboard</li></ul></section>'
+      + '<section class="auth-hero">' + brand(true)
+      + '<h1>اتعلم الانجليزي، <span class="red">سوا</span>.</h1>'
+      + '<ul class="perks"><li>' + ico('flame') + '<span>ابني ستريك مذاكرة يومي وحافظ على صحة العادة عالية</span></li>'
+      + '<li>' + ico('shield') + '<span>اختار كلاس واستخدم مهارات تحمي بيها زمايلك وتشدهم</span></li>'
+      + '<li>' + ico('boss') + '<span>حارب وحش الأسبوع مع المجتمع كله: كل دقيقة مذاكرة ضربة</span></li>'
+      + '<li>' + ico('trophy') + '<span>اكسب أوسمة واطلع في ترتيب الاستمرارية</span></li></ul></section>'
       + '<section class="card auth-card">'
-      + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">Sign in</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">Ask to join</button></div>'
+      + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">تسجيل الدخول</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">اطلب تدخل</button></div>'
       + '<form class="stack" id="f-in" method="post" action="' + esc(cfg.loginUrl) + '">'
-      + '<label class="f">Email or username<input name="log" autocomplete="username" required></label>'
-      + '<label class="f">Password<input name="pwd" type="password" autocomplete="current-password" required></label>'
-      + '<label class="chk"><input type="checkbox" name="rememberme" value="forever" checked> Keep me signed in</label>'
+      + '<label class="f">الإيميل أو اسم المستخدم<input name="log" autocomplete="username" required dir="ltr"></label>'
+      + '<label class="f">الباسورد<input name="pwd" type="password" autocomplete="current-password" required dir="ltr"></label>'
+      + '<label class="chk"><input type="checkbox" name="rememberme" value="forever" checked> افتكرني</label>'
       + '<input type="hidden" name="redirect_to" value="' + esc(cfg.here) + '">'
-      + '<button class="btn primary wide" type="submit">Sign in</button>'
-      + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">Forgot your password?</a></form>'
+      + '<button class="btn primary wide" type="submit">ادخل</button>'
+      + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">نسيت الباسورد؟</a></form>'
       + '<form class="stack" id="f-join" hidden>'
-      + '<p class="muted small">The tracker is for Sawa English community members. Ask to join, and you can sign in as soon as you\'re approved.</p>'
-      + '<label class="f">Your name<input name="name" autocomplete="name" required dir="auto"></label>'
-      + '<label class="f">Email<input name="email" type="email" autocomplete="email" required></label>'
-      + '<label class="f">Password <small>at least 8 characters</small><input name="password" type="password" autocomplete="new-password" minlength="8" required></label>'
-      + '<label class="f">Your name in the Skool community <small>helps us find you</small><input name="note" dir="auto"></label>'
-      + '<input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">'
+      + '<p class="muted small">التراكر لأعضاء مجتمع سوا انجليش. اطلب تدخل، وأول ما نوافق تقدر تدخل على طول.</p>'
+      + '<label class="f">اسمك<input name="name" autocomplete="name" required dir="auto"></label>'
+      + '<label class="f">الإيميل<input name="email" type="email" autocomplete="email" required dir="ltr"></label>'
+      + '<label class="f">الباسورد <small>٨ حروف على الأقل</small><input name="password" type="password" autocomplete="new-password" minlength="8" required dir="ltr"></label>'
+      + '<label class="f">اسمك في مجتمع Skool <small>عشان نلاقيك</small><input name="note" dir="auto"></label>'
+      + '<input name="website" class="hpot" tabindex="-1" autocomplete="off" aria-hidden="true">'
       + '<p class="err" role="alert"></p>'
-      + '<button class="btn primary wide" type="submit">Ask to join</button></form>'
+      + '<button class="btn primary wide" type="submit">اطلب تدخل</button></form>'
       + '</section></div>';
     $('#f-join').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, btn = f.querySelector('button[type=submit]'), err = f.querySelector('.err');
       err.textContent = '';
       var body = {}; ['name', 'email', 'password', 'note', 'website'].forEach(function (k) { body[k] = f.querySelector('[name=' + k + ']').value.trim(); });
-      if (body.password.length < 8) { err.textContent = 'Choose a password with at least 8 characters.'; return; }
-      busy(btn, true, 'Sending…');
+      if (body.password.length < 8) { err.textContent = 'اختار باسورد ٨ حروف على الأقل.'; return; }
+      busy(btn, true, 'بيتبعت…');
       api('/request', { method: 'POST', body: body }).then(function () { location.reload(); }, function (x) { busy(btn, false); err.textContent = x.message; });
     });
   }
   function renderWaiting(denied) {
     $('#app').innerHTML = '<div class="center-card card">'
-      + '<div class="big-emoji">' + (denied ? '🔒' : '⏳') + '</div>'
+      + '<div class="big-ic">' + ico(denied ? 'lock' : 'hourglass') + '</div>'
       + (denied
-        ? '<h2>Your tracker access isn\'t active</h2><p class="muted">If you think this is a mistake, message Sherif in the Skool community.</p>'
-        : '<h2>Thanks, ' + esc(cfg.name.split(' ')[0]) + '! You\'re on the list.</h2><p class="muted">Your request is waiting for approval. You\'ll get an email as soon as you\'re in. Usually within a day.</p>')
-      + '<a class="btn" href="' + esc(cfg.logoutUrl) + '">Sign out</a></div>';
+        ? '<h2>دخولك على التراكر مش متفعل</h2><p class="muted">لو شايف إن في غلط، ابعت لشريف في مجتمع Skool.</p>'
+        : '<h2>شكرًا يا ' + esc(cfg.name.split(' ')[0]) + '. طلبك وصل.</h2><p class="muted">طلبك مستني الموافقة. هيوصلك إيميل أول ما تتفعل، غالبًا خلال يوم.</p>')
+      + '<a class="btn" href="' + esc(cfg.logoutUrl) + '">اخرج</a></div>';
   }
 
   /* ------------------------------------------------------------ class choice */
   function renderClassPick(changing) {
-    var cls = cfg.classes;
-    var html = '<div class="center-card card wide-card"><h2>' + (changing ? 'Change your class' : 'Choose your class') + '</h2>'
-      + '<p class="muted">Your class decides which skills you can use to help yourself and your classmates. ' + (changing ? 'You can change once every 30 days.' : 'You can change it later.') + '</p><div class="classes">';
-    Object.keys(cls).forEach(function (k) {
-      html += '<button class="class-card" data-act="pick-class" data-class="' + k + '"><span class="class-icon">' + cls[k].icon + '</span><b>' + esc(cls[k].name) + '</b><span>' + esc(cls[k].tagline) + '</span></button>';
+    var html = '<div class="center-card card wide-card"><h2>' + (changing ? 'غيّر الكلاس بتاعك' : 'اختار الكلاس بتاعك') + '</h2>'
+      + '<p class="muted">الكلاس بيحدد المهارات اللي تقدر تساعد بيها نفسك وزمايلك. ' + (changing ? 'تقدر تغيّره مرة كل ٣٠ يوم.' : 'تقدر تغيّره بعدين.') + '</p><div class="classes">';
+    Object.keys(cfg.classes).forEach(function (k) {
+      var c = cls(k);
+      html += '<button class="class-card" data-act="pick-class" data-class="' + k + '"><span class="class-icon">' + ico(c.ic) + '</span><b>' + esc(c.ar) + '</b><span>' + esc(c.tag) + '</span></button>';
     });
-    html += '</div>' + (changing ? '<button class="btn ghost" data-act="close">Keep my class</button>' : '') + '</div>';
+    html += '</div>' + (changing ? '<button class="btn ghost" data-act="close">خليني على الكلاس بتاعي</button>' : '') + '</div>';
     if (changing) openModal(html, 'wide'); else $('#app').innerHTML = html;
   }
 
@@ -142,13 +236,13 @@
   function renderHome() {
     var d = S.data, s = d.stats, me = d.me;
     var goalPct = Math.min(100, Math.round(s.todayMinutes / s.goal * 100));
-    var sub = s.todayMinutes >= s.goal ? 'Daily goal reached. Great work! 🎉'
-      : s.studiedToday ? hm(s.goal - s.todayMinutes) + ' more to reach today\'s goal of ' + hm(s.goal) + '.'
-        : s.streak > 0 ? 'Log an activity today to keep your ' + s.streak + '-day streak alive.' : 'Log your first activity today to start a streak!';
+    var sub = s.todayMinutes >= s.goal ? 'وصلت لهدف النهارده. شغل عظيم.'
+      : s.studiedToday ? 'فاضلك ' + hm(s.goal - s.todayMinutes) + ' وتوصل لهدف النهارده (' + hm(s.goal) + ').'
+        : s.streak > 0 ? 'سجّل أي نشاط النهارده عشان الستريك بتاعك (' + s.streak + ' يوم) ميقعش.' : 'سجّل أول نشاط النهارده وابدأ الستريك.';
     $('#app').innerHTML = header()
-      + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>Hey, ' + esc(me.firstName) + '! 👋</h1><p class="muted">' + esc(sub) + '</p>'
-      + '<button class="btn ghost sm-btn" data-act="share">📣 Share to Skool</button></div></div>'
-      + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="Today ' + s.todayMinutes + ' of ' + s.goal + ' minutes"><span><b>' + s.todayMinutes + '</b>/' + s.goal + ' min</span></div></section>'
+      + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>أهلًا يا ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p>'
+      + '<button class="btn ghost sm-btn" data-act="share">' + ico('mega') + ' شارك على Skool</button></div></div>'
+      + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="النهارده ' + s.todayMinutes + ' من ' + s.goal + ' دقيقة"><span><b>' + s.todayMinutes + '</b>من ' + s.goal + ' د</span></div></section>'
       + statCards(s)
       + '<div class="grid"><div class="col main">' + questCard() + characterCard() + bossCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'
       + '<div class="col side">' + boardCard() + feedCard() + '</div></div>';
@@ -157,102 +251,101 @@
 
   function questCard() {
     var q = S.data.quest; if (!q) return '';
-    return '<section class="card quest' + (q.done ? ' done' : '') + '"><div class="quest-row"><span class="q-badge" aria-hidden="true">🎯</span><div class="quest-main"><span class="eyebrow">Today\'s quest from Sherif</span><p class="quest-text" dir="auto">' + esc(q.text) + '</p></div>'
-      + (q.done ? '<span class="pill good">Done ✅</span>' : '<span class="pill sp">+' + q.sp + ' SP</span>') + '</div>'
-      + (q.done ? '' : '<form class="quest-form" id="f-quest"><input id="q-note" maxlength="200" placeholder="How did it go? (optional)" dir="auto" aria-label="Note about the quest"><button class="btn primary" type="submit">Mark done</button></form>') + '</section>';
+    return '<section class="card quest' + (q.done ? ' done' : '') + '"><div class="quest-row"><span class="q-badge">' + ico('target') + '</span><div class="quest-main"><span class="eyebrow">مهمة النهارده من شريف</span><p class="quest-text" dir="auto">' + esc(q.text) + '</p></div>'
+      + (q.done ? '<span class="pill">' + ico('check') + ' خلصتها</span>' : '<span class="pill sp">+' + q.sp + ' SP</span>') + '</div>'
+      + (q.done ? '' : '<form class="quest-form" id="f-quest"><input id="q-note" maxlength="200" placeholder="عملتها إزاي؟ (اختياري)" dir="auto" aria-label="ملاحظة عن المهمة"><button class="btn primary" type="submit">خلصتها</button></form>') + '</section>';
   }
 
   function header() {
     var d = S.data, v = S.view || 'home', cu = S.chatUnread || 0;
-    var nav = '<nav class="nav" aria-label="Sections">'
-      + [['home', '🏠', 'Home'], ['clan', '🛡️', 'Clan'], ['chat', '💬', 'Chat']].map(function (t) {
-        return '<button data-act="view" data-view="' + t[0] + '" aria-current="' + (v === t[0] ? 'page' : 'false') + '">' + t[1] + ' <span>' + t[2] + '</span>' + (t[0] === 'chat' && cu ? '<i>' + cu + '</i>' : '') + '</button>';
+    var nav = '<nav class="nav" aria-label="الأقسام">'
+      + [['home', 'home', 'الرئيسية'], ['clan', 'shield', 'الكلان'], ['chat', 'chat', 'الشات']].map(function (t) {
+        return '<button data-act="view" data-view="' + t[0] + '" aria-current="' + (v === t[0] ? 'page' : 'false') + '">' + ico(t[1]) + '<span>' + t[2] + '</span>' + (t[0] === 'chat' && cu ? '<i>' + cu + '</i>' : '') + '</button>';
       }).join('') + '</nav>';
-    return '<header class="top"><div class="brand"><span class="logo">S</span><span class="hide-xs">Sawa Tracker</span></div>' + nav + '<div class="top-actions">'
-      + '<button class="btn primary" data-act="log-day">📅 <span class="hide-xs">Log day</span></button>'
-      + '<button class="btn" data-act="log-activity">＋ <span class="hide-sm">Log activity</span></button>'
-      + '<button class="icon-btn bell" data-act="notifs" aria-label="Notifications' + (d.unread ? ', ' + d.unread + ' new' : '') + '">🔔' + (d.unread ? '<i>' + d.unread + '</i>' : '') + '</button>'
-      + '<button class="icon-btn me-btn" data-act="settings" aria-label="Your settings">' + avatar(d.me, 34) + '</button>'
+    return '<header class="top">' + brand(false) + nav + '<div class="top-actions">'
+      + '<button class="btn primary" data-act="log-day">' + ico('cal') + '<span class="hide-xs">سجّل يومك</span></button>'
+      + '<button class="btn" data-act="log-activity">' + ico('plus') + '<span class="hide-sm">نشاط</span></button>'
+      + '<button class="icon-btn bell" data-act="notifs" aria-label="الإشعارات' + (d.unread ? '، ' + d.unread + ' جديد' : '') + '">' + ico('bell') + (d.unread ? '<i>' + d.unread + '</i>' : '') + '</button>'
+      + '<button class="icon-btn me-btn" data-act="settings" aria-label="إعداداتك">' + avatar(d.me, 34) + '</button>'
       + '</div></header>';
   }
 
   function statCards(s) {
     var shielded = s.shieldUntil && s.shieldUntil >= S.data.today;
     return '<section class="stats">'
-      + '<div class="card stat"><span class="stat-ic fire">🔥</span><b>' + s.streak + '</b><span>Day streak</span><small>Best ' + s.bestStreak + (s.freezes ? ' · ❄️ ' + s.freezes + ' freeze' + (s.freezes > 1 ? 's' : '') : '') + '</small></div>'
-      + '<div class="card stat"><span class="stat-ic heart">❤️</span><b style="color:' + healthColor(s.health) + '">' + s.health + '%</b><span>Habit health</span>'
-      + '<div class="bar hp"><i style="width:' + s.health + '%;background:' + healthColor(s.health) + '"></i></div>'
-      + '<small>' + (shielded ? '🛡️ Shielded until ' + fmtDay(s.shieldUntil) : s.health >= 70 ? 'Strong. Keep it up!' : s.health >= 40 ? 'Study today to raise it' : 'Low. A short session helps!') + '</small></div>'
-      + '<div class="card stat"><span class="stat-ic clock">⏱️</span><b>' + hm(s.totalMinutes) + '</b><span>Total study time</span><small>' + (s.totalCards ? s.totalCards.toLocaleString() + ' flashcards' : '&nbsp;') + '</small></div>'
-      + '<div class="card stat"><span class="stat-ic cal">📆</span><b>' + s.studyDays + '</b><span>Study days</span><small>Level ' + s.level + ' · ' + esc(s.title) + '</small></div>'
+      + '<div class="card stat"><span class="stat-ic">' + ico('flame') + '</span><b>' + s.streak + '</b><span>يوم ستريك</span><small>أحسن ستريك ' + s.bestStreak + (s.freezes ? ' · ' + ico('snow', 'tiny') + ' ' + s.freezes + ' تجميد' : '') + '</small></div>'
+      + '<div class="card stat' + (low(s.health) ? ' alert' : '') + '"><span class="stat-ic">' + ico('heart') + '</span><b>' + s.health + '%</b><span>صحة العادة</span>'
+      + '<div class="bar hp"><i style="width:' + s.health + '%;background:' + hpFill(s.health) + '"></i></div>'
+      + '<small>' + (shielded ? ico('shield', 'tiny') + ' محمي لحد ' + fmtDay(s.shieldUntil) : s.health >= 70 ? 'قوية. كمّل كده.' : s.health >= 30 ? 'ذاكر النهارده عشان تعلى' : 'واطية. جلسة قصيرة هتفرق.') + '</small></div>'
+      + '<div class="card stat"><span class="stat-ic">' + ico('clock') + '</span><b>' + hm(s.totalMinutes) + '</b><span>إجمالي المذاكرة</span><small>' + (s.totalCards ? s.totalCards.toLocaleString(LOC) + ' فلاش كارد' : '&nbsp;') + '</small></div>'
+      + '<div class="card stat"><span class="stat-ic">' + ico('cal') + '</span><b>' + s.studyDays + '</b><span>يوم مذاكرة</span><small dir="ltr">Lv ' + s.level + ' · ' + esc(s.title) + '</small></div>'
       + '</section>';
   }
 
   function characterCard() {
-    var d = S.data, s = d.stats, c = cfg.classes[d.me.class] || {};
+    var d = S.data, s = d.stats, c = cls(d.me.class);
     var pct = s.next ? Math.round((s.studyDays - s.from) / (s.next - s.from) * 100) : 100;
     var skills = d.skills.map(function (k) {
       var st = k.locked ? 'locked' : k.readyOn ? 'cooling' : s.sp < k.cost ? 'poor' : 'ready';
-      var tip = k.description + (k.locked ? ' · Unlocks at level ' + k.unlock : k.readyOn ? ' · Ready ' + fmtDay(k.readyOn) : ' · Costs ' + k.cost + ' SP');
+      var tip = (k.descriptionAr || k.description) + (k.locked ? ' · بتتفتح في مستوى ' + k.unlock : k.readyOn ? ' · جاهزة ' + fmtDay(k.readyOn) : ' · بـ ' + k.cost + ' SP');
       return '<button class="skill ' + st + '" data-act="skill-info" data-skill="' + k.id + '" title="' + esc(tip) + '">'
-        + '<span class="sk-ic">' + (k.locked ? '🔒' : k.icon) + '</span><span class="sk-name">' + esc(k.locked ? 'Lv ' + k.unlock : k.name) + '</span>'
-        + (!k.locked ? '<span class="sk-cost">' + (k.readyOn ? '⏳' : k.cost + ' SP') + '</span>' : '') + '</button>';
+        + '<span class="sk-ic">' + ico(k.locked ? 'lock' : (SKILL_IC[k.id] || 'spark')) + '</span><span class="sk-name" dir="ltr">' + esc(k.locked ? 'Lv ' + k.unlock : k.name) + '</span>'
+        + (!k.locked ? '<span class="sk-cost">' + (k.readyOn ? ico('hourglass', 'tiny') : k.cost + ' SP') + '</span>' : '') + '</button>';
     }).join('');
     return '<section class="card char"><div class="char-top">'
-      + '<div class="char-av">' + avatar(d.me, 72) + '<span class="class-badge" title="' + esc(c.name) + '">' + (c.icon || '') + '</span></div>'
-      + '<div class="char-info"><div class="char-line"><h2>Level ' + s.level + '</h2><span class="tag">' + esc(s.title) + '</span><button class="tag link" data-act="change-class">' + (c.icon || '') + ' ' + esc(c.name || 'Pick a class') + '</button></div>'
-      + '<div class="bars"><div class="lbl"><span>Progress to ' + (s.nextLevel ? 'Level ' + s.nextLevel : 'the top') + '</span><span>' + (s.next ? s.studyDays + ' / ' + s.next + ' study days' : 'Max level') + '</span></div>'
+      + '<div class="char-av">' + avatar(d.me, 72) + '<span class="class-badge" title="' + esc(c.ar) + '">' + ico(c.ic) + '</span></div>'
+      + '<div class="char-info"><div class="char-line"><h2 dir="ltr">Level ' + s.level + '</h2><span class="tag" dir="ltr">' + esc(s.title) + '</span><button class="tag link" data-act="change-class">' + ico(c.ic, 'tiny') + ' ' + esc(c.ar || 'اختار كلاس') + '</button></div>'
+      + '<div class="bars"><div class="lbl"><span>' + (s.nextLevel ? 'لحد مستوى ' + s.nextLevel : 'أعلى مستوى') + '</span><span>' + (s.next ? s.studyDays + ' / ' + s.next + ' يوم مذاكرة' : 'وصلت للقمة') + '</span></div>'
       + '<div class="bar xp"><i style="width:' + pct + '%"></i></div>'
-      + '<div class="lbl"><span>Skill points</span><span>' + s.sp + ' SP' + (s.spBonus ? ' · +' + s.spBonus + ' bonus waiting ✨' : '') + '</span></div></div></div></div>'
+      + '<div class="lbl"><span>نقاط المهارة</span><span>' + s.sp + ' SP' + (s.spBonus ? ' · +' + s.spBonus + ' بونص مستنيك' : '') + '</span></div></div></div></div>'
       + '<div class="skills">' + skills + '</div>'
-      + '<p class="muted small">Tap a skill to use it. Skills that help classmates can also be used from the ⚡ button next to their name on the leaderboard.</p></section>';
+      + '<p class="muted small">دوس على المهارة عشان تستخدمها. المهارات اللي بتساعد زمايلك تقدر تستخدمها كمان من زرار ' + ico('bolt', 'tiny') + ' جنب اسمهم في الترتيب.</p></section>';
   }
 
   function bossCard() {
     var b = S.data.boss, left = Math.max(0, b.hp - b.damage), pct = Math.round(left / b.hp * 100);
     var daysLeft = Math.max(0, Math.round((new Date(b.ends + 'T23:59:59') - Date.now()) / 86400000));
-    var top = b.top.map(function (p, i) { return '<li>' + avatar(p, 26) + '<span dir="auto">' + esc(p.name) + '</span><b>' + p.minutes + '</b></li>'; }).join('');
-    return '<section class="card boss' + (b.defeated ? ' won' : '') + '"><div class="boss-top"><span class="boss-ic" aria-hidden="true">' + b.icon + '</span>'
-      + '<div class="boss-info"><span class="eyebrow">Weekly community boss</span><h2>' + esc(b.name) + '</h2>'
+    var top = b.top.map(function (p) { return '<li>' + avatar(p, 26) + '<span dir="auto">' + esc(p.name) + '</span><b>' + p.minutes + '</b></li>'; }).join('');
+    return '<section class="card boss' + (b.defeated ? ' won' : '') + '"><div class="boss-top"><span class="boss-ic">' + ico('boss') + '</span>'
+      + '<div class="boss-info"><span class="eyebrow">وحش الأسبوع</span><h2>' + esc(bossName(b.name)) + '</h2>'
       + (b.defeated
-        ? '<p class="win">Defeated! Everyone who fought earned +3 SP and the Boss slayer badge. A new boss arrives ' + (daysLeft ? 'in ' + daysLeft + ' day' + (daysLeft > 1 ? 's' : '') : 'tomorrow') + '.</p>'
-        : '<div class="bar boss-hp"><i style="width:' + pct + '%"></i><em>' + left.toLocaleString() + ' / ' + b.hp.toLocaleString() + ' HP</em></div>'
-          + '<p class="muted small">Every minute anyone studies is 1 damage. ' + b.fighters + ' student' + (b.fighters === 1 ? '' : 's') + ' fighting · ' + (daysLeft ? daysLeft + ' day' + (daysLeft > 1 ? 's' : '') + ' left' : 'last day!') + '</p>')
-      + '</div></div>' + (top ? '<div class="boss-top5"><span class="eyebrow">Top damage this week (minutes)</span><ol>' + top + '</ol></div>' : '') + '</section>';
+        ? '<p class="win">اتهزم. كل اللي حاربوا خدوا +3 SP ووسام هازم الوحش. الوحش الجاي ' + (daysLeft ? 'بعد ' + daysLeft + ' يوم' : 'بكرة') + '.</p>'
+        : '<div class="bar boss-hp"><i style="width:' + pct + '%"></i><em dir="ltr">' + left.toLocaleString(LOC) + ' / ' + b.hp.toLocaleString(LOC) + ' HP</em></div>'
+          + '<p class="muted small">كل دقيقة مذاكرة من أي حد = ضربة. ' + b.fighters + ' بيحاربوا · ' + (daysLeft ? 'فاضل ' + daysLeft + ' يوم' : 'آخر يوم!') + '</p>')
+      + '</div></div>' + (top ? '<div class="boss-top5"><span class="eyebrow">أكتر ناس ضربوا الأسبوع ده (دقايق)</span><ol>' + top + '</ol></div>' : '') + '</section>';
   }
 
   function trendCard() {
     var t = S.data.trend;
-    if (t.length < 2) return '<section class="card"><h3>Habit health trend</h3><p class="muted">Your health line appears after your first full day.</p></section>';
-    var W = 640, H = 170, P = { l: 34, r: 12, t: 12, b: 26 }, n = t.length;
-    var x = function (i) { return P.l + (W - P.l - P.r) * (n === 1 ? 0 : i / (n - 1)); };
-    var y = function (v) { return P.t + (H - P.t - P.b) * (1 - v / 100); };
+    if (t.length < 2) return '<section class="card"><h3>صحة العادة</h3><p class="muted">الخط هيظهر بعد أول يوم كامل.</p></section>';
+    var W = 640, H = 170, P2 = { l: 12, r: 40, t: 12, b: 26 }, n = t.length;
+    // RTL chart: today on the left, older days to the right.
+    var x = function (i) { return W - P2.r - (W - P2.l - P2.r) * (n === 1 ? 0 : i / (n - 1)); };
+    var y = function (v) { return P2.t + (H - P2.t - P2.b) * (1 - v / 100); };
     var pts = t.map(function (d, i) { return x(i).toFixed(1) + ',' + y(d.health).toFixed(1); });
-    var grid = [0, 50, 100].map(function (v) { return '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="gl"/><text x="' + (P.l - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end" class="ax">' + v + '%</text>'; }).join('');
-    var lbls = [0, Math.floor((n - 1) / 2), n - 1].filter(function (v, i, a) { return a.indexOf(v) === i; }).map(function (i) { return '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle') + '" class="ax">' + (i === n - 1 ? 'Today' : fmtDay(t[i].day)) + '</text>'; }).join('');
-    var miss = t.map(function (d, i) { return d.state === 'missed' ? '<circle cx="' + x(i) + '" cy="' + y(d.health) + '" r="3" class="miss"><title>' + fmtDay(d.day) + ': missed</title></circle>' : ''; }).join('');
+    var grid = [0, 50, 100].map(function (v) { return '<line x1="' + P2.l + '" x2="' + (W - P2.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="gl"/><text x="' + (W - P2.r + 6) + '" y="' + (y(v) + 4) + '" text-anchor="start" class="ax">' + v + '%</text>'; }).join('');
+    var lbls = [0, Math.floor((n - 1) / 2), n - 1].filter(function (v, i, a) { return a.indexOf(v) === i; }).map(function (i) { return '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'end' : i === n - 1 ? 'start' : 'middle') + '" class="ax">' + (i === n - 1 ? 'النهارده' : fmtDay(t[i].day)) + '</text>'; }).join('');
+    var miss = t.map(function (d, i) { return d.state === 'missed' ? '<circle cx="' + x(i) + '" cy="' + y(d.health) + '" r="3" class="miss"><title>' + fmtDay(d.day) + ': مذاكرتش</title></circle>' : ''; }).join('');
     var last = t[n - 1], first = t[Math.max(0, n - 8)];
     var dir = last.health - first.health;
-    return '<section class="card"><div class="card-h"><h3>Habit health trend</h3><span class="trend ' + (dir > 2 ? 'up' : dir < -2 ? 'down' : '') + '">' + (dir > 2 ? '↗ Rising' : dir < -2 ? '↘ Falling' : '→ Steady') + '</span></div>'
-      + '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart" role="img" aria-label="Habit health over the last ' + n + ' days, now ' + last.health + '%">'
-      + '<defs><linearGradient id="hg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--primary)" stop-opacity=".28"/><stop offset="1" stop-color="var(--primary)" stop-opacity="0"/></linearGradient></defs>'
-      + grid + '<polygon points="' + x(0) + ',' + y(0) + ' ' + pts.join(' ') + ' ' + x(n - 1) + ',' + y(0) + '" fill="url(#hg)"/>'
-      + '<polyline points="' + pts.join(' ') + '" class="line"/>' + miss
+    return '<section class="card"><div class="card-h"><h3>صحة العادة</h3><span class="trend">' + (dir > 2 ? ico('up', 'tiny') + ' بتطلع' : dir < -2 ? ico('down', 'tiny') + ' بتنزل' : ico('flat', 'tiny') + ' ثابتة') + '</span></div>'
+      + '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart" role="img" aria-label="صحة العادة آخر ' + n + ' يوم، دلوقتي ' + last.health + '%">'
+      + grid + '<polyline points="' + pts.join(' ') + '" class="line"/>' + miss
       + '<circle cx="' + x(n - 1) + '" cy="' + y(last.health) + '" r="5" class="end"/>' + lbls + '</svg>'
-      + '<p class="muted small">Health goes up when you study (more when you reach your goal) and down on days you miss.</p></section>';
+      + '<p class="muted small">الصحة بتعلى لما تذاكر (أكتر لما توصل لهدفك) وبتنزل في الأيام اللي مش بتذاكر فيها. النقط الحمرا = أيام فاتتك.</p></section>';
   }
 
   function breakdownCard() {
     var b = S.data.breakdown, tot = b.reduce(function (a, r) { return a + r.minutes; }, 0);
-    if (!tot) return '<section class="card"><h3>Activity breakdown</h3><p class="muted">Log activities to see where your time goes.</p></section>';
-    var R = 52, C = 2 * Math.PI * R, off = 0;
-    var arcs = b.map(function (r) {
-      var len = r.minutes / tot * C, a = act(r.activity);
-      var s = '<circle r="' + R + '" cx="70" cy="70" fill="none" stroke="' + a.color + '" stroke-width="22" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"><title>' + esc(r.activity) + ': ' + hm(r.minutes) + '</title></circle>';
+    if (!tot) return '<section class="card"><h3>وقتك بيروح فين</h3><p class="muted">سجّل أنشطة وهتشوف وقتك بيروح فين.</p></section>';
+    var R = 52, Cc = 2 * Math.PI * R, off = 0;
+    var arcs = b.map(function (r, i) {
+      var len = r.minutes / tot * Cc, col = GRAYS[i % GRAYS.length];
+      var s = '<circle r="' + R + '" cx="70" cy="70" fill="none" stroke="' + col + '" stroke-width="22" stroke-dasharray="' + len.toFixed(2) + ' ' + (Cc - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"><title>' + esc(act(r.activity).ar) + ': ' + hm(r.minutes) + '</title></circle>';
       off += len; return s;
     }).join('');
-    var legend = b.map(function (r) { var a = act(r.activity); return '<li><i style="background:' + a.color + '"></i><span>' + a.emoji + ' ' + esc(r.activity) + '</span><b>' + hm(r.minutes) + '</b><em>' + Math.round(r.minutes / tot * 100) + '%</em></li>'; }).join('');
-    return '<section class="card"><h3>Activity breakdown</h3><div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="Time by activity"><g transform="rotate(-90 70 70)">' + arcs + '</g><text x="70" y="66" text-anchor="middle" class="d-big">' + hm(tot) + '</text><text x="70" y="84" text-anchor="middle" class="ax">total</text></svg><ul class="legend">' + legend + '</ul></div></section>';
+    var legend = b.map(function (r, i) { return '<li><i style="background:' + GRAYS[i % GRAYS.length] + '"></i>' + actLabel(r.activity) + '<b>' + hm(r.minutes) + '</b><em>' + Math.round(r.minutes / tot * 100) + '%</em></li>'; }).join('');
+    return '<section class="card"><h3>وقتك بيروح فين</h3><div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="الوقت حسب النشاط"><g transform="rotate(-90 70 70)">' + arcs + '</g><text x="70" y="70" text-anchor="middle" class="d-big">' + hm(tot) + '</text><text x="70" y="88" text-anchor="middle" class="ax">المجموع</text></svg><ul class="legend">' + legend + '</ul></div></section>';
   }
 
   function heatCard() {
@@ -266,54 +359,54 @@
         var dt = new Date(end); dt.setDate(end.getDate() - w * 7 - (6 - d));
         var key = dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) + '-' + ('0' + dt.getDate()).slice(-2);
         var m = map[key] || 0, lvl = dt > today ? 'f' : m === 0 ? 0 : m < goal / 2 ? 1 : m < goal ? 2 : 3;
-        cells += '<i class="h' + lvl + '" title="' + fmtDay(key) + ': ' + (m ? hm(m) : 'no study') + '"></i>';
+        cells += '<i class="h' + lvl + '" title="' + fmtDay(key) + ': ' + (m ? hm(m) : 'مفيش مذاكرة') + '"></i>';
       }
       cells += '</div>';
     }
-    return '<section class="card"><h3>Last 12 weeks</h3><div class="heat" role="img" aria-label="Study days in the last 12 weeks">' + cells + '</div>'
-      + '<div class="heat-key"><span>Less</span><i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><span>Goal met</span></div></section>';
+    return '<section class="card"><h3>آخر ١٢ أسبوع</h3><div class="heat" role="img" aria-label="أيام المذاكرة آخر ١٢ أسبوع">' + cells + '</div>'
+      + '<div class="heat-key"><span>أقل</span><i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><span>وصلت للهدف</span></div></section>';
   }
 
   function badgesCard() {
     var b = S.data.badges, got = b.filter(function (x) { return x.on; }).length;
-    return '<section class="card"><div class="card-h"><h3>Badges</h3><span class="muted small">' + got + ' of ' + b.length + '</span></div><div class="badges">'
-      + b.map(function (x) { return '<div class="badge' + (x.on ? '' : ' off') + '" title="' + esc(x.about) + (x.on ? ' · earned ' + fmtDay(x.on) : '') + '"><span>' + x.icon + '</span><b>' + esc(x.name) + '</b></div>'; }).join('') + '</div></section>';
+    return '<section class="card"><div class="card-h"><h3>الأوسمة</h3><span class="muted small">' + got + ' من ' + b.length + '</span></div><div class="badges">'
+      + b.map(function (x) { var bi = badgeInfo(x.id, x.name); return '<div class="badge' + (x.on ? '' : ' off') + '" title="' + esc(bi.about) + (x.on ? ' · ' + fmtDay(x.on) : '') + '">' + ico(bi.ic) + '<b>' + esc(bi.name) + '</b></div>'; }).join('') + '</div></section>';
   }
 
   function recentCard() {
     var r = S.data.recent;
-    if (!r.length) return '<section class="card"><h3>Recent activity</h3><p class="muted">Nothing yet. Click <b>Log activity</b> to add your first one.</p></section>';
-    return '<section class="card"><h3>Recent activity</h3><ul class="recent">' + r.map(function (x) {
+    if (!r.length) return '<section class="card"><h3>آخر الأنشطة</h3><p class="muted">لسه مفيش. دوس <b>نشاط</b> فوق وسجّل أول واحد.</p></section>';
+    return '<section class="card"><h3>آخر الأنشطة</h3><ul class="recent">' + r.map(function (x) {
       var a = act(x.activity);
-      return '<li><span class="r-ic" style="background:' + a.color + '22;color:' + a.color + '">' + a.emoji + '</span><div><b>' + esc(x.activity) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' cards' : '') + (x.notes ? ' · <span dir="auto">' + esc(x.notes) + '</span>' : '') + '</small></div>'
-        + '<span class="r-min">' + hm(x.minutes) + '</span>' + (x.canDelete ? '<button class="icon-btn sm" data-act="del-log" data-id="' + x.id + '" aria-label="Remove this activity" title="Remove">✕</button>' : '<span class="icon-btn sm ghost"></span>') + '</li>';
+      return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' كارت' : '') + (x.notes ? ' · <span dir="auto">' + esc(x.notes) + '</span>' : '') + '</small></div>'
+        + '<span class="r-min">' + hm(x.minutes) + '</span>' + (x.canDelete ? '<button class="icon-btn sm" data-act="del-log" data-id="' + x.id + '" aria-label="امسح النشاط ده" title="امسح">' + ico('x') + '</button>' : '<span class="icon-btn sm ghost"></span>') + '</li>';
     }).join('') + '</ul></section>';
   }
 
   /* ------------------------------------------------------------ leaderboard */
   function boardCard() {
-    return '<section class="card board"><div class="card-h"><h3>🏆 Leaderboard</h3><span class="muted small" id="b-total"></span></div>'
-      + '<div class="seg small-seg" role="tablist" aria-label="Leaderboard">'
-      + [['consistency', 'Consistency'], ['week', 'This week'], ['all', 'All time']].map(function (t) { return '<button data-act="board-tab" data-tab="' + t[0] + '" aria-pressed="' + (S.board.tab === t[0]) + '">' + t[1] + '</button>'; }).join('')
-      + '</div><ol class="rows" id="b-rows"><li class="muted small pad">Loading…</li></ol><div id="b-me"></div></section>';
+    return '<section class="card board"><div class="card-h"><h3>' + ico('trophy') + ' الترتيب</h3><span class="muted small" id="b-total"></span></div>'
+      + '<div class="seg small-seg" role="tablist" aria-label="الترتيب">'
+      + [['consistency', 'الاستمرارية'], ['week', 'الأسبوع ده'], ['all', 'من الأول']].map(function (t) { return '<button data-act="board-tab" data-tab="' + t[0] + '" aria-pressed="' + (S.board.tab === t[0]) + '">' + t[1] + '</button>'; }).join('')
+      + '</div><ol class="rows" id="b-rows"><li class="muted small pad">بيحمّل…</li></ol><div id="b-me"></div></section>';
   }
   function canHelp() { return S.data.skills.some(function (k) { return k.target === 'other' && !k.locked; }); }
   function boardRow(r) {
     var me = r.id === S.data.me.id, metric = S.board.tab === 'consistency'
-      ? '<div class="bar mini"><i style="width:' + r.health + '%;background:' + healthColor(r.health) + '"></i></div><span class="pc">' + r.health + '%</span>'
+      ? '<div class="bar mini"><i style="width:' + r.health + '%;background:' + hpFill(r.health) + '"></i></div><span class="pc">' + r.health + '%</span>'
       : '<span class="pc wide">' + hm(r.minutes) + '</span>';
     return '<li class="row' + (me ? ' me' : '') + '"><span class="rank r' + Math.min(r.rank, 4) + '">' + r.rank + '</span>' + avatar(r, 36)
-      + '<div class="r-main"><div class="r-name"><span dir="auto">' + esc(r.name) + '</span>' + (me ? '<small>(you)</small>' : '') + '<span title="' + esc((cfg.classes[r.class] || {}).name || '') + '">' + r.icon + '</span>' + (r.today ? '<span class="dot-today" title="Studied today"></span>' : '') + '</div>'
-      + '<div class="r-meta"><span class="lv">Lv ' + r.level + '</span>' + metric + '<span class="st">🔥 ' + r.streak + '</span></div></div>'
-      + '<div class="r-acts">' + (!me && canHelp() ? '<button class="icon-btn sm" data-act="cast-on" data-id="' + r.id + '" aria-label="Use a skill on ' + esc(r.name) + '" title="Use a skill">⚡</button>' : '')
-      + '<button class="icon-btn sm" data-act="profile" data-id="' + r.id + '" aria-label="See ' + esc(r.name) + '\'s profile" title="Profile">ⓘ</button></div></li>';
+      + '<div class="r-main"><div class="r-name"><span dir="auto">' + esc(r.name) + '</span>' + (me ? '<small>(إنت)</small>' : '') + '<span class="cl" title="' + esc(cls(r.class).ar) + '">' + ico(cls(r.class).ic, 'tiny') + '</span>' + (r.today ? '<span class="dot-today" title="ذاكر النهارده"></span>' : '') + '</div>'
+      + '<div class="r-meta"><span class="lv" dir="ltr">Lv ' + r.level + '</span>' + metric + '<span class="st">' + ico('flame', 'tiny') + r.streak + '</span></div></div>'
+      + '<div class="r-acts">' + (!me && canHelp() ? '<button class="icon-btn sm" data-act="cast-on" data-id="' + r.id + '" aria-label="استخدم مهارة على ' + esc(r.name) + '" title="استخدم مهارة">' + ico('bolt') + '</button>' : '')
+      + '<button class="icon-btn sm" data-act="profile" data-id="' + r.id + '" aria-label="بروفايل ' + esc(r.name) + '" title="البروفايل">' + ico('info') + '</button></div></li>';
   }
   function paintBoard() {
     var el = $('#b-rows'); if (!el) return;
     var b = S.board;
-    if (!b.rows.length) { el.innerHTML = '<li class="muted small pad">' + (b.loaded ? 'No one on the board yet. Log an activity to be first!' : 'Loading…') + '</li>'; return; }
-    el.innerHTML = b.rows.slice(0, b.showAll ? 100 : 15).map(boardRow).join('') + (b.rows.length > 15 && !b.showAll ? '<li class="pad"><button class="btn ghost wide" data-act="board-more">Show top ' + Math.min(100, b.rows.length) + '</button></li>' : '');
-    $('#b-total').textContent = b.total + ' student' + (b.total === 1 ? '' : 's');
+    if (!b.rows.length) { el.innerHTML = '<li class="muted small pad">' + (b.loaded ? 'لسه محدش في الترتيب. سجّل نشاط وكن الأول!' : 'بيحمّل…') + '</li>'; return; }
+    el.innerHTML = b.rows.slice(0, b.showAll ? 100 : 15).map(boardRow).join('') + (b.rows.length > 15 && !b.showAll ? '<li class="pad"><button class="btn ghost wide" data-act="board-more">اعرض أول ' + Math.min(100, b.rows.length) + '</button></li>' : '');
+    $('#b-total').textContent = b.total + ' طالب';
     var visible = b.rows.slice(0, b.showAll ? 100 : 15).some(function (r) { return r.id === S.data.me.id; });
     $('#b-me').innerHTML = b.me && !visible ? '<ol class="rows pinned">' + boardRow(b.me) + '</ol>' : '';
   }
@@ -325,40 +418,44 @@
 
   /* ------------------------------------------------------------ live feed */
   function feedCard() {
-    return '<section class="card feed"><div class="card-h"><h3>Activity feed</h3><span class="live"><i></i>Live</span></div><ul class="events" id="f-list"><li class="muted small pad">Loading…</li></ul>'
-      + '<button class="btn ghost wide" data-act="feed-more" id="f-more" hidden>Show older</button></section>';
+    return '<section class="card feed"><div class="card-h"><h3>اللي بيحصل دلوقتي</h3><span class="live"><i></i>مباشر</span></div><ul class="events" id="f-list"><li class="muted small pad">بيحمّل…</li></ul>'
+      + '<button class="btn ghost wide" data-act="feed-more" id="f-more" hidden>اعرض القديم</button></section>';
   }
-  function name(p) { return p ? '<b dir="auto">' + esc(p.name) + '</b>' : '<b>Someone</b>'; }
+  function name(p) { return p ? '<b dir="auto">' + esc(p.name) + '</b>' : '<b>حد</b>'; }
   function eventText(e) {
     var d = e.data || {};
     switch (e.type) {
-      case 'log': var a = act(d.activity); return name(e.who) + ' logged ' + d.minutes + ' min of ' + a.emoji + ' ' + esc(d.activity) + (d.cards ? ' (' + d.cards + ' cards)' : '');
-      case 'day_done': return name(e.who) + ' finished Day ' + d.day + (d.mood ? ' feeling ' + d.mood + '/10' : '') + (d.up > 0 ? ' <span class="up">mood ↑' + d.up + '</span>' : '') + ' ✅';
-      case 'skill': return name(e.who) + ' used ' + esc(d.icon) + ' ' + esc(d.name) + ' on ' + (e.target && e.who && e.target.id === e.who.id ? 'themselves' : name(e.target));
-      case 'level_up': return name(e.who) + ' reached <b>Level ' + d.level + '</b> · ' + esc(d.title) + ' 🎉';
-      case 'badge': return name(e.who) + ' earned the ' + esc(d.icon) + ' <b>' + esc(d.name) + '</b> badge';
-      case 'boss_down': return '<b>' + esc(d.icon) + ' The community defeated ' + esc(d.name) + '!</b> ' + d.fighters + ' fighters each earned +3 SP';
-      case 'streak_lost': return name(e.who) + ' lost a ' + d.streak + '-day streak. Send some support 💚';
-      case 'freeze_used': return name(e.who) + ' kept a ' + d.streak + '-day streak with a freeze ❄️';
-      case 'joined': var c = cfg.classes[d.class] || {}; return name(e.who) + ' joined as a ' + (c.icon || '') + ' ' + esc(c.name || '') + '. Welcome!';
-      case 'quest_done': return name(e.who) + ' finished today\'s quest 🎯' + (d.note ? ': <span dir="auto">“' + esc(d.note) + '”</span>' : '');
-      case 'group_invite': return name(e.who) + ' added you to the group <b dir="auto">' + esc(d.name) + '</b> 💬';
+      case 'log': return name(e.who) + ' سجّل ' + d.minutes + ' دقيقة ' + esc(act(d.activity).ar) + (d.cards ? ' (' + d.cards + ' كارت)' : '');
+      case 'day_done': return name(e.who) + ' خلّص اليوم ' + d.day + (d.mood ? ' وحاسس بـ ' + d.mood + '/10' : '') + (d.up > 0 ? ' <span class="up">المود طلع ' + d.up + '</span>' : '');
+      case 'skill': return name(e.who) + ' استخدم <span dir="ltr">' + esc(d.name) + '</span> على ' + (e.target && e.who && e.target.id === e.who.id ? 'نفسه' : name(e.target));
+      case 'level_up': return name(e.who) + ' وصل <b dir="ltr">Level ' + d.level + '</b> · <span dir="ltr">' + esc(d.title) + '</span>';
+      case 'badge': return name(e.who) + ' خد وسام <b>' + esc(badgeByName(d.name).name) + '</b>';
+      case 'boss_down': return '<b>المجتمع هزم ' + esc(bossName(d.name)) + '!</b> ' + d.fighters + ' حاربوا وكل واحد خد +3 SP';
+      case 'streak_lost': return name(e.who) + ' خسر ستريك ' + d.streak + ' يوم. ابعتله دعم.';
+      case 'freeze_used': return name(e.who) + ' حافظ على ستريك ' + d.streak + ' يوم بتجميد';
+      case 'joined': return name(e.who) + ' انضم كـ' + esc(cls(d.class).ar) + '. أهلًا بيه!';
+      case 'quest_done': return name(e.who) + ' خلّص مهمة النهارده' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
+      case 'group_invite': return name(e.who) + ' ضافك لجروب <b dir="auto">' + esc(d.name) + '</b>';
     }
-    return name(e.who) + ' did something';
+    return name(e.who) + ' عمل حاجة';
+  }
+  function eventIcon(e) {
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat' };
+    return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
   function eventItem(e) {
     var big = e.type === 'boss_down' || e.type === 'level_up' || e.type === 'badge';
     var reacts = REACTS.map(function (r) {
       var n = (e.reactions && e.reactions[r]) || 0, on = (e.mine || []).indexOf(r) >= 0;
-      return '<button class="react' + (on ? ' on' : '') + (n ? ' has' : '') + '" data-act="react" data-id="' + e.id + '" data-emoji="' + r + '" aria-pressed="' + on + '" aria-label="React ' + r + '">' + r + (n ? '<span>' + n + '</span>' : '') + '</button>';
+      return '<button class="react' + (on ? ' on' : '') + (n ? ' has' : '') + '" data-act="react" data-id="' + e.id + '" data-emoji="' + r + '" aria-pressed="' + on + '" aria-label="تفاعل ' + r + '">' + r + (n ? '<span>' + n + '</span>' : '') + '</button>';
     }).join('');
-    return '<li class="ev' + (big ? ' big' : '') + '" data-id="' + e.id + '">' + (e.who ? avatar(e.who, 32) : '<span class="av sys" style="width:32px;height:32px">' + esc((e.data && e.data.icon) || '⭐') + '</span>')
+    return '<li class="ev' + (big ? ' big' : '') + '" data-id="' + e.id + '">' + (e.who ? avatar(e.who, 32) : '<span class="av sys" style="width:32px;height:32px">' + ico(eventIcon(e)) + '</span>')
       + '<div class="ev-main"><p>' + eventText(e) + '</p><div class="ev-foot"><time datetime="' + esc(e.at) + '">' + ago(e.at) + '</time><span class="reacts">' + reacts + '</span></div></div></li>';
   }
   function paintFeed() {
     var el = $('#f-list'); if (!el) return;
-    el.innerHTML = S.feed.length ? S.feed.map(eventItem).join('') : '<li class="muted small pad">' + (S.feedLoaded ? 'Quiet so far. Your next activity will show up here.' : 'Loading…') + '</li>';
+    el.innerHTML = S.feed.length ? S.feed.map(eventItem).join('') : '<li class="muted small pad">' + (S.feedLoaded ? 'هادي لحد دلوقتي. نشاطك الجاي هيظهر هنا.' : 'بيحمّل…') + '</li>';
     var more = $('#f-more'); if (more) more.hidden = S.feedDone || S.feed.length < 30;
   }
   function loadFeed(mode) {
@@ -384,26 +481,27 @@
     var f = $('#modal [autofocus]') || $('#modal button, #modal input'); if (f) f.focus();
   }
   function closeModal() { $('#modal').innerHTML = ''; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
-  function mHead(title, sub) { return '<div class="m-head"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div><button class="icon-btn" data-act="close" aria-label="Close">✕</button></div>'; }
+  function mHead(title, sub) { return '<div class="m-head"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div><button class="icon-btn" data-act="close" aria-label="اقفل">' + ico('x') + '</button></div>'; }
 
-  function actChips(name, selected) {
+  function actChips(nm, selected) {
     return '<div class="chips" role="radiogroup">' + cfg.activities.map(function (a) {
-      return '<label class="chip"><input type="radio" name="' + name + '" value="' + esc(a.name) + '"' + (selected === a.name ? ' checked' : '') + '><span>' + a.emoji + ' ' + esc(a.name) + '</span></label>';
+      var m = act(a.name);
+      return '<label class="chip"><input type="radio" name="' + nm + '" value="' + esc(a.name) + '"' + (selected === a.name ? ' checked' : '') + '><span>' + ico(m.ic) + esc(m.ar) + '</span></label>';
     }).join('') + '</div>';
   }
   function minuteInput(id, val) {
-    return '<div class="mins"><input type="number" id="' + id + '" min="1" max="720" inputmode="numeric" placeholder="e.g. 30" value="' + (val || '') + '" aria-label="Minutes">'
+    return '<div class="mins"><input type="number" id="' + id + '" min="1" max="720" inputmode="numeric" placeholder="مثلًا 30" value="' + (val || '') + '" aria-label="الدقايق" dir="ltr">'
       + '<div class="quick">' + [10, 20, 30, 45, 60].map(function (m) { return '<button type="button" data-act="quick-min" data-target="' + id + '" data-min="' + m + '">' + m + '</button>'; }).join('') + '</div></div>';
   }
 
   function openLogActivity(pre) {
-    openModal(mHead('Log study activity', 'Each activity earns 1 skill point.')
-      + '<form class="stack" id="f-log"><div class="f"><span>Activity</span>' + actChips('activity', pre) + '</div>'
-      + '<div class="f"><span>Time spent (minutes)</span>' + minuteInput('l-min') + '</div>'
-      + '<label class="f" id="l-cards-row" hidden>Cards reviewed <small>optional</small><input type="number" id="l-cards" min="0" max="5000" inputmode="numeric"></label>'
-      + '<div class="f"><span>Day</span><div class="seg"><button type="button" data-act="day-pick" data-day="' + S.data.today + '" aria-pressed="true">Today</button><button type="button" data-act="day-pick" data-day="' + S.data.yesterday + '" aria-pressed="false">Yesterday</button></div></div>'
-      + '<label class="f">What did you work on? <small>optional</small><input id="l-notes" maxlength="300" placeholder="e.g. Watched a podcast episode, reviewed my Anki deck" dir="auto"></label>'
-      + '<p class="err" role="alert"></p><button class="btn primary wide" type="submit">Save activity</button></form>');
+    openModal(mHead('سجّل نشاط', 'كل نشاط بيديك نقطة مهارة.')
+      + '<form class="stack" id="f-log"><div class="f"><span>النشاط</span>' + actChips('activity', pre) + '</div>'
+      + '<div class="f"><span>الوقت (بالدقيقة)</span>' + minuteInput('l-min') + '</div>'
+      + '<label class="f" id="l-cards-row" hidden>عدد الكروت <small>اختياري</small><input type="number" id="l-cards" min="0" max="5000" inputmode="numeric" dir="ltr"></label>'
+      + '<div class="f"><span>اليوم</span><div class="seg"><button type="button" data-act="day-pick" data-day="' + S.data.today + '" aria-pressed="true">النهارده</button><button type="button" data-act="day-pick" data-day="' + S.data.yesterday + '" aria-pressed="false">امبارح</button></div></div>'
+      + '<label class="f">اشتغلت على إيه؟ <small>اختياري</small><input id="l-notes" maxlength="300" placeholder="مثلًا: بودكاست، أو راجعت الـ Anki deck" dir="auto"></label>'
+      + '<p class="err" role="alert"></p><button class="btn primary wide" type="submit">احفظ النشاط</button></form>');
     var form = $('#f-log'), day = S.data.today;
     function syncCards() { var c = form.querySelector('[name=activity]:checked'); $('#l-cards-row').hidden = !(c && act(c.value).cards); }
     form.addEventListener('change', syncCards); syncCards();
@@ -412,11 +510,11 @@
       e.preventDefault();
       var c = form.querySelector('[name=activity]:checked'), err = form.querySelector('.err'), btn = form.querySelector('[type=submit]');
       var min = parseInt($('#l-min').value, 10);
-      if (!c) { err.textContent = 'Choose an activity.'; return; }
-      if (!(min >= 1 && min <= 720)) { err.textContent = 'Enter the minutes you spent, from 1 to 720.'; return; }
+      if (!c) { err.textContent = 'اختار النشاط.'; return; }
+      if (!(min >= 1 && min <= 720)) { err.textContent = 'اكتب الدقايق من 1 لـ 720.'; return; }
       busy(btn, true);
       api('/log', { method: 'POST', body: { activity: c.value, minutes: min, cards: parseInt($('#l-cards').value, 10) || 0, notes: $('#l-notes').value.trim(), day: day } })
-        .then(function (j) { closeModal(); afterAction(j, 'Activity logged!' + (j.sp ? ' +' + j.sp + ' SP' : '')); }, function (x) { busy(btn, false); err.textContent = x.message; });
+        .then(function (j) { closeModal(); afterAction(j, 'اتسجّل!' + (j.sp ? ' +' + j.sp + ' SP' : '')); }, function (x) { busy(btn, false); err.textContent = x.message; });
     });
   }
 
@@ -426,40 +524,40 @@
     var st = { i: 0, entries: {}, moodBefore: 0, moodAfter: 0, note: '', day: S.data.today };
     function moodPick(key, label) {
       var v = st[key];
-      return '<div class="f"><span>' + label + '</span><div class="mood" role="radiogroup">' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<button type="button" data-act="mood" data-key="' + key + '" data-n="' + n + '" aria-pressed="' + (v === n) + '">' + n + '</button>'; }).join('') + '</div><div class="mood-ends"><span>😞 Low</span><span>Great 😄</span></div></div>';
+      return '<div class="f"><span>' + label + '</span><div class="mood" role="radiogroup" dir="ltr">' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<button type="button" data-act="mood" data-key="' + key + '" data-n="' + n + '" aria-pressed="' + (v === n) + '">' + n + '</button>'; }).join('') + '</div><div class="mood-ends" dir="ltr"><span>وحش</span><span>عظيم</span></div></div>';
     }
     function draw() {
       var s = steps[st.i], n = steps.length, body = '';
       if (s.type === 'act') {
-        var e = st.entries[s.a.name];
-        body = '<div class="q"><span class="q-ic">' + s.a.emoji + '</span><h3>Did you do ' + esc(s.a.name) + ' ' + (st.day === S.data.today ? 'today' : 'yesterday') + '?</h3></div>'
-          + (e ? '<div class="stack"><div class="f"><span>Minutes</span>' + minuteInput('d-min', e.minutes) + '</div>'
-            + (s.a.cards ? '<label class="f">Cards reviewed <small>optional</small><input type="number" id="d-cards" min="0" max="5000" value="' + (e.cards || '') + '"></label>' : '')
-            + '<label class="f">Notes <small>optional</small><input id="d-notes" maxlength="300" value="' + esc(e.notes || '') + '" dir="auto"></label>'
-            + '<div class="row-btns"><button class="btn ghost" data-act="d-no">I didn\'t</button><button class="btn primary" data-act="d-next">Next →</button></div></div>'
-            : '<div class="row-btns big"><button class="btn primary" data-act="d-yes">Yes</button><button class="btn" data-act="d-no">No</button></div>');
+        var e = st.entries[s.a.name], m = act(s.a.name);
+        body = '<div class="q"><span class="q-ic">' + ico(m.ic) + '</span><h3>عملت ' + esc(m.ar) + ' ' + (st.day === S.data.today ? 'النهارده' : 'امبارح') + '؟</h3></div>'
+          + (e ? '<div class="stack"><div class="f"><span>الدقايق</span>' + minuteInput('d-min', e.minutes) + '</div>'
+            + (s.a.cards ? '<label class="f">عدد الكروت <small>اختياري</small><input type="number" id="d-cards" min="0" max="5000" value="' + (e.cards || '') + '" dir="ltr"></label>' : '')
+            + '<label class="f">ملاحظات <small>اختياري</small><input id="d-notes" maxlength="300" value="' + esc(e.notes || '') + '" dir="auto"></label>'
+            + '<div class="row-btns"><button class="btn ghost" data-act="d-no">لأ معملتش</button><button class="btn primary" data-act="d-next">اللي بعده</button></div></div>'
+            : '<div class="row-btns big"><button class="btn primary" data-act="d-yes">آه</button><button class="btn" data-act="d-no">لأ</button></div>');
       } else if (s.type === 'reflect') {
-        body = '<div class="q"><span class="q-ic">💭</span><h3>How did you feel?</h3></div>' + moodPick('moodBefore', 'Before studying') + moodPick('moodAfter', 'After studying')
-          + '<label class="f">A note for your teacher <small>optional, only Sherif sees this</small><textarea id="d-note" rows="3" maxlength="2000" dir="auto" placeholder="Anything you struggled with or are proud of?">' + esc(st.note) + '</textarea></label>'
-          + '<div class="row-btns"><button class="btn ghost" data-act="d-back">← Back</button><button class="btn primary" data-act="d-next">Review →</button></div>';
+        body = '<div class="q"><span class="q-ic">' + ico('heart') + '</span><h3>كنت حاسس بإيه؟</h3></div>' + moodPick('moodBefore', 'قبل المذاكرة') + moodPick('moodAfter', 'بعد المذاكرة')
+          + '<label class="f">رسالة لشريف <small>اختياري، شريف بس اللي بيشوفها</small><textarea id="d-note" rows="3" maxlength="2000" dir="auto" placeholder="حاجة صعبت عليك، أو حاجة فخور بيها؟">' + esc(st.note) + '</textarea></label>'
+          + '<div class="row-btns"><button class="btn ghost" data-act="d-back">رجوع</button><button class="btn primary" data-act="d-next">راجع يومك</button></div>';
       } else {
-        var list = Object.keys(st.entries).map(function (k) { var e = st.entries[k], a = act(k); return '<li><span>' + a.emoji + ' ' + esc(k) + (e.cards ? ' · ' + e.cards + ' cards' : '') + '</span><b>' + hm(e.minutes) + '</b></li>'; });
+        var list = Object.keys(st.entries).map(function (k) { var e2 = st.entries[k]; return '<li>' + actLabel(k) + (e2.cards ? '<small>' + e2.cards + ' كارت</small>' : '') + '<b>' + hm(e2.minutes) + '</b></li>'; });
         var tot = Object.keys(st.entries).reduce(function (a, k) { return a + st.entries[k].minutes; }, 0);
-        body = '<div class="q"><span class="q-ic">📋</span><h3>Your day</h3></div>'
-          + (list.length ? '<ul class="review">' + list.join('') + '<li class="tot"><span>Total</span><b>' + hm(tot) + '</b></li></ul>' : '<p class="err">You haven\'t added any activities. Go back and choose Yes for what you did.</p>')
-          + (st.moodAfter ? '<p class="muted small">Mood: ' + (st.moodBefore ? st.moodBefore + ' → ' : '') + st.moodAfter + '/10</p>' : '')
-          + '<p class="err" role="alert"></p><div class="row-btns"><button class="btn ghost" data-act="d-back">← Back</button><button class="btn primary" data-act="d-submit"' + (list.length ? '' : ' disabled') + '>Finish my day ✅</button></div>';
+        body = '<div class="q"><span class="q-ic">' + ico('cal') + '</span><h3>يومك</h3></div>'
+          + (list.length ? '<ul class="review">' + list.join('') + '<li class="tot"><span>المجموع</span><b>' + hm(tot) + '</b></li></ul>' : '<p class="err">مضفتش أي نشاط. ارجع واختار "آه" للي عملته.</p>')
+          + (st.moodAfter ? '<p class="muted small">المود: <span dir="ltr">' + (st.moodBefore ? st.moodBefore + ' → ' : '') + st.moodAfter + '/10</span></p>' : '')
+          + '<p class="err" role="alert"></p><div class="row-btns"><button class="btn ghost" data-act="d-back">رجوع</button><button class="btn primary" data-act="d-submit"' + (list.length ? '' : ' disabled') + '>خلّص يومي</button></div>';
       }
-      openModal(mHead('Log your day', fmtDay(st.day, { weekday: 'long', day: 'numeric', month: 'short' }))
-        + '<div class="steps-h"><span>Step ' + (st.i + 1) + ' of ' + n + '</span><span>' + (s.type === 'act' ? esc(s.a.name) : s.type === 'reflect' ? 'Reflection' : 'Review') + '</span></div><div class="bar step"><i style="width:' + Math.round((st.i + 1) / n * 100) + '%"></i></div>'
-        + (st.i === 0 ? '<div class="seg center"><button data-act="d-day" data-day="' + S.data.today + '" aria-pressed="' + (st.day === S.data.today) + '">Today</button><button data-act="d-day" data-day="' + S.data.yesterday + '" aria-pressed="' + (st.day === S.data.yesterday) + '">Yesterday</button></div>' : '')
+      openModal(mHead('سجّل يومك', fmtDay(st.day, { weekday: 'long', day: 'numeric', month: 'short' }))
+        + '<div class="steps-h"><span>خطوة ' + (st.i + 1) + ' من ' + n + '</span><span>' + (s.type === 'act' ? esc(act(s.a.name).ar) : s.type === 'reflect' ? 'إحساسك' : 'المراجعة') + '</span></div><div class="bar step"><i style="width:' + Math.round((st.i + 1) / n * 100) + '%"></i></div>'
+        + (st.i === 0 ? '<div class="seg center"><button data-act="d-day" data-day="' + S.data.today + '" aria-pressed="' + (st.day === S.data.today) + '">النهارده</button><button data-act="d-day" data-day="' + S.data.yesterday + '" aria-pressed="' + (st.day === S.data.yesterday) + '">امبارح</button></div>' : '')
         + '<div class="step-body">' + body + '</div>');
     }
     function saveStep() {
       var s = steps[st.i];
       if (s.type === 'act' && st.entries[s.a.name]) {
         var m = parseInt($('#d-min').value, 10);
-        if (!(m >= 1 && m <= 720)) { toast('Enter the minutes, from 1 to 720.', 'bad'); return false; }
+        if (!(m >= 1 && m <= 720)) { toast('اكتب الدقايق من 1 لـ 720.', 'bad'); return false; }
         st.entries[s.a.name] = { activity: s.a.name, minutes: m, cards: $('#d-cards') ? parseInt($('#d-cards').value, 10) || 0 : 0, notes: $('#d-notes').value.trim() };
       }
       if (s.type === 'reflect') st.note = $('#d-note').value;
@@ -476,7 +574,7 @@
         else if (a === 'mood') { if (st.i < steps.length && steps[st.i].type === 'reflect') st.note = $('#d-note').value; st[el.dataset.key] = +el.dataset.n; draw(); }
         else if (a === 'd-submit') {
           var entries = Object.keys(st.entries).map(function (k) { return st.entries[k]; });
-          busy(el, true, 'Saving your day…');
+          busy(el, true, 'بيتحفظ يومك…');
           api('/day', { method: 'POST', body: { day: st.day, entries: entries, moodBefore: st.moodBefore, moodAfter: st.moodAfter, note: st.note } }).then(function (j) {
             S.dayWizard = null; recap(j, entries, st); afterAction(j, null);
           }, function (x) { busy(el, false); var er = $('#modal .err'); if (er) er.textContent = x.message; });
@@ -488,60 +586,61 @@
   function recap(j, entries, st) {
     var tot = entries.reduce(function (a, e) { return a + e.minutes; }, 0);
     var cards = entries.reduce(function (a, e) { return a + (e.cards || 0); }, 0);
-    openModal('<div class="recap"><div class="big-emoji">🎉</div><h2>Day ' + j.dayNumber + ' complete!</h2>'
-      + '<p class="muted">⏱️ ' + hm(tot) + ' · ' + entries.length + ' activit' + (entries.length === 1 ? 'y' : 'ies') + (cards ? ' · 🃏 ' + cards + ' cards' : '') + '</p>'
-      + (st.moodAfter ? '<p>Mood ' + st.moodAfter + '/10' + (st.moodBefore ? (st.moodAfter >= st.moodBefore ? ' (up from ' + st.moodBefore + ') 📈' : ' (from ' + st.moodBefore + ')') : '') + '</p>' : '')
-      + '<div class="pills"><span class="pill sp">+' + j.sp + ' SP</span>' + (j.levelUp ? '<span class="pill lv">Level ' + j.levelUp + '! 🎉</span>' : '') + (j.badges || []).map(function (b) { var x = S.data.badges.filter(function (y) { return y.id === b; })[0]; return x ? '<span class="pill bd">' + x.icon + ' ' + esc(x.name) + '</span>' : ''; }).join('') + '</div>'
-      + '<button class="btn primary wide" data-act="close" autofocus>Done</button></div>', 'narrow');
+    openModal('<div class="recap"><div class="big-ic">' + ico('check') + '</div><h2>اليوم ' + j.dayNumber + ' خلص!</h2>'
+      + '<p class="muted">' + hm(tot) + ' · ' + entries.length + ' نشاط' + (cards ? ' · ' + cards + ' كارت' : '') + '</p>'
+      + (st.moodAfter ? '<p>المود <span dir="ltr">' + st.moodAfter + '/10</span>' + (st.moodBefore ? (st.moodAfter >= st.moodBefore ? ' (كان ' + st.moodBefore + ')' : ' (من ' + st.moodBefore + ')') : '') + '</p>' : '')
+      + '<p class="serif">keep going.</p>'
+      + '<div class="pills"><span class="pill sp">+' + j.sp + ' SP</span>' + (j.levelUp ? '<span class="pill lv" dir="ltr">Level ' + j.levelUp + '</span>' : '') + (j.badges || []).map(function (b) { var bi = badgeInfo(b); return '<span class="pill bd">' + ico(bi.ic, 'tiny') + ' ' + esc(bi.name) + '</span>'; }).join('') + '</div>'
+      + '<button class="btn primary wide" data-act="close" autofocus>تمام</button></div>', 'narrow');
   }
 
   /* Skills */
   function openSkill(id) {
     var k = S.data.skills.filter(function (x) { return x.id === id; })[0]; if (!k) return;
-    var s = S.data.stats, why = k.locked ? 'Unlocks at level ' + k.unlock + '. You are level ' + s.level + '.' : k.readyOn ? 'Resting. Ready again on ' + fmtDay(k.readyOn) + '.' : s.sp < k.cost ? 'You need ' + k.cost + ' SP and have ' + s.sp + '. Log activities to earn more.' : '';
+    var s = S.data.stats, why = k.locked ? 'بتتفتح في مستوى ' + k.unlock + '. إنت في مستوى ' + s.level + '.' : k.readyOn ? 'بتستريح. جاهزة تاني ' + fmtDay(k.readyOn) + '.' : s.sp < k.cost ? 'محتاج ' + k.cost + ' SP ومعاك ' + s.sp + '. سجّل أنشطة عشان تجمع أكتر.' : '';
     var others = k.target === 'other';
-    openModal(mHead(k.icon + ' ' + esc(k.name), k.target === 'self' ? 'Used on yourself' : 'Used on a classmate')
-      + '<p>' + esc(k.description) + '</p><p class="muted ar" dir="rtl" lang="ar">' + esc(k.descriptionAr) + '</p>'
-      + '<div class="pills"><span class="pill sp">' + k.cost + ' SP</span><span class="pill">Rests ' + k.cooldown + ' day' + (k.cooldown > 1 ? 's' : '') + ' after use</span></div>'
-      + (why ? '<p class="note">' + esc(why) + '</p>' : others ? '<div class="f"><span>Choose a classmate</span><input id="t-search" placeholder="Search by name" autocomplete="off"><ul class="pick-list" id="t-list"></ul></div>' : '')
+    openModal(mHead('<span class="h-ic">' + ico(SKILL_IC[k.id] || 'spark') + '</span><span dir="ltr">' + esc(k.name) + '</span>', others ? 'بتتستخدم على زميل' : 'بتتستخدم على نفسك')
+      + '<p dir="rtl">' + esc(k.descriptionAr || k.description) + '</p>'
+      + '<div class="pills"><span class="pill sp">' + k.cost + ' SP</span><span class="pill">بتستريح ' + k.cooldown + ' يوم بعد ما تستخدمها</span></div>'
+      + (why ? '<p class="note">' + esc(why) + '</p>' : others ? '<div class="f"><span>اختار زميل</span><input id="t-search" placeholder="دوّر بالاسم" autocomplete="off" dir="auto"><ul class="pick-list" id="t-list"></ul></div>' : '')
       + '<p class="err" role="alert"></p>'
-      + (!why && !others ? '<button class="btn primary wide" data-act="cast" data-skill="' + k.id + '" data-target="0">Use ' + esc(k.name) + '</button>' : ''));
+      + (!why && !others ? '<button class="btn primary wide" data-act="cast" data-skill="' + k.id + '" data-target="0">استخدم <span dir="ltr">' + esc(k.name) + '</span></button>' : ''));
     if (!why && others) {
       var draw = function () {
         var q = ($('#t-search').value || '').toLowerCase();
         var rows = S.board.rows.filter(function (r) { return r.id !== S.data.me.id && r.name.toLowerCase().indexOf(q) >= 0; }).slice(0, 30);
         rows.sort(function (a, b) { return a.health - b.health; });
-        $('#t-list').innerHTML = rows.length ? rows.map(function (r) { return '<li><button class="pick" data-act="cast" data-skill="' + k.id + '" data-target="' + r.id + '">' + avatar(r, 30) + '<span dir="auto">' + esc(r.name) + '</span><small>❤️ ' + r.health + '% · 🔥 ' + r.streak + (r.today ? ' · studied today' : '') + '</small></button></li>'; }).join('') : '<li class="muted small pad">No one found.</li>';
+        $('#t-list').innerHTML = rows.length ? rows.map(function (r) { return '<li><button class="pick" data-act="cast" data-skill="' + k.id + '" data-target="' + r.id + '">' + avatar(r, 30) + '<span dir="auto">' + esc(r.name) + '</span><small>صحة ' + r.health + '% · ستريك ' + r.streak + (r.today ? ' · ذاكر النهارده' : '') + '</small></button></li>'; }).join('') : '<li class="muted small pad">ملقيناش حد.</li>';
       };
       $('#t-search').addEventListener('input', draw); draw();
-      $('#t-list').insertAdjacentHTML('beforebegin', '<p class="muted small">Students with the lowest health are listed first.</p>');
+      $('#t-list').insertAdjacentHTML('beforebegin', '<p class="muted small">اللي صحتهم أوطى بيظهروا الأول.</p>');
     }
   }
   function openCastOn(targetId) {
-    var t = S.board.rows.filter(function (r) { return r.id === targetId; })[0] || { id: targetId, name: 'this student' };
+    var t = S.board.rows.filter(function (r) { return r.id === targetId; })[0] || { id: targetId, name: 'الزميل ده' };
     var list = S.data.skills.filter(function (k) { return k.target === 'other'; }).map(function (k) {
       var s = S.data.stats, dis = k.locked || k.readyOn || s.sp < k.cost;
-      var why = k.locked ? 'Level ' + k.unlock : k.readyOn ? 'Ready ' + fmtDay(k.readyOn) : s.sp < k.cost ? 'Need ' + k.cost + ' SP' : k.cost + ' SP';
-      return '<li><button class="pick skillpick" data-act="cast" data-skill="' + k.id + '" data-target="' + targetId + '"' + (dis ? ' disabled' : '') + '><span class="sk-ic">' + (k.locked ? '🔒' : k.icon) + '</span><span><b>' + esc(k.name) + '</b><small>' + esc(k.description) + '</small></span><em>' + esc(why) + '</em></button></li>';
+      var why = k.locked ? 'Lv ' + k.unlock : k.readyOn ? 'جاهزة ' + fmtDay(k.readyOn) : s.sp < k.cost ? 'محتاج ' + k.cost + ' SP' : k.cost + ' SP';
+      return '<li><button class="pick skillpick" data-act="cast" data-skill="' + k.id + '" data-target="' + targetId + '"' + (dis ? ' disabled' : '') + '><span class="sk-ic">' + ico(k.locked ? 'lock' : (SKILL_IC[k.id] || 'spark')) + '</span><span><b dir="ltr">' + esc(k.name) + '</b><small>' + esc(k.descriptionAr || k.description) + '</small></span><em>' + esc(why) + '</em></button></li>';
     }).join('');
-    openModal(mHead('Help ' + esc(t.name), 'You have ' + S.data.stats.sp + ' SP') + '<ul class="pick-list">' + list + '</ul><p class="err" role="alert"></p>');
+    openModal(mHead('ساعد ' + esc(t.name), 'معاك ' + S.data.stats.sp + ' SP') + '<ul class="pick-list">' + list + '</ul><p class="err" role="alert"></p>');
   }
   function doCast(btn) {
-    busy(btn, true, 'Casting…');
+    busy(btn, true, 'بيتنفذ…');
     api('/cast', { method: 'POST', body: { skill: btn.dataset.skill, target: +btn.dataset.target } }).then(function (j) {
-      closeModal(); afterAction(j, j.skill.icon + ' ' + j.skill.name + ' used!');
+      closeModal(); afterAction(j, 'استخدمت ' + j.skill.name);
     }, function (x) { busy(btn, false); var er = $('#modal .err'); if (er) er.textContent = x.message; });
   }
 
   function openProfile(id) {
     openModal('<div class="pad center"><span class="spin"></span></div>', 'narrow');
     api('/student/' + id).then(function (p) {
-      var c = cfg.classes[p.class] || {}, shield = p.shieldUntil && p.shieldUntil >= S.data.today;
-      openModal(mHead('', '') + '<div class="profile">' + avatar(p, 84) + '<h2 dir="auto">' + esc(p.name) + '</h2><p class="muted">Level ' + p.level + ' · ' + esc(p.title) + ' · ' + (c.icon || '') + ' ' + esc(c.name || '') + '</p>'
-        + '<div class="mini-stats"><div><b style="color:' + healthColor(p.health) + '">' + p.health + '%</b><span>Health' + (shield ? ' 🛡️' : '') + '</span></div><div><b>' + p.streak + '</b><span>Streak' + (p.freezes ? ' ❄️' + p.freezes : '') + '</span></div><div><b>' + p.studyDays + '</b><span>Study days</span></div><div><b>' + hm(p.totalMinutes) + '</b><span>Total</span></div></div>'
-        + (p.badges.length ? '<div class="pills center">' + p.badges.map(function (b) { return '<span class="pill" title="' + esc(b.name) + '">' + b.icon + ' ' + esc(b.name) + '</span>'; }).join('') + '</div>' : '')
-        + (p.recent.length ? '<ul class="recent small">' + p.recent.map(function (r) { var a = act(r.activity); return '<li><span class="r-ic" style="background:' + a.color + '22">' + a.emoji + '</span><div><b>' + esc(r.activity) + '</b><small>' + fmtDay(r.day) + '</small></div><span class="r-min">' + hm(r.minutes) + '</span></li>'; }).join('') + '</ul>' : '<p class="muted">No activities yet.</p>')
-        + (p.id !== S.data.me.id && canHelp() ? '<button class="btn primary wide" data-act="cast-on" data-id="' + p.id + '">⚡ Use a skill on ' + esc(p.name.split(' ')[0]) + '</button>' : '') + '</div>', 'narrow');
+      var c = cls(p.class), shield = p.shieldUntil && p.shieldUntil >= S.data.today;
+      openModal(mHead('', '') + '<div class="profile">' + avatar(p, 84) + '<h2 dir="auto">' + esc(p.name) + '</h2><p class="muted"><span dir="ltr">Lv ' + p.level + ' · ' + esc(p.title) + '</span> · ' + esc(c.ar) + '</p>'
+        + '<div class="mini-stats"><div><b class="' + (low(p.health) ? 'red' : '') + '">' + p.health + '%</b><span>الصحة' + (shield ? ' · محمي' : '') + '</span></div><div><b>' + p.streak + '</b><span>ستريك' + (p.freezes ? ' · ' + p.freezes + ' تجميد' : '') + '</span></div><div><b>' + p.studyDays + '</b><span>يوم مذاكرة</span></div><div><b>' + hm(p.totalMinutes) + '</b><span>المجموع</span></div></div>'
+        + (p.badges.length ? '<div class="pills center">' + p.badges.map(function (b) { var bi = badgeByName(b.name); return '<span class="pill" title="' + esc(bi.name) + '">' + ico(bi.ic, 'tiny') + ' ' + esc(bi.name) + '</span>'; }).join('') + '</div>' : '')
+        + (p.recent.length ? '<ul class="recent small">' + p.recent.map(function (r) { var a = act(r.activity); return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(r.day) + '</small></div><span class="r-min">' + hm(r.minutes) + '</span></li>'; }).join('') + '</ul>' : '<p class="muted">لسه مفيش أنشطة.</p>')
+        + (p.id !== S.data.me.id && canHelp() ? '<button class="btn primary wide" data-act="cast-on" data-id="' + p.id + '">' + ico('bolt') + ' استخدم مهارة على ' + esc(p.name.split(' ')[0]) + '</button>' : '') + '</div>', 'narrow');
     }, function (x) { closeModal(); toast(x.message, 'bad'); });
   }
 
@@ -550,26 +649,27 @@
     var text = function (e) {
       var d = e.data || {};
       if (e.type === 'skill') {
-        var effects = { rally: 'cheered you on: time to study! 📣', heal: '(+15% health)', inner_peace: '', war_cry: '(+10% health)', shield_ally: '(+1 streak freeze ❄️)', fortify: '(2 days of health protection 🛡️)', unbreakable: '(a freeze and 3 days of protection)', empower: '(+2 SP on your next activity ✨)', revitalize: '(+10% health and a freeze)', sanctuary: '(3 days of protection 🛡️)', guardian_angel: '(+20% health and 3 days of protection)' };
-        return name(e.who) + (d.skill === 'rally' ? ' ' + effects.rally : ' used ' + esc(d.icon) + ' ' + esc(d.name) + ' on you ' + (effects[d.skill] || ''));
+        var effects = { rally: 'بيشجعك: يلا نذاكر!', heal: '(+15% صحة)', inner_peace: '', war_cry: '(+10% صحة)', shield_ally: '(+1 تجميد للستريك)', fortify: '(حماية للصحة يومين)', unbreakable: '(تجميد + حماية ٣ أيام)', empower: '(+2 SP على نشاطك الجاي)', revitalize: '(+10% صحة وتجميد)', sanctuary: '(حماية ٣ أيام)', guardian_angel: '(+20% صحة وحماية ٣ أيام)' };
+        return name(e.who) + (d.skill === 'rally' ? ' ' + effects.rally : ' استخدم <span dir="ltr">' + esc(d.name) + '</span> عليك ' + (effects[d.skill] || ''));
       }
       return eventText(e);
     };
-    openModal(mHead('Notifications', 'When classmates use skills on you') + (n.length ? '<ul class="events">' + n.map(function (e) { return '<li class="ev">' + (e.who ? avatar(e.who, 32) : '') + '<div class="ev-main"><p>' + text(e) + '</p><div class="ev-foot"><time>' + ago(e.at) + '</time></div></div></li>'; }).join('') + '</ul>' : '<p class="muted">Nothing yet. When someone heals you, shields you or sends a Rally, it shows up here.</p>'), 'narrow');
-    if (S.data.unread && n.length) { api('/notifications/seen', { method: 'POST', body: { id: n[0].id } }).then(function () { S.data.unread = 0; var b = $('.bell i'); if (b) b.remove(); var bell = $('.bell'); if (bell) bell.setAttribute('aria-label', 'Notifications'); }); }
+    openModal(mHead('الإشعارات', 'لما زمايلك يستخدموا مهارات عليك') + (n.length ? '<ul class="events">' + n.map(function (e) { return '<li class="ev">' + (e.who ? avatar(e.who, 32) : '') + '<div class="ev-main"><p>' + text(e) + '</p><div class="ev-foot"><time>' + ago(e.at) + '</time></div></div></li>'; }).join('') + '</ul>' : '<p class="muted">لسه مفيش. لما حد يعالجك أو يحميك أو يبعتلك Rally، هيظهر هنا.</p>'), 'narrow');
+    if (S.data.unread && n.length) { api('/notifications/seen', { method: 'POST', body: { id: n[0].id } }).then(function () { S.data.unread = 0; var b = $('.bell i'); if (b) b.remove(); var bell = $('.bell'); if (bell) bell.setAttribute('aria-label', 'الإشعارات'); }); }
   }
 
   function openSettings() {
     var d = S.data;
-    openModal(mHead('Your settings') + '<div class="stack">'
-      + '<div class="f"><span>Profile photo</span><div class="photo-row">' + avatar(d.me, 64) + '<button class="btn" data-act="pick-avatar">Change photo</button><input type="file" id="av-file" accept="image/*" hidden></div></div>'
-      + '<label class="f">Daily goal (minutes) <small>reaching it gives your health a bigger boost</small><input type="number" id="goal" min="5" max="600" value="' + d.stats.goal + '"></label>'
-      + '<button class="btn primary" data-act="save-goal">Save goal</button>'
-      + '<label class="f">Email reminder <small>sent only on days you haven\'t studied yet</small><select id="remind">'
-      + '<option value="">Off</option>' + [7, 9, 12, 15, 17, 18, 19, 20, 21, 22].map(function (h) { return '<option value="' + h + '"' + (String(h) === String(d.remindHour) ? ' selected' : '') + '>' + (h < 12 ? h + ':00 am' : h === 12 ? '12:00 pm' : (h - 12) + ':00 pm') + '</option>'; }).join('')
+    var hr = function (h) { return h === 12 ? '12 الضهر' : h < 12 ? h + ' الصبح' : (h - 12) + (h < 17 ? ' العصر' : ' بالليل'); };
+    openModal(mHead('إعداداتك') + '<div class="stack">'
+      + '<div class="f"><span>صورتك</span><div class="photo-row">' + avatar(d.me, 64) + '<button class="btn" data-act="pick-avatar">غيّر الصورة</button><input type="file" id="av-file" accept="image/*" hidden></div></div>'
+      + '<label class="f">هدفك اليومي (بالدقيقة) <small>لما توصله صحتك بتعلى أكتر</small><input type="number" id="goal" min="5" max="600" value="' + d.stats.goal + '" dir="ltr"></label>'
+      + '<button class="btn primary" data-act="save-goal">احفظ الهدف</button>'
+      + '<label class="f">تذكير على الإيميل <small>بيتبعت بس في الأيام اللي لسه مذاكرتش فيها</small><select id="remind">'
+      + '<option value="">مقفول</option>' + [7, 9, 12, 15, 17, 18, 19, 20, 21, 22].map(function (h) { return '<option value="' + h + '"' + (String(h) === String(d.remindHour) ? ' selected' : '') + '>' + hr(h) + '</option>'; }).join('')
       + '</select></label>'
-      + '<hr><button class="btn ghost" data-act="change-class">Change class</button>'
-      + '<a class="btn ghost" href="' + esc(cfg.logoutUrl) + '">Sign out</a></div>', 'narrow');
+      + '<hr><button class="btn ghost" data-act="change-class">غيّر الكلاس</button>'
+      + '<a class="btn ghost" href="' + esc(cfg.logoutUrl) + '">اخرج</a></div>', 'narrow');
   }
   function uploadAvatar(file) {
     var img = new Image(), u = URL.createObjectURL(file);
@@ -578,15 +678,16 @@
       c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 256, 256); URL.revokeObjectURL(u);
       c.toBlob(function (b) {
         var fd = new FormData(); fd.append('avatar', b, 'avatar.jpg');
-        toast('Uploading photo…');
-        api('/profile', { method: 'POST', form: fd }).then(function (j) { S.data = j.data; closeModal(); renderDash(); loadBoard(); toast('Photo updated'); }, function (x) { toast(x.message, 'bad'); });
+        toast('بنرفع الصورة…');
+        api('/profile', { method: 'POST', form: fd }).then(function (j) { S.data = j.data; closeModal(); renderDash(); loadBoard(); toast('الصورة اتغيرت'); }, function (x) { toast(x.message, 'bad'); });
       }, 'image/jpeg', 0.88);
     };
-    img.onerror = function () { toast('That photo could not be read. Try a JPG or PNG.', 'bad'); };
+    img.onerror = function () { toast('الصورة دي مش راضية تفتح. جرب JPG أو PNG.', 'bad'); };
     img.src = u;
   }
 
   /* ------------------------------------------------------------ clan */
+  function mono(nm) { var s = String(nm || '').replace(/^(the|al)\s+/i, '').replace(/^ال/, '').trim(); return esc(s.charAt(0) || '؟'); }
   function loadClan() {
     S.clanLoading = true;
     return api('/clan').then(function (j) { S.clanData = j; S.clanLoading = false; if (S.view === 'clan') { var v = $('#view'); if (v) v.innerHTML = clanView(); } }, function (x) { S.clanLoading = false; toast(x.message, 'bad'); });
@@ -597,33 +698,33 @@
       var d = new Date(d0); d.setDate(d0.getDate() + i);
       var k = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
       var on = goalDays.indexOf(k) >= 0;
-      out += '<i class="wd' + (on ? ' on' : '') + (k > today ? ' future' : '') + (k === today ? ' now' : '') + '" title="' + fmtDay(k, { weekday: 'short', day: 'numeric' }) + (on ? ': goal reached' : '') + '"></i>';
+      out += '<i class="wd' + (on ? ' on' : '') + (k > today ? ' future' : '') + (k === today ? ' now' : '') + '" title="' + fmtDay(k, { weekday: 'short', day: 'numeric' }) + (on ? ': وصل للهدف' : '') + '"></i>';
     }
-    return '<span class="wdots" aria-label="' + goalDays.length + ' goal days this week">' + out + '</span>';
+    return '<span class="wdots" aria-label="' + goalDays.length + ' يوم وصل فيهم للهدف الأسبوع ده">' + out + '</span>';
   }
   function clanView() {
     var j = S.clanData;
-    if (!j) return '<div class="loading"><span class="spin"></span>Loading your clan…</div>';
+    if (!j) return '<div class="loading"><span class="spin"></span>بيحمّل الكلان…</div>';
     var c = j.clan, st = j.standings;
-    var standings = st.length ? '<section class="card"><div class="card-h"><h3>🏁 Clan race this week</h3><span class="muted small">Average goal days per member</span></div><ol class="rows">'
-      + st.map(function (r) { return '<li class="row' + (c && r.id === c.id ? ' me' : '') + '"><span class="rank r' + Math.min(r.rank, 4) + '">' + r.rank + '</span><span class="clan-em">' + esc(r.emoji) + '</span><div class="r-main"><div class="r-name"><span dir="auto">' + esc(r.name) + '</span></div><div class="r-meta"><span>' + r.size + ' members</span><span class="st">🔥 ' + r.streak + '</span></div></div><b class="score">' + r.score.toFixed(1) + '</b></li>'; }).join('')
+    var standings = st.length ? '<section class="card"><div class="card-h"><h3>سباق الكلانات الأسبوع ده</h3><span class="muted small">متوسط أيام الهدف لكل عضو</span></div><ol class="rows">'
+      + st.map(function (r) { return '<li class="row' + (c && r.id === c.id ? ' me' : '') + '"><span class="rank r' + Math.min(r.rank, 4) + '">' + r.rank + '</span><span class="clan-mono">' + mono(r.name) + '</span><div class="r-main"><div class="r-name"><span dir="auto">' + esc(r.name) + '</span></div><div class="r-meta"><span>' + r.size + ' أعضاء</span><span class="st">' + ico('flame', 'tiny') + r.streak + '</span></div></div><b class="score">' + r.score.toFixed(1) + '</b></li>'; }).join('')
       + '</ol></section>' : '';
-    if (!c) return '<div class="grid clan-grid"><div class="col main"><section class="card center-card"><div class="big-emoji">🛡️</div><h2>You\'re not in a clan yet</h2><p class="muted">Clans are small teams that keep a streak together. Sherif assigns them, so yours will appear here soon.</p></section></div><div class="col side">' + standings + '</div></div>';
+    if (!c) return '<div class="grid clan-grid"><div class="col main"><section class="card center-card"><div class="big-ic">' + ico('shield') + '</div><h2>لسه مش في كلان</h2><p class="muted">الكلان فريق صغير بيحافظ على ستريك سوا. شريف هو اللي بيوزع الكلانات، وكلانك هيظهر هنا قريب.</p></section></div><div class="col side">' + standings + '</div></div>';
     var rank = st.filter(function (r) { return r.id === c.id; })[0];
     var members = c.members.map(function (m) {
       var me = m.id === S.data.me.id;
-      return '<li class="row' + (me ? ' me' : '') + '">' + avatar(m, 38) + '<div class="r-main"><div class="r-name"><span dir="auto">' + esc(m.name) + '</span>' + (me ? '<small>(you)</small>' : '') + '<span>' + m.icon + '</span></div>'
-        + '<div class="r-meta"><span class="lv">Lv ' + m.level + '</span><div class="bar mini"><i style="width:' + m.health + '%;background:' + healthColor(m.health) + '"></i></div><span class="st">🔥 ' + m.streak + '</span>' + weekDots(m.goalDays, j.weekStart) + '</div></div>'
-        + '<span class="today-chip ' + (m.today ? 'yes' : 'no') + '">' + (m.today ? '✓ ' + m.todayMin + 'm' : 'not yet') + '</span>'
-        + '<div class="r-acts">' + (!me && canHelp() ? '<button class="icon-btn sm" data-act="cast-on" data-id="' + m.id + '" aria-label="Use a skill on ' + esc(m.name) + '">⚡</button>' : '') + '<button class="icon-btn sm" data-act="profile" data-id="' + m.id + '" aria-label="Profile">ⓘ</button></div></li>';
+      return '<li class="row' + (me ? ' me' : '') + '">' + avatar(m, 38) + '<div class="r-main"><div class="r-name"><span dir="auto">' + esc(m.name) + '</span>' + (me ? '<small>(إنت)</small>' : '') + '<span class="cl">' + ico(cls(m.class).ic, 'tiny') + '</span></div>'
+        + '<div class="r-meta"><span class="lv" dir="ltr">Lv ' + m.level + '</span><div class="bar mini"><i style="width:' + m.health + '%;background:' + hpFill(m.health) + '"></i></div><span class="st">' + ico('flame', 'tiny') + m.streak + '</span>' + weekDots(m.goalDays, j.weekStart) + '</div></div>'
+        + '<span class="today-chip ' + (m.today ? 'yes' : 'no') + '">' + (m.today ? ico('check', 'tiny') + hm(m.todayMin) : 'لسه') + '</span>'
+        + '<div class="r-acts">' + (!me && canHelp() ? '<button class="icon-btn sm" data-act="cast-on" data-id="' + m.id + '" aria-label="استخدم مهارة على ' + esc(m.name) + '">' + ico('bolt') + '</button>' : '') + '<button class="icon-btn sm" data-act="profile" data-id="' + m.id + '" aria-label="البروفايل">' + ico('info') + '</button></div></li>';
     }).join('');
     var left = Math.max(0, c.need - c.today);
     return '<div class="grid clan-grid"><div class="col main">'
-      + '<section class="card clan-hero"><span class="clan-big" aria-hidden="true">' + esc(c.emoji) + '</span><div class="clan-info"><span class="eyebrow">Your clan</span><h2 dir="auto">' + esc(c.name) + '</h2>'
-      + '<div class="pills"><span class="pill">🔥 ' + c.streak + '-day clan streak</span><span class="pill">' + c.score.toFixed(1) + ' goal days per member</span>' + (rank ? '<span class="pill lv">#' + rank.rank + ' of ' + st.length + ' clans</span>' : '') + '</div>'
-      + '<p class="muted small">' + c.today + ' of ' + c.size + ' studied today. ' + (left ? left + ' more needed to keep the clan streak going.' : 'The clan streak is safe for today! 🎉') + '</p></div>'
-      + '<button class="btn primary" data-act="open-clan-chat">💬 Clan chat</button></section>'
-      + '<section class="card"><div class="card-h"><h3>Members</h3><span class="muted small">Dots = days this week you reached your goal</span></div><ol class="rows">' + members + '</ol></section>'
+      + '<section class="card clan-hero"><span class="clan-big">' + mono(c.name) + '</span><div class="clan-info"><span class="eyebrow">الكلان بتاعك</span><h2 dir="auto">' + esc(c.name) + '</h2>'
+      + '<div class="pills"><span class="pill">' + ico('flame', 'tiny') + ' ستريك الكلان ' + c.streak + ' يوم</span><span class="pill">' + c.score.toFixed(1) + ' يوم هدف لكل عضو</span>' + (rank ? '<span class="pill lv">رقم ' + rank.rank + ' من ' + st.length + '</span>' : '') + '</div>'
+      + '<p class="muted small">' + c.today + ' من ' + c.size + ' ذاكروا النهارده. ' + (left ? (left === 1 ? 'محتاجين واحد كمان' : 'محتاجين ' + left + ' كمان') + ' عشان ستريك الكلان يكمل.' : 'ستريك الكلان في الأمان النهارده.') + '</p></div>'
+      + '<button class="btn primary" data-act="open-clan-chat">' + ico('chat') + ' شات الكلان</button></section>'
+      + '<section class="card"><div class="card-h"><h3>الأعضاء</h3><span class="muted small">المربعات = أيام وصلت فيها لهدفك الأسبوع ده</span></div><ol class="rows">' + members + '</ol></section>'
       + '</div><div class="col side">' + standings + '</div></div>';
   }
 
@@ -639,50 +740,51 @@
       if (C.pending) { var p = C.pending; C.pending = 0; openRoom(p); }
     }, function () {});
   }
-  function roomIcon(r) { return r.type === 'public' ? '🌍' : r.type === 'clan' ? esc(r.emoji || '🛡️') : '👥'; }
+  function roomName(r) { return r.type === 'public' ? 'المجتمع' : r.name; }
+  function roomIcon(r) { return r.type === 'public' ? ico('globe') : r.type === 'clan' ? '<b class="mono">' + mono(r.name) + '</b>' : ico('users'); }
   function paintChat() {
     var v = $('#view'); if (!v) return;
-    v.innerHTML = '<section class="card chat' + (C.room ? ' has-room' : '') + '"><aside class="rooms"><div class="rooms-h"><h3>Chats</h3><button class="btn sm-btn" data-act="new-group">＋ Group</button></div><ul id="room-list"></ul>'
-      + '<p class="muted small rules">Be kind and keep it about learning. Sherif can review reported messages.</p></aside><div class="convo" id="convo"></div></section>';
+    v.innerHTML = '<section class="card chat' + (C.room ? ' has-room' : '') + '"><aside class="rooms"><div class="rooms-h"><h3>الشات</h3><button class="btn sm-btn" data-act="new-group">' + ico('plus') + ' جروب</button></div><ul id="room-list"></ul>'
+      + '<p class="muted small rules">خليك لطيف، وخلي الكلام عن التعلم. شريف بيراجع الرسايل اللي بيتعملها ريبورت.</p></aside><div class="convo" id="convo"></div></section>';
     paintRoomList(); paintConvo();
     if (!C.rooms) loadRooms();
   }
   function paintRoomList() {
     var el = $('#room-list'); if (!el) return;
-    if (!C.rooms) { el.innerHTML = '<li class="muted small pad">Loading…</li>'; return; }
+    if (!C.rooms) { el.innerHTML = '<li class="muted small pad">بيحمّل…</li>'; return; }
     el.innerHTML = C.rooms.map(function (r) {
-      return '<li><button class="room' + (C.room && C.room.id === r.id ? ' on' : '') + '" data-act="open-room" data-id="' + r.id + '"><span class="room-ic">' + roomIcon(r) + '</span><span class="room-main"><b dir="auto">' + esc(r.name) + '</b><small dir="auto">' + (r.last ? esc(r.last.who.split(' ')[0]) + ': ' + esc(r.last.text) : r.type === 'group' ? 'Say hi to your group 👋' : 'No messages yet') + '</small></span>'
+      return '<li><button class="room' + (C.room && C.room.id === r.id ? ' on' : '') + '" data-act="open-room" data-id="' + r.id + '"><span class="room-ic">' + roomIcon(r) + '</span><span class="room-main"><b dir="auto">' + esc(roomName(r)) + '</b><small dir="auto">' + (r.last ? esc(r.last.who.split(' ')[0]) + ': ' + esc(r.last.text === '🎤 Voice message' ? 'رسالة صوتية' : r.last.text) : r.type === 'group' ? 'قول أهلًا لجروبك' : 'لسه مفيش رسايل') + '</small></span>'
         + (r.unread ? '<i class="unread">' + r.unread + '</i>' : '') + '</button></li>';
-    }).join('') + (C.rooms.filter(function (r) { return r.type === 'group'; }).length ? '' : '<li class="muted small pad">Start a private group of 3–5 classmates to study together.</li>');
+    }).join('') + (C.rooms.filter(function (r) { return r.type === 'group'; }).length ? '' : '<li class="muted small pad">اعمل جروب خاص من ٣ لـ ٥ زمايل وذاكروا سوا.</li>');
   }
-  function linkify(t) { return esc(t).replace(/\bhttps?:\/\/[^\s<]+/g, function (u) { return '<a href="' + u + '" target="_blank" rel="noopener nofollow">' + u + '</a>'; }); }
+  function linkify(t) { return esc(t).replace(/\bhttps?:\/\/[^\s<]+/g, function (u) { return '<a href="' + u + '" target="_blank" rel="noopener nofollow" dir="ltr">' + u + '</a>'; }); }
   function msgHtml(m, prev) {
     var mine = m.who.id === S.data.me.id;
     var grouped = prev && prev.who.id === m.who.id && (new Date(m.at) - new Date(prev.at)) < 5 * 60000;
-    var body = m.gone ? '<em class="muted">Message deleted</em>' : (m.audio ? '<audio controls preload="none" src="' + esc(m.audio) + '"></audio>' : '') + (m.body ? '<p dir="auto">' + linkify(m.body) + '</p>' : '');
-    var menu = m.gone ? '' : '<span class="m-acts">' + (mine || C.admin ? '<button class="icon-btn sm" data-act="msg-del" data-id="' + m.id + '" title="Delete" aria-label="Delete message">🗑</button>' : '') + (!mine ? '<button class="icon-btn sm" data-act="msg-report" data-id="' + m.id + '" title="Report" aria-label="Report message">⚑</button>' : '') + '</span>';
+    var body = m.gone ? '<em class="muted">الرسالة اتمسحت</em>' : (m.audio ? '<audio controls preload="none" src="' + esc(m.audio) + '"></audio>' : '') + (m.body ? '<p dir="auto">' + linkify(m.body) + '</p>' : '');
+    var menu = m.gone ? '' : '<span class="m-acts">' + (mine || C.admin ? '<button class="icon-btn sm" data-act="msg-del" data-id="' + m.id + '" title="امسح" aria-label="امسح الرسالة">' + ico('trash') + '</button>' : '') + (!mine ? '<button class="icon-btn sm" data-act="msg-report" data-id="' + m.id + '" title="ريبورت" aria-label="اعمل ريبورت للرسالة">' + ico('flag') + '</button>' : '') + '</span>';
     return '<li class="msg' + (mine ? ' mine' : '') + (grouped ? ' grouped' : '') + '" data-id="' + m.id + '">' + (grouped ? '<span class="av-gap"></span>' : avatar(m.who, 32))
-      + '<div class="bubble">' + (grouped ? '' : '<div class="m-head"><b dir="auto">' + esc(m.who.name) + '</b> ' + esc(m.who.icon || '') + '<time>' + new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</time></div>') + body + '</div>' + menu + '</li>';
+      + '<div class="bubble">' + (grouped ? '' : '<div class="m-head"><b dir="auto">' + esc(m.who.name) + '</b>' + (m.who.class ? '<span class="cl">' + ico(cls(m.who.class).ic, 'tiny') + '</span>' : '') + '<time dir="ltr">' + new Date(m.at).toLocaleTimeString(LOC, { hour: 'numeric', minute: '2-digit' }) + '</time></div>') + body + '</div>' + menu + '</li>';
   }
   function paintMessages(keepScroll) {
     var list = $('#msgs'); if (!list) return;
     var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
-    list.innerHTML = (C.msgs.length >= 50 && !C.noOlder ? '<li class="center"><button class="btn ghost sm-btn" data-act="older">Load earlier messages</button></li>' : '')
-      + (C.msgs.length ? C.msgs.map(function (m, i) { return msgHtml(m, C.msgs[i - 1]); }).join('') : '<li class="empty-chat muted">No messages yet. Start the conversation! 👋</li>');
+    list.innerHTML = (C.msgs.length >= 50 && !C.noOlder ? '<li class="center"><button class="btn ghost sm-btn" data-act="older">اعرض رسايل أقدم</button></li>' : '')
+      + (C.msgs.length ? C.msgs.map(function (m, i) { return msgHtml(m, C.msgs[i - 1]); }).join('') : '<li class="empty-chat muted">لسه مفيش رسايل. ابدأ إنت الكلام.</li>');
     if (!keepScroll || nearBottom) list.scrollTop = list.scrollHeight;
   }
   function paintConvo() {
     var el = $('#convo'); if (!el) return;
     var r = C.room;
-    if (!r) { el.innerHTML = '<div class="convo-empty"><div class="big-emoji">💬</div><p class="muted">Pick a chat on the left.</p></div>'; return; }
-    var head = '<div class="convo-h"><button class="icon-btn back" data-act="close-room" aria-label="Back to chats">←</button><span class="room-ic">' + roomIcon(r) + '</span><div class="room-main"><b dir="auto">' + esc(r.name) + '</b><small>'
-      + (r.type === 'public' ? 'Everyone in the tracker' : r.type === 'clan' ? 'Your clan' : r.members.map(function (m) { return esc(m.name.split(' ')[0]); }).join(', ')) + '</small></div>'
-      + (r.type === 'group' ? (r.owner === S.data.me.id && r.members.length < 5 ? '<button class="btn sm-btn" data-act="group-add">＋ Add</button>' : '') + '<button class="btn ghost sm-btn" data-act="group-leave">Leave</button>' : '') + '</div>';
+    if (!r) { el.innerHTML = '<div class="convo-empty"><div class="big-ic">' + ico('chat') + '</div><p class="muted">اختار شات من القايمة.</p></div>'; return; }
+    var head = '<div class="convo-h"><button class="icon-btn back" data-act="close-room" aria-label="ارجع للشاتات">' + ico('back') + '</button><span class="room-ic">' + roomIcon(r) + '</span><div class="room-main"><b dir="auto">' + esc(roomName(r)) + '</b><small>'
+      + (r.type === 'public' ? 'كل اللي في التراكر' : r.type === 'clan' ? 'الكلان بتاعك' : r.members.map(function (m) { return esc(m.name.split(' ')[0]); }).join('، ')) + '</small></div>'
+      + (r.type === 'group' ? (r.owner === S.data.me.id && r.members.length < 5 ? '<button class="btn sm-btn" data-act="group-add">' + ico('plus') + ' ضيف</button>' : '') + '<button class="btn ghost sm-btn" data-act="group-leave">اخرج</button>' : '') + '</div>';
     var canSend = C.admin || (C.enabled && !(C.muted && C.muted >= S.data.today));
     var composer = canSend
-      ? '<form class="composer" id="f-msg"><button type="button" class="icon-btn mic" data-act="mic" aria-label="Record a voice message" title="Voice message">🎤</button><div class="rec-bar" hidden><span class="rec-dot"></span><span id="rec-t">0:00</span><button type="button" class="btn ghost sm-btn" data-act="rec-cancel">Cancel</button><button type="button" class="btn primary sm-btn" data-act="rec-send">Send voice</button></div>'
-        + '<textarea id="m-body" rows="1" maxlength="1000" placeholder="Write a message… (Enter to send)" dir="auto" aria-label="Message"></textarea><button class="btn primary" type="submit" aria-label="Send">➤</button></form>'
-      : '<p class="note">' + (C.enabled ? 'You can read the chat but can\'t send messages until ' + fmtDay(C.muted) + '.' : 'Chat is paused right now.') + '</p>';
+      ? '<form class="composer" id="f-msg"><button type="button" class="icon-btn mic" data-act="mic" aria-label="سجّل رسالة صوتية" title="رسالة صوتية">' + ico('mic') + '</button><div class="rec-bar" hidden><span class="rec-dot"></span><span id="rec-t" dir="ltr">0:00</span><button type="button" class="btn ghost sm-btn" data-act="rec-cancel">إلغاء</button><button type="button" class="btn primary sm-btn" data-act="rec-send">ابعت الصوت</button></div>'
+        + '<textarea id="m-body" rows="1" maxlength="1000" placeholder="اكتب رسالة… (Enter للإرسال)" dir="auto" aria-label="الرسالة"></textarea><button class="btn primary send-btn" type="submit" aria-label="ابعت">' + ico('send') + '</button></form>'
+      : '<p class="note">' + (C.enabled ? 'تقدر تقرا الشات بس مش هتقدر تبعت لحد ' + fmtDay(C.muted) + '.' : 'الشات متوقف دلوقتي.') + '</p>';
     el.innerHTML = head + '<ul class="msgs" id="msgs"><li class="loading"><span class="spin"></span></li></ul>' + composer;
     var ta = $('#m-body');
     if (ta) {
@@ -728,7 +830,7 @@
   }
   /* voice notes */
   function startRec() {
-    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return toast('Voice messages aren\'t supported in this browser.', 'bad');
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return toast('المتصفح ده مش بيدعم الرسايل الصوتية.', 'bad');
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
       var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'], type = '';
       for (var i = 0; i < types.length; i++) if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(types[i])) { type = types[i]; break; }
@@ -741,29 +843,29 @@
         if (C.rec.send && chunks.length) {
           var mt = (rec.mimeType || type || 'audio/webm').split(';')[0], fd = new FormData();
           fd.append('audio', new Blob(chunks, { type: mt }), 'voice.' + (/mp4/.test(mt) ? 'm4a' : /ogg/.test(mt) ? 'ogg' : 'webm'));
-          fd.append('body', ''); toast('Sending voice message…'); sendMsg(fd);
+          fd.append('body', ''); toast('بنبعت الرسالة الصوتية…'); sendMsg(fd);
         }
         C.rec = null;
       };
       rec.start();
       var bar = $('.rec-bar'), ta = $('#m-body'), mic = $('.mic'); if (bar) bar.hidden = false; if (ta) ta.hidden = true; if (mic) mic.hidden = true;
       C.rec.tick = setInterval(function () { var s = Math.floor((Date.now() - t0) / 1000), el = $('#rec-t'); if (el) el.textContent = Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); if (s >= 120) { C.rec.send = true; rec.stop(); } }, 250);
-    }, function () { toast('Allow microphone access in your browser to send voice messages.', 'bad'); });
+    }, function () { toast('اسمح للمتصفح يستخدم المايك عشان تبعت رسايل صوتية.', 'bad'); });
   }
   /* groups */
   function openPeoplePicker(title, maxPick, exclude, onDone, withName) {
     var picked = {};
-    openModal(mHead(title, 'Pick up to ' + maxPick + ' classmate' + (maxPick > 1 ? 's' : ''))
-      + '<div class="stack">' + (withName ? '<label class="f">Group name<input id="g-name" maxlength="40" placeholder="e.g. Morning shadowing crew" dir="auto"></label>' : '')
-      + '<div class="f"><span>Add classmates</span><input id="g-q" placeholder="Search by name" autocomplete="off"><div class="chips" id="g-picked"></div><ul class="pick-list" id="g-list"><li class="muted small pad">Loading…</li></ul></div>'
-      + '<p class="err" role="alert"></p><button class="btn primary wide" id="g-go" disabled>' + (withName ? 'Create group' : 'Add to group') + '</button></div>', 'narrow');
+    openModal(mHead(title, 'اختار لحد ' + maxPick + (maxPick > 2 ? ' زمايل' : maxPick === 2 ? ' زميلين' : ' زميل'))
+      + '<div class="stack">' + (withName ? '<label class="f">اسم الجروب<input id="g-name" maxlength="40" placeholder="مثلًا: شادووينج الصبح" dir="auto"></label>' : '')
+      + '<div class="f"><span>ضيف زمايلك</span><input id="g-q" placeholder="دوّر بالاسم" autocomplete="off" dir="auto"><div class="chips" id="g-picked"></div><ul class="pick-list" id="g-list"><li class="muted small pad">بيحمّل…</li></ul></div>'
+      + '<p class="err" role="alert"></p><button class="btn primary wide" id="g-go" disabled>' + (withName ? 'اعمل الجروب' : 'ضيف للجروب') + '</button></div>', 'narrow');
     var list = [], t;
     function draw() {
       var n = Object.keys(picked).length;
-      $('#g-picked').innerHTML = Object.keys(picked).map(function (id) { return '<button class="chip-x" data-pick="' + id + '">' + esc(picked[id].name) + ' ✕</button>'; }).join('');
-      $('#g-list').innerHTML = list.filter(function (p) { return exclude.indexOf(p.id) < 0; }).map(function (p) { return '<li><button class="pick" data-pick="' + p.id + '"' + (!picked[p.id] && n >= maxPick ? ' disabled' : '') + '>' + avatar(p, 28) + '<span dir="auto">' + esc(p.name) + '</span><em>' + (picked[p.id] ? '✓' : '＋') + '</em></button></li>'; }).join('') || '<li class="muted small pad">No one found.</li>';
+      $('#g-picked').innerHTML = Object.keys(picked).map(function (id) { return '<button class="chip-x" data-pick="' + id + '">' + esc(picked[id].name) + ' ' + ico('x', 'tiny') + '</button>'; }).join('');
+      $('#g-list').innerHTML = list.filter(function (p) { return exclude.indexOf(p.id) < 0; }).map(function (p) { return '<li><button class="pick" data-pick="' + p.id + '"' + (!picked[p.id] && n >= maxPick ? ' disabled' : '') + '>' + avatar(p, 28) + '<span dir="auto">' + esc(p.name) + '</span><em>' + ico(picked[p.id] ? 'check' : 'plus') + '</em></button></li>'; }).join('') || '<li class="muted small pad">ملقيناش حد.</li>';
       $('#g-go').disabled = withName ? n < 2 : n < 1;
-      $('#g-go').textContent = (withName ? 'Create group' : 'Add to group') + (n ? ' (' + (withName ? n + 1 : n) + (withName ? ' people' : '') + ')' : '');
+      $('#g-go').textContent = (withName ? 'اعمل الجروب' : 'ضيف للجروب') + (n ? ' (' + (withName ? n + 1 : n) + ')' : '');
     }
     function search() { api('/members', { query: { q: $('#g-q').value.trim() } }).then(function (j) { list = j.members; draw(); }); }
     $('#g-q').addEventListener('input', function () { clearTimeout(t); t = setTimeout(search, 250); });
@@ -777,44 +879,43 @@
     search();
   }
   function reportMsg(id) {
-    openModal(mHead('Report this message', 'Sherif will review it. The author won\'t know who reported it.')
-      + '<div class="stack"><label class="f">What\'s wrong? <small>optional</small><input id="rep-why" maxlength="200" placeholder="e.g. rude, spam, off-topic" dir="auto"></label><button class="btn primary" data-act="do-report" data-id="' + id + '">Send report</button></div>', 'narrow');
+    openModal(mHead('ريبورت للرسالة', 'شريف هيراجعها. صاحب الرسالة مش هيعرف مين عمل الريبورت.')
+      + '<div class="stack"><label class="f">إيه المشكلة؟ <small>اختياري</small><input id="rep-why" maxlength="200" placeholder="مثلًا: قلة أدب، سبام، خارج الموضوع" dir="auto"></label><button class="btn primary" data-act="do-report" data-id="' + id + '">ابعت الريبورت</button></div>', 'narrow');
   }
 
   /* ------------------------------------------------------------ share to Skool */
   function shareText() {
     var s = S.data.stats;
-    return (s.dayFinished ? 'Day ' + s.studyDays + ' ✅ ' : '') + '🔥 ' + s.streak + '-day streak'
-      + (s.todayMinutes ? ' · ⏱️ ' + hm(s.todayMinutes) + ' today' : '') + ' · Level ' + s.level + ' ' + s.title + ' ' + ((cfg.classes[S.data.me.class] || {}).icon || '')
-      + (S.data.clan ? ' · ' + S.data.clan.emoji + ' ' + S.data.clan.name : '') + '\n#SawaTracker';
+    return (s.dayFinished ? 'اليوم ' + s.studyDays + ' خلص · ' : '') + 'ستريك ' + s.streak + ' يوم'
+      + (s.todayMinutes ? ' · ' + hm(s.todayMinutes) + ' النهارده' : '') + ' · Level ' + s.level + ' ' + s.title
+      + (S.data.clan ? ' · ' + S.data.clan.name : '') + '\n#SawaTracker';
   }
   function drawCard() {
     var s = S.data.stats, c = document.createElement('canvas'); c.width = c.height = 1080;
-    var g = c.getContext('2d'), grd = g.createLinearGradient(0, 0, 1080, 1080);
-    grd.addColorStop(0, '#1b1d33'); grd.addColorStop(1, '#3d3bb8'); g.fillStyle = grd; g.fillRect(0, 0, 1080, 1080);
-    g.fillStyle = 'rgba(255,255,255,.06)'; for (var i = 0; i < 9; i++) { g.beginPath(); g.arc(900 - i * 40, 160 + i * 30, 120 + i * 20, 0, 7); g.fill(); }
-    var F = function (w, sz) { return w + ' ' + sz + 'px Fredoka, Nunito, "Segoe UI", sans-serif'; };
-    g.fillStyle = '#ae1e20'; g.beginPath(); g.roundRect ? g.roundRect(80, 80, 72, 72, 18) : g.rect(80, 80, 72, 72); g.fill();
-    g.fillStyle = '#fff'; g.font = F(700, 44); g.textBaseline = 'middle'; g.textAlign = 'center'; g.fillText('S', 116, 118);
-    g.textAlign = 'left'; g.font = F(600, 40); g.fillText('Sawa Tracker', 176, 118);
-    g.font = F(600, 52); g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText(S.data.me.name, 80, 300);
-    g.font = '200px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif'; g.fillText('🔥', 70, 500);
-    g.fillStyle = '#fff'; g.font = F(700, 240); g.fillText(String(s.streak), 300, 500);
-    g.font = F(600, 56); g.fillStyle = '#f5c242'; g.fillText('day streak', 310, 640);
-    var stats = [[hm(s.todayMinutes), 'today'], [hm(s.totalMinutes), 'total'], ['Lv ' + s.level, s.title]];
+    var g = c.getContext('2d');
+    g.fillStyle = '#0F0F10'; g.fillRect(0, 0, 1080, 1080);
+    var D = function (w, sz) { return w + ' ' + sz + 'px Changa, "IBM Plex Sans Arabic", sans-serif'; };
+    var B = function (w, sz) { return w + ' ' + sz + 'px "IBM Plex Sans Arabic", sans-serif'; };
+    g.direction = 'rtl'; g.textAlign = 'right'; g.textBaseline = 'alphabetic';
+    g.fillStyle = '#FFFFFF'; g.font = D(800, 64); g.fillText('سوا', 1000, 150);
+    g.direction = 'ltr'; g.textAlign = 'right'; g.fillStyle = '#8A8584'; g.font = 'italic 40px "Instrument Serif", Georgia, serif'; g.fillText('Sawa Tracker', 860, 150);
+    g.direction = 'rtl'; g.textAlign = 'right'; g.fillStyle = '#8A8584'; g.font = B(600, 40); g.fillText(S.data.me.name, 1000, 300);
+    g.fillStyle = '#FFFFFF'; g.font = D(800, 300); g.direction = 'ltr'; g.fillText(String(s.streak), 1000, 590);
+    g.direction = 'rtl'; g.font = D(800, 60); g.fillText('يوم ستريك', 1000, 690);
+    g.direction = 'ltr'; g.fillStyle = '#E3262B'; g.font = 'italic 64px "Instrument Serif", Georgia, serif'; g.fillText('keep going.', 1000, 780);
+    var stats = [[hm(s.todayMinutes), 'النهارده'], [hm(s.totalMinutes), 'المجموع'], ['Lv ' + s.level, s.title]];
     stats.forEach(function (st, k) {
-      var x = 80 + k * 320; g.fillStyle = 'rgba(255,255,255,.1)'; g.beginPath(); g.roundRect ? g.roundRect(x, 760, 290, 170, 28) : g.rect(x, 760, 290, 170); g.fill();
-      g.fillStyle = '#fff'; g.font = F(700, 64); g.fillText(st[0], x + 30, 830); g.font = F(500, 34); g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(st[1], x + 30, 895);
+      var x = 1000 - k * 316; g.fillStyle = '#2A2A2B'; g.fillRect(x - 290, 840, 290, 150);
+      g.direction = 'rtl'; g.textAlign = 'right'; g.fillStyle = '#FFFFFF'; g.font = D(800, 56); g.fillText(st[0], x - 28, 912); g.fillStyle = '#8A8584'; g.font = B(400, 30); g.fillText(st[1], x - 28, 962);
     });
-    g.font = F(500, 32); g.fillStyle = 'rgba(255,255,255,.6)'; g.fillText(new Date(S.data.today + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) + (S.data.clan ? '  ·  ' + S.data.clan.name : ''), 80, 1000);
     return c;
   }
   function openShare() {
     var make = function () {
-      var c = drawCard(), url = c.toDataURL('image/png');
-      openModal(mHead('Share to Skool', 'Post it in today\'s check-in thread') + '<img class="share-img" src="' + url + '" alt="Your progress card">'
+      var c = drawCard(), u = c.toDataURL('image/png');
+      openModal(mHead('شارك على Skool', 'حطها في بوست الـ check-in بتاع النهارده') + '<img class="share-img" src="' + u + '" alt="كارت تقدمك">'
         + '<textarea id="share-t" rows="3" readonly dir="auto">' + esc(shareText()) + '</textarea>'
-        + '<div class="row-btns"><button class="btn" data-act="copy-share">📋 Copy text</button><a class="btn" href="' + url + '" download="sawa-progress-' + S.data.today + '.png">⬇️ Save image</a><a class="btn primary" href="' + esc(S.data.skoolUrl) + '" target="_blank" rel="noopener">Open Skool ↗</a></div>');
+        + '<div class="row-btns"><button class="btn" data-act="copy-share">' + ico('copy') + ' انسخ الكلام</button><a class="btn" href="' + u + '" download="sawa-progress-' + S.data.today + '.png">' + ico('download') + ' احفظ الصورة</a><a class="btn primary" href="' + esc(S.data.skoolUrl) + '" target="_blank" rel="noopener">افتح Skool ' + ico('ext', 'tiny') + '</a></div>');
     };
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(make);
   }
@@ -823,15 +924,15 @@
   function afterAction(j, msg) {
     if (j.data) S.data = j.data;
     renderDash(); loadBoard(); loadFeed('new');
-    if (j.levelUp) celebrate('🎉 Level up! You reached level ' + j.levelUp + '.');
-    else if (j.badges && j.badges.length) { var x = S.data.badges.filter(function (b) { return b.id === j.badges[0]; })[0]; if (x) celebrate(x.icon + ' New badge: ' + x.name); }
+    if (j.levelUp) celebrate('مبروك! وصلت Level ' + j.levelUp + '.');
+    else if (j.badges && j.badges.length) { celebrate('وسام جديد: ' + badgeInfo(j.badges[0]).name); }
     else if (msg) toast(msg, 'good');
   }
   function celebrate(msg) {
     toast(msg, 'good');
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var box = document.createElement('div'); box.className = 'confetti';
-    for (var i = 0; i < 40; i++) { var p = document.createElement('i'); p.style.left = Math.random() * 100 + '%'; p.style.background = ['#f5a524', '#3d3bb8', '#2aa876', '#e5484d', '#2f8fd8'][i % 5]; p.style.animationDelay = Math.random() * 0.4 + 's'; box.appendChild(p); }
+    for (var i = 0; i < 36; i++) { var p = document.createElement('i'); p.style.left = Math.random() * 100 + '%'; p.style.background = ['#0F0F10', '#E3262B', '#8A8584', '#FFFFFF'][i % 4]; p.style.animationDelay = Math.random() * 0.4 + 's'; box.appendChild(p); }
     root.appendChild(box); setTimeout(function () { box.remove(); }, 2200);
   }
 
@@ -846,15 +947,15 @@
       case 'auth-tab': $$('[data-act=auth-tab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b === el)); }); $('#f-in').hidden = el.dataset.tab !== 'in'; $('#f-join').hidden = el.dataset.tab !== 'join'; break;
       case 'pick-class':
         $$('.class-card').forEach(function (b) { b.disabled = true; });
-        api('/class', { method: 'POST', body: { class: el.dataset.class } }).then(function (j) { S.data = j; closeModal(); start(); toast('Welcome, ' + cfg.classes[el.dataset.class].name + '!', 'good'); }, function (x) { $$('.class-card').forEach(function (b) { b.disabled = false; }); toast(x.message, 'bad'); });
+        api('/class', { method: 'POST', body: { class: el.dataset.class } }).then(function (j) { S.data = j; closeModal(); start(); toast('أهلًا يا ' + cls(el.dataset.class).ar + '!', 'good'); }, function (x) { $$('.class-card').forEach(function (b) { b.disabled = false; }); toast(x.message, 'bad'); });
         break;
       case 'change-class': renderClassPick(true); break;
       case 'log-activity': openLogActivity(); break;
       case 'log-day': openLogDay(); break;
       case 'quick-min': var t = $('#' + el.dataset.target); if (t) t.value = el.dataset.min; break;
       case 'del-log':
-        if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'Remove?'; el.classList.add('confirm'); setTimeout(function () { if (el.isConnected) { el.dataset.confirm = ''; el.textContent = '✕'; el.classList.remove('confirm'); } }, 3000); break; }
-        api('/log/' + el.dataset.id, { method: 'DELETE' }).then(function (j) { afterAction(j, 'Activity removed'); }, function (x) { toast(x.message, 'bad'); });
+        if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'امسح؟'; el.classList.add('confirm'); setTimeout(function () { if (el.isConnected) { el.dataset.confirm = ''; el.innerHTML = ico('x'); el.classList.remove('confirm'); } }, 3000); break; }
+        api('/log/' + el.dataset.id, { method: 'DELETE' }).then(function (j) { afterAction(j, 'اتمسح'); }, function (x) { toast(x.message, 'bad'); });
         break;
       case 'skill-info': openSkill(el.dataset.skill); break;
       case 'cast': doCast(el); break;
@@ -877,8 +978,8 @@
         break;
       case 'share': openShare(); break;
       case 'copy-share':
-        var st = $('#share-t'); st.select();
-        (navigator.clipboard ? navigator.clipboard.writeText(st.value) : Promise.reject()).then(function () { toast('Copied. Paste it in Skool!', 'good'); }, function () { document.execCommand('copy'); toast('Copied', 'good'); });
+        var stx = $('#share-t'); stx.select();
+        (navigator.clipboard ? navigator.clipboard.writeText(stx.value) : Promise.reject()).then(function () { toast('اتنسخ. حطه في Skool!', 'good'); }, function () { document.execCommand('copy'); toast('اتنسخ', 'good'); });
         break;
       case 'open-clan-chat':
         S.view = 'chat'; renderView();
@@ -891,28 +992,28 @@
         api('/chat/rooms/' + C.room.id + '/messages', { query: { before: C.msgs[0].id } }).then(function (j) { if (j.messages.length < 50) C.noOlder = true; var roomId = C.msgs.roomId; C.msgs = j.messages.concat(C.msgs); C.msgs.roomId = roomId; var list = $('#msgs'), h = list.scrollHeight; paintMessages(true); list.scrollTop = list.scrollHeight - h; });
         break;
       case 'new-group':
-        openPeoplePicker('New private group', 4, [], function (ids, nm, fail) {
-          api('/chat/groups', { method: 'POST', body: { name: nm, members: ids } }).then(function (j) { closeModal(); C.rooms = j.rooms; S.view = 'chat'; openRoom(j.room); toast('Group created', 'good'); }, function (x) { fail(x.message); });
+        openPeoplePicker('جروب خاص جديد', 4, [], function (ids, nm, fail) {
+          api('/chat/groups', { method: 'POST', body: { name: nm, members: ids } }).then(function (j) { closeModal(); C.rooms = j.rooms; S.view = 'chat'; openRoom(j.room); toast('الجروب اتعمل', 'good'); }, function (x) { fail(x.message); });
         }, true);
         break;
       case 'group-add':
         var have = C.room.members.map(function (m) { return m.id; });
-        openPeoplePicker('Add to ' + C.room.name, 5 - have.length, have, function (ids, nm, fail) {
-          api('/chat/groups/' + C.room.id + '/members', { method: 'POST', body: { members: ids } }).then(function (j) { closeModal(); C.rooms = j.rooms; var id = C.room.id; C.room = null; openRoom(id); toast('Added', 'good'); }, function (x) { fail(x.message); });
+        openPeoplePicker('ضيف لـ ' + C.room.name, 5 - have.length, have, function (ids, nm, fail) {
+          api('/chat/groups/' + C.room.id + '/members', { method: 'POST', body: { members: ids } }).then(function (j) { closeModal(); C.rooms = j.rooms; var rid = C.room.id; C.room = null; openRoom(rid); toast('اتضافوا', 'good'); }, function (x) { fail(x.message); });
         }, false);
         break;
       case 'group-leave':
-        if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'Leave group?'; el.classList.add('danger-btn'); break; }
-        api('/chat/groups/' + C.room.id + '/leave', { method: 'POST' }).then(function (j) { C.rooms = j.rooms; C.room = null; C.msgs = []; paintChat(); toast('You left the group'); }, function (x) { toast(x.message, 'bad'); });
+        if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'متأكد تخرج؟'; el.classList.add('danger-btn'); break; }
+        api('/chat/groups/' + C.room.id + '/leave', { method: 'POST' }).then(function (j) { C.rooms = j.rooms; C.room = null; C.msgs = []; paintChat(); toast('خرجت من الجروب'); }, function (x) { toast(x.message, 'bad'); });
         break;
       case 'msg-del':
-        if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'Delete?'; el.classList.add('confirm'); break; }
+        if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'امسح؟'; el.classList.add('confirm'); break; }
         api('/chat/messages/' + el.dataset.id, { method: 'DELETE' }).then(function () { C.msgs.forEach(function (m) { if (m.id === +el.dataset.id) { m.gone = true; m.body = ''; m.audio = ''; } }); paintMessages(true); }, function (x) { toast(x.message, 'bad'); });
         break;
       case 'msg-report': reportMsg(+el.dataset.id); break;
       case 'do-report':
-        busy(el, true, 'Sending…');
-        api('/chat/messages/' + el.dataset.id + '/report', { method: 'POST', body: { reason: $('#rep-why').value.trim() } }).then(function () { closeModal(); toast('Thanks. Sherif will review it.', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); });
+        busy(el, true, 'بيتبعت…');
+        api('/chat/messages/' + el.dataset.id + '/report', { method: 'POST', body: { reason: $('#rep-why').value.trim() } }).then(function () { closeModal(); toast('شكرًا. شريف هيراجعها.', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); });
         break;
       case 'mic': startRec(); break;
       case 'rec-cancel': if (C.rec) { C.rec.send = false; C.rec.rec.stop(); } break;
@@ -922,21 +1023,21 @@
       case 'pick-avatar': $('#av-file').click(); break;
       case 'save-goal':
         busy(el, true);
-        api('/profile', { method: 'POST', body: { goal: parseInt($('#goal').value, 10) || 30 } }).then(function (j) { S.data = j.data; closeModal(); renderDash(); toast('Daily goal saved', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); });
+        api('/profile', { method: 'POST', body: { goal: parseInt($('#goal').value, 10) || 30 } }).then(function (j) { S.data = j.data; closeModal(); renderDash(); toast('الهدف اتحفظ', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); });
         break;
     }
   });
   root.addEventListener('change', function (e) {
     if (e.target.id === 'av-file' && e.target.files[0]) uploadAvatar(e.target.files[0]);
     if (e.target.id === 'remind') {
-      api('/reminder', { method: 'POST', body: { hour: e.target.value } }).then(function (j) { S.data = j.data; toast(e.target.value === '' ? 'Reminders turned off' : 'Reminder saved. We\'ll only email you on days you haven\'t studied yet.', 'good'); }, function (x) { toast(x.message, 'bad'); });
+      api('/reminder', { method: 'POST', body: { hour: e.target.value } }).then(function (j) { S.data = j.data; toast(e.target.value === '' ? 'التذكير اتقفل' : 'التذكير اتحفظ. هنبعتلك بس في الأيام اللي لسه مذاكرتش فيها.', 'good'); }, function (x) { toast(x.message, 'bad'); });
     }
   });
   root.addEventListener('submit', function (e) {
     if (e.target.id !== 'f-quest') return;
     e.preventDefault();
     var btn = e.target.querySelector('button'); busy(btn, true);
-    api('/quest', { method: 'POST', body: { note: $('#q-note').value.trim() } }).then(function (j) { afterAction(j, 'Quest done! +' + j.sp + ' SP 🎯'); }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
+    api('/quest', { method: 'POST', body: { note: $('#q-note').value.trim() } }).then(function (j) { afterAction(j, 'المهمة خلصت! +' + j.sp + ' SP'); }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
   });
   root.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('#modal').innerHTML) { S.dayWizard = null; closeModal(); } });
 
@@ -963,6 +1064,6 @@
   else if (cfg.status === 'pending') renderWaiting(false);
   else if (cfg.status === 'denied') renderWaiting(true);
   else api('/me').then(function (j) { S.data = j; start(); }, function (x) {
-    $('#app').innerHTML = '<div class="center-card card"><div class="big-emoji">⚠️</div><h2>The tracker couldn\'t load</h2><p class="muted">' + esc(x.message) + '</p><button class="btn primary" onclick="location.reload()">Try again</button></div>';
+    $('#app').innerHTML = '<div class="center-card card"><div class="big-ic">' + ico('info') + '</div><h2>التراكر مش راضي يفتح</h2><p class="muted">' + esc(x.message) + '</p><button class="btn primary" onclick="location.reload()">جرب تاني</button></div>';
   });
 })();

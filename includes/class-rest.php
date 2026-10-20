@@ -46,10 +46,10 @@ final class Sawa_Tracker_Rest {
 	public static function member() {
 		$uid = get_current_user_id();
 		if ( ! $uid ) {
-			return new WP_Error( 'signed_out', 'Please sign in again.', array( 'status' => 401 ) );
+			return new WP_Error( 'signed_out', 'سجّل دخول تاني.', array( 'status' => 401 ) );
 		}
 		if ( ! Sawa_Tracker_Game::is_member( $uid ) ) {
-			return new WP_Error( 'pending', 'Your account is waiting for approval.', array( 'status' => 403 ) );
+			return new WP_Error( 'pending', 'حسابك لسه مستني الموافقة.', array( 'status' => 403 ) );
 		}
 		return true;
 	}
@@ -188,13 +188,13 @@ final class Sawa_Tracker_Rest {
 		$uid = self::uid();
 		$c   = sanitize_key( (string) $r->get_param( 'class' ) );
 		if ( ! isset( Sawa_Tracker_Game::CLASSES[ $c ] ) ) {
-			return self::fail( new WP_Error( 'class', 'Choose Warrior or Healer.' ) );
+			return self::fail( new WP_Error( 'class', 'اختار المحارب أو المعالج.' ) );
 		}
 		$had = Sawa_Tracker_Game::m( $uid, 'class' );
 		if ( '' !== $had && $had !== $c ) {
 			$changed = Sawa_Tracker_Game::m( $uid, 'class_changed', '' );
 			if ( $changed && $changed > Sawa_Tracker_Game::add_days( Sawa_Tracker_Game::today(), -30 ) ) {
-				return self::fail( new WP_Error( 'class', 'You can change class once every 30 days.' ) );
+				return self::fail( new WP_Error( 'class', 'تقدر تغيّر الكلاس مرة كل ٣٠ يوم.' ) );
 			}
 			Sawa_Tracker_Game::set( $uid, 'class_changed', Sawa_Tracker_Game::today() );
 			Sawa_Tracker_Game::set( $uid, 'cooldowns', array() );
@@ -242,7 +242,7 @@ final class Sawa_Tracker_Rest {
 		$uid     = self::uid();
 		$entries = array_values( array_filter( (array) $r->get_param( 'entries' ), 'is_array' ) );
 		if ( ! $entries ) {
-			return self::fail( new WP_Error( 'empty', 'Add at least one activity with its minutes.' ) );
+			return self::fail( new WP_Error( 'empty', 'ضيف نشاط واحد على الأقل بالدقايق بتاعته.' ) );
 		}
 		$day = (string) ( $r->get_param( 'day' ) ? $r->get_param( 'day' ) : Sawa_Tracker_Game::today() );
 		$res = Sawa_Tracker_Game::log_day( $uid, $day, $entries, (int) $r->get_param( 'moodBefore' ), (int) $r->get_param( 'moodAfter' ), (string) $r->get_param( 'note' ) );
@@ -336,7 +336,7 @@ final class Sawa_Tracker_Rest {
 		$emoji   = (string) $r->get_param( 'emoji' );
 		$event   = (int) $r->get_param( 'event' );
 		if ( ! in_array( $emoji, $allowed, true ) || ! $event ) {
-			return self::fail( new WP_Error( 'react', 'Unknown reaction.' ) );
+			return self::fail( new WP_Error( 'react', 'التفاعل ده مش موجود.' ) );
 		}
 		$t    = Sawa_Tracker_Game::table( 'reactions' );
 		$keys = array(
@@ -362,7 +362,7 @@ final class Sawa_Tracker_Rest {
 		global $wpdb;
 		$id = (int) $r['id'];
 		if ( ! Sawa_Tracker_Game::is_member( $id ) ) {
-			return self::fail( new WP_Error( 'missing', 'Student not found.' ) );
+			return self::fail( new WP_Error( 'missing', 'ملقيناش الطالب ده.' ) );
 		}
 		Sawa_Tracker_Game::process_user( $id );
 		$live   = Sawa_Tracker_Game::live( $id );
@@ -404,7 +404,7 @@ final class Sawa_Tracker_Rest {
 		$files = $r->get_file_params();
 		if ( ! empty( $files['avatar'] ) ) {
 			if ( 0 !== strpos( (string) $files['avatar']['type'], 'image/' ) ) {
-				return self::fail( new WP_Error( 'type', 'Choose a photo (JPG or PNG).' ) );
+				return self::fail( new WP_Error( 'type', 'اختار صورة JPG أو PNG.' ) );
 			}
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -450,23 +450,23 @@ final class Sawa_Tracker_Rest {
 		$ip  = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ?? ( $_SERVER['REMOTE_ADDR'] ?? '' ) ) );
 		$key = 'sawa_tr_req_' . md5( $ip );
 		if ( (int) get_transient( $key ) >= 5 ) {
-			return $fail( 'Too many requests from this connection. Please try again later.' );
+			return $fail( 'طلبات كتير من نفس الاتصال. جرب تاني بعد شوية.' );
 		}
 		$name  = sanitize_text_field( (string) $r->get_param( 'name' ) );
 		$email = sanitize_email( (string) $r->get_param( 'email' ) );
 		$pass  = (string) $r->get_param( 'password' );
 		$note  = sanitize_text_field( (string) $r->get_param( 'note' ) );
 		if ( mb_strlen( $name ) < 2 ) {
-			return $fail( 'Please enter your name.' );
+			return $fail( 'اكتب اسمك.' );
 		}
 		if ( ! is_email( $email ) ) {
-			return $fail( 'Please enter a valid email address.' );
+			return $fail( 'اكتب إيميل صحيح.' );
 		}
 		if ( strlen( $pass ) < 8 ) {
-			return $fail( 'Choose a password with at least 8 characters.' );
+			return $fail( 'اختار باسورد ٨ حروف على الأقل.' );
 		}
 		if ( email_exists( $email ) ) {
-			return $fail( 'An account with this email already exists. Sign in instead, or reset your password.' );
+			return $fail( 'في حساب بالإيميل ده. سجّل دخول، أو غيّر الباسورد لو نسيته.' );
 		}
 		$login = sanitize_user( strtolower( strtok( $email, '@' ) ), true );
 		$base  = $login ? $login : 'student';

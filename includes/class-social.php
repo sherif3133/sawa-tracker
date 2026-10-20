@@ -11,10 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Sawa_Tracker_Social {
 
 	const CLAN_NAMES = array(
-		array( 'Lions', '🦁' ), array( 'Eagles', '🦅' ), array( 'Wolves', '🐺' ), array( 'Dragons', '🐉' ),
-		array( 'Owls', '🦉' ), array( 'Dolphins', '🐬' ), array( 'Tigers', '🐯' ), array( 'Foxes', '🦊' ),
-		array( 'Falcons', '🪶' ), array( 'Bears', '🐻' ), array( 'Sharks', '🦈' ), array( 'Phoenix', '🔥' ),
-		array( 'Panthers', '🐆' ), array( 'Rhinos', '🦏' ), array( 'Stallions', '🐎' ), array( 'Cobras', '🐍' ),
+		array( 'الأسود', '' ), array( 'النسور', '' ), array( 'الذئاب', '' ), array( 'الصقور', '' ), array( 'البوم', '' ), array( 'الدلافين', '' ), array( 'النمور', '' ), array( 'الفهود', '' ), array( 'العُقبان', '' ), array( 'الدببة', '' ), array( 'القروش', '' ), array( 'العنقاء', '' ), array( 'الخيول', '' ), array( 'الكوبرا', '' ), array( 'الثعالب', '' ), array( 'الأفيال', '' ),
 	);
 	const GROUP_MIN = 3;
 	const GROUP_MAX = 5;
@@ -143,7 +140,7 @@ final class Sawa_Tracker_Social {
 		if ( '' === $name ) {
 			$used = wp_list_pluck( self::clans(), 'name' );
 			foreach ( self::CLAN_NAMES as $i => $c ) {
-				$n = 'The ' . $c[0];
+				$n = $c[0];
 				if ( ! in_array( $n, $used, true ) ) {
 					$name  = $n;
 					$emoji = $c[1];
@@ -151,8 +148,8 @@ final class Sawa_Tracker_Social {
 				}
 			}
 			if ( '' === $name ) {
-				$name  = 'Clan ' . ( count( $used ) + 1 );
-				$emoji = '⭐';
+				$name  = 'كلان ' . ( count( $used ) + 1 );
+				$emoji = '';
 			}
 		}
 		$wpdb->insert( self::t( 'clans' ), array( 'name' => mb_substr( $name, 0, 60 ), 'emoji' => mb_substr( $emoji, 0, 8 ), 'created_at' => Sawa_Tracker_Game::now_mysql() ) ); // phpcs:ignore
@@ -413,24 +410,24 @@ final class Sawa_Tracker_Social {
 		global $wpdb;
 		$room = self::room( $room_id );
 		if ( ! self::can_access( $uid, $room ) ) {
-			return new WP_Error( 'room', 'You are not in this chat.' );
+			return new WP_Error( 'room', 'إنت مش في الشات ده.' );
 		}
 		if ( ! Sawa_Tracker_Game::settings()['chat_enabled'] && ! user_can( $uid, 'manage_options' ) ) {
-			return new WP_Error( 'off', 'Chat is turned off right now.' );
+			return new WP_Error( 'off', 'الشات متوقف دلوقتي.' );
 		}
 		$muted = (string) Sawa_Tracker_Game::m( $uid, 'muted_until', '' );
 		if ( $muted && $muted >= Sawa_Tracker_Game::today() ) {
-			return new WP_Error( 'muted', sprintf( 'You can read the chat but not send messages until %s.', wp_date( 'M j', strtotime( $muted . ' 12:00' ) ) ) );
+			return new WP_Error( 'muted', sprintf( 'تقدر تقرا الشات بس مش هتقدر تبعت لحد %s.', wp_date( 'M j', strtotime( $muted . ' 12:00' ) ) ) );
 		}
 		$body = trim( mb_substr( sanitize_textarea_field( $body ), 0, 1000 ) );
 		if ( '' === $body && '' === $audio_url ) {
-			return new WP_Error( 'empty', 'Write a message first.' );
+			return new WP_Error( 'empty', 'اكتب رسالة الأول.' );
 		}
 		$rl = (array) get_transient( 'sawa_tr_chat_' . $uid );
 		$now = microtime( true );
 		$rl  = array_values( array_filter( $rl, function ( $t ) use ( $now ) { return $now - $t < 60; } ) );
 		if ( count( $rl ) >= 20 || ( $rl && $now - end( $rl ) < 1.2 ) ) {
-			return new WP_Error( 'slow', 'Slow down a little. Try again in a few seconds.' );
+			return new WP_Error( 'slow', 'براحة شوية. جرب تاني كمان ثواني.' );
 		}
 		$rl[] = $now;
 		set_transient( 'sawa_tr_chat_' . $uid, $rl, 120 );
@@ -459,12 +456,12 @@ final class Sawa_Tracker_Social {
 		global $wpdb;
 		$mine = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t( 'rooms' ) . " WHERE type = 'group' AND created_by = %d", $uid ) ); // phpcs:ignore
 		if ( $mine >= self::GROUPS_PER_USER ) {
-			return new WP_Error( 'limit', sprintf( 'You can start up to %d groups. Leave or close one first.', self::GROUPS_PER_USER ) );
+			return new WP_Error( 'limit', sprintf( 'تقدر تعمل لحد %d جروبات. اخرج من واحد الأول.', self::GROUPS_PER_USER ) );
 		}
 		$ids = array_values( array_unique( array_filter( array_map( 'intval', (array) $member_ids ), function ( $i ) use ( $uid ) { return $i !== $uid && Sawa_Tracker_Game::is_member( $i ); } ) ) );
 		$total = count( $ids ) + 1;
 		if ( $total < self::GROUP_MIN || $total > self::GROUP_MAX ) {
-			return new WP_Error( 'size', sprintf( 'A group has %d to %d people including you. Pick %d to %d classmates.', self::GROUP_MIN, self::GROUP_MAX, self::GROUP_MIN - 1, self::GROUP_MAX - 1 ) );
+			return new WP_Error( 'size', sprintf( 'الجروب من %d لـ %d أشخاص بيك. اختار من %d لـ %d زمايل.', self::GROUP_MIN, self::GROUP_MAX, self::GROUP_MIN - 1, self::GROUP_MAX - 1 ) );
 		}
 		$name = trim( mb_substr( sanitize_text_field( $name ), 0, 40 ) );
 		if ( '' === $name ) {
@@ -485,12 +482,12 @@ final class Sawa_Tracker_Social {
 		global $wpdb;
 		$room = self::room( $room_id );
 		if ( ! $room || 'group' !== $room['type'] || (int) $room['created_by'] !== $uid ) {
-			return new WP_Error( 'owner', 'Only the person who started the group can add people.' );
+			return new WP_Error( 'owner', 'اللي عمل الجروب بس هو اللي يقدر يضيف ناس.' );
 		}
 		$have = self::group_members( $room_id );
 		$add  = array_values( array_diff( array_filter( array_map( 'intval', (array) $member_ids ), array( 'Sawa_Tracker_Game', 'is_member' ) ), $have ) );
 		if ( count( $have ) + count( $add ) > self::GROUP_MAX ) {
-			return new WP_Error( 'size', sprintf( 'Groups have at most %d people.', self::GROUP_MAX ) );
+			return new WP_Error( 'size', sprintf( 'الجروب أقصاه %d أشخاص.', self::GROUP_MAX ) );
 		}
 		foreach ( $add as $m ) {
 			$wpdb->insert( self::t( 'room_members' ), array( 'room_id' => $room_id, 'user_id' => $m, 'joined_at' => Sawa_Tracker_Game::now_mysql() ) ); // phpcs:ignore
@@ -503,7 +500,7 @@ final class Sawa_Tracker_Social {
 		global $wpdb;
 		$room = self::room( $room_id );
 		if ( ! $room || 'group' !== $room['type'] ) {
-			return new WP_Error( 'room', 'That group was not found.' );
+			return new WP_Error( 'room', 'ملقيناش الجروب ده.' );
 		}
 		$wpdb->delete( self::t( 'room_members' ), array( 'room_id' => $room_id, 'user_id' => $uid ) ); // phpcs:ignore
 		$left = self::group_members( $room_id );
@@ -537,10 +534,10 @@ final class Sawa_Tracker_Social {
 	public static function complete_quest( $uid, $note ) {
 		$q = self::quest();
 		if ( ! $q ) {
-			return new WP_Error( 'none', 'There is no quest today.' );
+			return new WP_Error( 'none', 'مفيش مهمة النهارده.' );
 		}
 		if ( self::quest_done( $uid ) ) {
-			return new WP_Error( 'done', 'You already finished today\'s quest.' );
+			return new WP_Error( 'done', 'إنت خلّصت مهمة النهارده خلاص.' );
 		}
 		Sawa_Tracker_Game::set( $uid, 'quest_day', Sawa_Tracker_Game::today() );
 		Sawa_Tracker_Game::set( $uid, 'sp', (int) Sawa_Tracker_Game::m( $uid, 'sp', 0 ) + $q['sp'] );
@@ -630,11 +627,11 @@ final class Sawa_Tracker_Social {
 			Sawa_Tracker_Game::set( $uid, 'reminded', $today );
 			wp_mail(
 				$u->user_email,
-				$l['streak'] > 0 ? sprintf( 'Keep your %d-day streak alive 🔥', $l['streak'] ) : 'Ten minutes of English today? 🎧',
+				$l['streak'] > 0 ? sprintf( 'حافظ على ستريك الـ %d يوم بتاعك', $l['streak'] ) : 'عشر دقايق انجليزي النهارده؟',
 				sprintf(
-					"Hi %s,\n\n%s Even 5 minutes counts as a study day.\n\nLog it here: %s\n\nYou asked for this reminder. Turn it off in your tracker settings.\nSawa English",
+					"أهلًا يا %s،\n\n%s حتى ٥ دقايق بتتحسب يوم مذاكرة.\n\nسجّلها هنا: %s\n\nإنت اللي طلبت التذكير ده. تقدر تقفله من إعدادات التراكر.\nسوا انجليش",
 					$u->first_name ? $u->first_name : $u->display_name,
-					$l['streak'] > 0 ? sprintf( 'You have a %d-day streak and your habit health is %d%%.', $l['streak'], $l['health'] ) : 'Your clan is studying today.',
+					$l['streak'] > 0 ? sprintf( 'عندك ستريك %d يوم وصحة العادة %d%%.', $l['streak'], $l['health'] ) : 'الكلان بتاعك بيذاكر النهارده.',
 					$page
 				)
 			);
