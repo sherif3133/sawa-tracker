@@ -144,8 +144,8 @@ final class Sawa_Tracker_Admin {
 				Sawa_Tracker_Game::set( $id, 'status', 'approved' );
 				wp_mail(
 					$u->user_email,
-					'اتفعلت! أهلًا بيك في سوا تراكر',
-					sprintf( "أهلًا يا %s،\n\nحسابك في سوا تراكر اتفعل. ادخل من هنا واختار الكلاس وسجّل أول نشاط:\n%s\n\nنشوفك في الترتيب.\nسوا انجليش", $u->display_name, $page )
+					'اتفعلت! أهلًا بيك في تراكر سوا انجليش',
+					sprintf( "أهلًا يا %s،\n\nحسابك في تراكر سوا انجليش اتفعل. ادخل من هنا واختار الكلاس وسجّل أول نشاط:\n%s\n\nنشوفك في الترتيب.\nسوا انجليش", $u->display_name, $page )
 				);
 				++$n;
 			} elseif ( 'deny' === $do ) {
