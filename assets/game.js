@@ -289,10 +289,14 @@
   function hud() {
     if (!ROOT) return;
     var w = H.world(), me = H.me();
-    $('.sg-top').innerHTML = '<div class="sg-who"><span class="sg-face">' + (me.avatar ? '<img src="' + esc(me.avatar) + '" alt="">' : '') + '</span><div><b>' + esc(me.name) + '</b><small>' + esc(w.town.icon + ' ' + w.town.name + ' · ' + w.town.level) + (w.titles.length ? ' · ' + esc(w.titles[w.titles.length - 1]) : '') + '</small></div></div>'
+    var hr = w.hero || { level: 1, hp: 100, hpMax: 100, mana: 0, manaMax: 50, xp: 0, xpFrom: 0, xpNext: 100, title: '' };
+    var bars = '<div class="sg-hbars"><div class="sg-hpb me"><i style="width:' + (hr.hp / hr.hpMax * 100) + '%"></i><span>❤ ' + hr.hp + '/' + hr.hpMax + '</span></div><div class="sg-mpb"><i style="width:' + (hr.mana / hr.manaMax * 100) + '%"></i><span>💧 ' + hr.mana + '/' + hr.manaMax + '</span></div><div class="sg-xpb"><i style="width:' + Math.min(100, (hr.xp - hr.xpFrom) / Math.max(1, hr.xpNext - hr.xpFrom) * 100) + '%"></i><span>Lv ' + hr.level + ' · ' + (hr.xpNext - hr.xp) + ' XP to next</span></div></div>';
+    if (GAME.lastLv && hr.level > GAME.lastLv) GAME.levelUp(hr); GAME.lastLv = hr.level;
+    $('.sg-top').innerHTML = '<div class="sg-who"><span class="sg-face">' + (me.avatar ? '<img src="' + esc(me.avatar) + '" alt="">' : '') + '<em class="sg-lv">' + hr.level + '</em></span><div><b>' + esc(me.name) + '</b><small>' + esc(w.town.icon + ' ' + w.town.name + ' · ' + w.town.level) + ' · ' + esc(hr.title) + '</small>' + bars + '</div></div>'
       + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span><span title="Elixirs">⚗ ' + w.elixirs + '</span><span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>';
     var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
-    $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0]].map(function (b) {
+    var MAIN = { today: 1, cards: 1, quests: 1, chat: 1, ranks: 1, more: 1 };
+    $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
   }
@@ -391,7 +395,9 @@
         var me = H.avatar();
         var key = ensureChar(S, me);
         var sp = S.pos ? S.pos : !S.spawn && w.pos ? w.pos : S.spawn === 'east' ? { x: 68 * TS, y: 21 * TS } : S.spawn === 'west' ? { x: 4 * TS, y: 21 * TS } : { x: 19 * TS, y: 23 * TS };
-        var pl = S.physics.add.sprite(sp.x, sp.y, key, 0).setOrigin(0.5, 1); pl.body.setSize(10, 6).setOffset(3, 18); pl.setCollideWorldBounds(true); pl.key = key; pl.dir = 0; S.pl = pl;
+        S.aura = function (lv) { var c = lv >= 30 ? 0x56c596 : lv >= 20 ? 0xf2c94c : lv >= 10 ? 0xc6ced6 : 0; if (!c) return null; var a = S.add.image(0, 0, 'light').setTint(c).setBlendMode(Phaser.BlendModes.ADD).setScale(0.22, 0.09).setAlpha(0.8); S.tweens.add({ targets: a, alpha: 0.35, duration: 900, yoyo: true, repeat: -1 }); return a; };
+        var pl = S.physics.add.sprite(sp.x, sp.y, key, 0).setOrigin(0.5, 1);
+        pl.aura = S.aura((w.hero || {}).level || 1); pl.body.setSize(10, 6).setOffset(3, 18); pl.setCollideWorldBounds(true); pl.key = key; pl.dir = 0; S.pl = pl;
         S.physics.add.collider(pl, layer); S.physics.add.collider(pl, S.solids); S.npcs.forEach(function (n) { S.physics.add.collider(pl, n); });
         S.physics.add.overlap(pl, S.monGroup, function (p, mo) { S.encounter(mo); });
         if (S.boss) S.physics.add.collider(pl, S.boss, function () { S.bossTouch(); });
@@ -436,7 +442,7 @@
         var sp = 82, d = Math.hypot(vx, vy); if (d > 1) { vx /= d; vy /= d; }
         pl.setVelocity(vx * sp, vy * sp);
         if (vx || vy) { pl.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 1 : 2) : (vy < 0 ? 3 : 0); pl.anims.play(pl.key + '_w' + pl.dir, true); } else { pl.anims.stop(); pl.setFrame(pl.dir * 3); }
-        pl.setDepth(pl.y);
+        pl.setDepth(pl.y); if (pl.aura) pl.aura.setPosition(pl.x, pl.y - 1).setDepth(pl.y - 1);
         // exits
         if (pl.x > (MW - 1.6) * TS) S.leave(S.t + 1, 'west'); else if (pl.x < 1.2 * TS && S.t > 1) S.leave(S.t - 1, 'east');
         // monsters wander and chase
@@ -458,7 +464,7 @@
         Object.keys(S.others).forEach(function (id) { var o = S.others[id]; if (Phaser.Math.Distance.Between(pl.x, pl.y, o.spr.x, o.spr.y) < 24) near = { kind: 'player', obj: o }; });
         if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Read' : near.kind === 'note' ? 'Read note' : 'Meet'); } }
         // others glide to their last position
-        Object.keys(S.others).forEach(function (id) { var o = S.others[id], s = o.spr; var dx = o.tx - s.x, dy = o.ty - s.y, dd = Math.hypot(dx, dy); if (dd > 1) { var st = Math.min(dd, 1.4 * dt / 16); s.x += dx / dd * st; s.y += dy / dd * st; var dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); s.anims.play(s.texture.key + '_w' + dir, true); } else { s.anims.stop(); s.setFrame(o.d * 3); } s.setDepth(s.y); });
+        Object.keys(S.others).forEach(function (id) { var o = S.others[id], s = o.spr; var dx = o.tx - s.x, dy = o.ty - s.y, dd = Math.hypot(dx, dy); if (dd > 1) { var st = Math.min(dd, 1.4 * dt / 16); s.x += dx / dd * st; s.y += dy / dd * st; var dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); s.anims.play(s.texture.key + '_w' + dir, true); } else { s.anims.stop(); s.setFrame(o.d * 3); } s.setDepth(s.y); if (o.aura) o.aura.setPosition(s.x, s.y - 1).setDepth(s.y - 1); });
         // light and dark
         var cam = S.cameras.main, v = cam.worldView, dl = S.dayLight();
         S.paintDark(dl, v, cam.zoom, time);
@@ -528,6 +534,7 @@
         S.monsters.forEach(function (mm) { if (mm.active && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, mm.x, mm.y) < 90) mm.flee = S.time.now + 15000; });
         if (r && r.won && S.fighting) { var m = S.fighting; S.tweens.add({ targets: m, alpha: 0, scale: 1.6, duration: 300, onComplete: function () { m.disableBody(true, true); S.time.delayedCall(25000, function () { if (m.scene) m.enableBody(true, m.home.x, m.home.y, true, true).setAlpha(1).setScale(1); }); } }); }
         S.fighting = null; hud();
+        if (r && r.ko) { S.cameras.main.fadeOut(250); S.time.delayedCall(300, function () { S.pl.setPosition(11.5 * TS, 17.6 * TS); S.cameras.main.fadeIn(400); say('You wake up at the inn. Review cards here to heal faster.', 5000); }); }
         if (r && r.kind === 'boss' && r.won) S.time.delayedCall(600, function () { S.scene.restart({ spawn: 'east' }); });
       },
       leave: function (to, spawn) {
@@ -544,12 +551,12 @@
           var seen = {};
           j.live.concat(j.echoes).forEach(function (p) {
             seen[p.id] = 1; var o = S.others[p.id], live = p.ago <= 60;
-            if (!o) { var key = ensureChar(S, p); var s = S.add.sprite(p.x, p.y, key, p.d * 3).setOrigin(0.5, 1); o = S.others[p.id] = { spr: s }; }
+            if (!o) { var key = ensureChar(S, p); var s = S.add.sprite(p.x, p.y, key, p.d * 3).setOrigin(0.5, 1); o = S.others[p.id] = { spr: s, aura: S.aura((p.hero || {}).level || 1) }; }
             o.p = p; o.live = live; o.tx = p.x; o.ty = p.y; o.d = p.d; o.spr.setAlpha(live ? 1 : 0.55);
             if (!live) { o.spr.x = p.x; o.spr.y = p.y; }
             if (p.emote) o.emote = { e: p.emote, until: Date.now() + 5000 };
           });
-          Object.keys(S.others).forEach(function (id) { if (!seen[id]) { S.others[id].spr.destroy(); delete S.others[id]; } });
+          Object.keys(S.others).forEach(function (id) { if (!seen[id]) { S.others[id].spr.destroy(); if (S.others[id].aura) S.others[id].aura.destroy(); delete S.others[id]; } });
           j.bubbles.forEach(function (b) { if (S.seenB && S.seenB[b.id]) return; S.seenB = S.seenB || {}; S.seenB[b.id] = 1; var o = b.user === H.me().id ? { me: true } : S.others[b.user]; if (o) (o.me ? S : o).bubble = { text: b.text, until: Date.now() + 7000 }; });
           var n = j.live.length; var c = $('.sg-online'); if (c) c.textContent = n ? n + ' online here' : (j.echoes.length ? j.echoes.length + (j.echoes.length === 1 ? ' traveller was' : ' travellers were') + ' here today' : 'Only you here right now');
         }, function () { S.syncing = false; });
@@ -559,8 +566,8 @@
         var r = ROOT.querySelector('.sg-cv').getBoundingClientRect(), k = r.width / S.scale.width, keep = {};
         function tag(id, x, y, html, cls) { keep[id] = 1; var e = S.labels[id]; if (!e) { e = S.labels[id] = el('div', 'sg-lb'); lay.appendChild(e); } if (e._h !== html) { e.innerHTML = '<div class="in">' + html + '</div>'; e._h = html; } e.className = 'sg-lb ' + (cls || ''); e.style.transform = 'translate(' + Math.round((x - v.x) * z * k) + 'px,' + Math.round((y - v.y) * z * k) + 'px)'; }
         var now = Date.now(), me = H.me();
-        Object.keys(S.others).forEach(function (id) { var o = S.others[id], p = o.p, s = o.spr; var ago = p.ago > 60 ? (p.ago < 3600 ? Math.round(p.ago / 60) + ' min ago' : Math.round(p.ago / 3600) + ' h ago') : ''; tag('o' + id, s.x, s.y - 27, '<span class="nm' + (p.wanted ? ' wanted' : '') + '">' + (p.wanted ? '⚠ ' : '') + esc(p.name.split(' ')[0]) + '</span>' + (ago ? '<small>' + ago + '</small>' : ''), o.live ? '' : 'echo'); if (o.bubble && o.bubble.until > now) tag('b' + id, s.x, s.y - 40, '<span class="bub">' + esc(o.bubble.text) + '</span>', 'bubble'); if (o.emote && o.emote.until > now) tag('e' + id, s.x, s.y - 34, '<span class="emo">' + EMO[o.emote.e] + '</span>', 'bubble'); });
-        tag('me', S.pl.x, S.pl.y - 27, '<span class="nm me">' + esc(me.name.split(' ')[0]) + '</span>');
+        Object.keys(S.others).forEach(function (id) { var o = S.others[id], p = o.p, s = o.spr; var ago = p.ago > 60 ? (p.ago < 3600 ? Math.round(p.ago / 60) + ' min ago' : Math.round(p.ago / 3600) + ' h ago') : ''; var ph = p.hero || {}; tag('o' + id, s.x, s.y - 27, '<span class="nm' + (p.wanted ? ' wanted' : '') + '"><em class="lvb">' + (ph.level || 1) + '</em>' + (p.wanted ? '⚠ ' : '') + esc(p.name.split(' ')[0]) + (ph.rank && ph.rank !== 'Bronze' ? ' <i class="rk ' + esc(ph.rank.toLowerCase()) + '">' + esc(ph.rank) + '</i>' : '') + '</span>' + (ago ? '<small>' + ago + '</small>' : ''), o.live ? '' : 'echo'); if (o.bubble && o.bubble.until > now) tag('b' + id, s.x, s.y - 40, '<span class="bub">' + esc(o.bubble.text) + '</span>', 'bubble'); if (o.emote && o.emote.until > now) tag('e' + id, s.x, s.y - 34, '<span class="emo">' + EMO[o.emote.e] + '</span>', 'bubble'); });
+        var mh = H.world().hero || {}; tag('me', S.pl.x, S.pl.y - 27, '<span class="nm me"><em class="lvb">' + (mh.level || 1) + '</em>' + esc(me.name.split(' ')[0]) + '</span><span class="tbar"><i style="width:' + ((mh.hp || 1) / (mh.hpMax || 1) * 100) + '%"></i></span>');
         if (S.bubble && S.bubble.until > now) tag('bme', S.pl.x, S.pl.y - 40, '<span class="bub">' + esc(S.bubble.text) + '</span>', 'bubble');
         if (S.emote && S.emote.until > now) tag('eme', S.pl.x, S.pl.y - 34, '<span class="emo">' + EMO[S.emote.e] + '</span>', 'bubble');
         S.npcs.forEach(function (n) { tag('n' + n.npc, n.x, n.y - 27, '<span class="nm npc">' + esc(NPC[n.npc][0]) + '</span>'); });
@@ -646,9 +653,13 @@
     requestAnimationFrame(function () { A.el.classList.add('on'); });
   }
   Arena.prototype.anim1 = function (node, kf, ms) { try { return node.animate(kf, { duration: ms, easing: 'ease-out' }); } catch (e) { return null; } };
-  Arena.prototype.pop = function (node, txt, cls) { var r = node.getBoundingClientRect(), a = this.el.getBoundingClientRect(), p = el('span', 'sg-pop ' + (cls || ''), esc(txt)); p.style.left = (r.left - a.left + r.width / 2) + 'px'; p.style.top = (r.top - a.top) + 'px'; this.el.appendChild(p); setTimeout(function () { p.remove(); }, 1000); };
-  Arena.prototype.hit = function (ok, per) {
-    var A = this;
+  Arena.prototype.pop = function (node, txt, cls) { if (!this.el.isConnected) return; var r = node.getBoundingClientRect(), a = this.el.getBoundingClientRect(), p = el('span', 'sg-pop ' + (cls || ''), esc(txt)); p.style.left = (r.left - a.left + r.width / 2) + 'px'; p.style.top = (r.top - a.top) + 'px'; this.el.appendChild(p); setTimeout(function () { p.remove(); }, 1000); };
+  Arena.prototype.hit = function (ok, per, fx) {
+    var A = this; fx = fx || {};
+    if (ok && fx.quick) setTimeout(function () { A.pop(A.hero, 'Quick!', 'quick'); }, 60);
+    if (ok && fx.combo >= 3) setTimeout(function () { A.pop(A.foe, 'Combo ×' + fx.combo, 'combo'); }, 420);
+    if (!ok && fx.blocked) { A.pop(A.hero, 'Blocked!', 'quick'); return; }
+    if (fx.enrage) setTimeout(function () { A.foe.classList.add('rage'); A.pop(A.foe, 'ENRAGED', 'miss'); }, 600);
     if (ok) {
       A.anim1(A.hero, [{ transform: 'translateX(0)' }, { transform: 'translateX(28vw)' }, { transform: 'translateX(0)' }], 360);
       setTimeout(function () {
@@ -662,10 +673,12 @@
       setTimeout(function () {
         A.hero.classList.add('hurt'); setTimeout(function () { A.hero.classList.remove('hurt'); }, 160);
         A.anim1(A.el, [{ transform: 'translate(0,0)' }, { transform: 'translate(-7px,3px)' }, { transform: 'translate(7px,-3px)' }, { transform: 'translate(0,0)' }], 260);
-        A.pop(A.hero, 'Miss', 'miss');
+        A.pop(A.hero, '-' + per, 'miss');
       }, 190);
     }
   };
+  Arena.prototype.heal = function () { this.hero.classList.add('healed'); var h = this.hero; setTimeout(function () { h.classList.remove('healed'); }, 700); this.pop(this.hero, '+❤', 'heal'); };
+  Arena.prototype.charge = function () { this.hero.classList.add('charged'); this.pop(this.hero, 'Power!', 'quick'); };
   Arena.prototype.finish = function (won) { (won ? this.foe : this.hero).classList.add(won ? 'gone' : 'down'); };
   Arena.prototype.close = function () { clearInterval(this.anim); var e = this.el; e.classList.remove('on'); setTimeout(function () { e.remove(); }, 250); };
 
@@ -678,42 +691,92 @@
       }, function (x) { world.frozen = false; world.cool = world.time.now + 2500; say(x.message, 4500); });
     },
     battleUI: function (b, scene) {
-      var box = $('.sg-battle'), n = b.questions.length, i = 0, timer = null, right = 0, per = 20;
+      var box = $('.sg-battle'), n = b.questions.length, i = 0, timer = null, t0 = 0, busy = false;
+      var me = b.me, foe = { hp: b.foe.hp, max: b.foe.hpMax || b.foe.hp }, combo = 0, phase = 1, mana = me.mana, used = {};
       box.classList.add('on');
-      function head() { var left = Math.max(0, scene.hp - scene.dmg); return '<div class="sg-bh"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + '</b><span>❤ ' + left + ' / ' + scene.hp + '</span></div><div class="sg-hpb"><i style="width:' + Math.max(0, left / scene.hp * 100) + '%"></i></div>'; }
-      function q() {
-        clearInterval(timer);
-        if (i >= n) return end();
-        var it = b.questions[i], left = b.seconds;
-        box.innerHTML = '<div class="sg-bp">' + head() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (it.point ? ' · ' + esc(it.point) : '') + '</small><p>' + wrapWords(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + ' ' + VOICE.btn(it.q) + '</p>' + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '</div><div class="sg-ops">' + it.options.map(function (o, k) { return '<button data-k="' + k + '"><span>' + 'ABCD'[k] + '</span>' + esc(o) + '</button>'; }).join('') + '</div></div>';
-        var bar = box.querySelector('.sg-tm i');
-        box.querySelectorAll('[data-k]').forEach(function (btn) { btn.onclick = function () { pick(+btn.dataset.k, btn); }; });
-        timer = setInterval(function () { left -= 0.1; bar.style.width = Math.max(0, left / b.seconds * 100) + '%'; if (left <= 0) pick(-1, null); }, 100);
-        G.keyPick = function (k) { var bt = box.querySelector('[data-k="' + k + '"]'); if (bt) pick(k, bt); };
+      function bars() {
+        return '<div class="sg-duo"><div class="sg-side"><b>' + esc(H.me().name.split(' ')[0]) + ' <small>Lv ' + me.level + '</small></b><div class="sg-hpb me"><i style="width:' + Math.max(0, me.hp / me.hpMax * 100) + '%"></i><span>❤ ' + me.hp + '/' + me.hpMax + '</span></div><div class="sg-mpb"><i style="width:' + Math.max(0, mana / me.manaMax * 100) + '%"></i><span>💧 ' + mana + '</span></div></div>'
+          + '<div class="sg-combo' + (combo >= 3 ? ' hot' : '') + '">' + (combo >= 2 ? '×' + combo + '<small>combo</small>' : '') + '</div>'
+          + '<div class="sg-side foe"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + (phase === 2 ? ' <small class="rage">ENRAGED</small>' : '') + '</b><div class="sg-hpb"><i style="width:' + Math.max(0, foe.hp / foe.max * 100) + '%"></i><span>❤ ' + foe.hp + '/' + foe.max + '</span></div></div></div>';
       }
-      function pick(k, btn) {
-        clearInterval(timer); G.keyPick = null; box.querySelectorAll('[data-k]').forEach(function (x) { x.disabled = true; });
-        H.api('/world/step', { method: 'POST', body: { battle: b.battle, i: i, choice: k } }).then(function (r) {
-          per = r.per || per;
+      function skillBar() {
+        return '<div class="sg-skills">' + b.skills.map(function (s) { var off = mana < s.cost || used[s.id]; return '<button data-sk="' + s.id + '"' + (off ? ' disabled' : '') + ' title="' + esc(s.text) + '"><b>' + esc(s.name) + '</b><small>💧' + s.cost + '</small></button>'; }).join('') + '</div>';
+      }
+      function paintBars() { var x = box.querySelector('.sg-duo'); if (x) x.outerHTML = bars(); var y = box.querySelector('.sg-skills'); if (y) { y.outerHTML = skillBar(); bindSkills(); } }
+      function body(it) {
+        if (it.type === 'order') return '<div class="sg-order"><div class="sg-line" data-line></div><div class="sg-chips">' + it.tokens.map(function (t, k) { return '<button data-tok="' + k + '">' + esc(t) + '</button>'; }).join('') + '</div><div class="sg-opts"><button data-reset>Start again</button><button class="pri" data-done>Check</button></div></div>';
+        if (it.type === 'type') return '<div class="sg-typer"><input maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + Array(it.len + 1).join('_ ') + '" dir="ltr"><button class="pri" data-done>Check</button></div>';
+        return '<div class="sg-ops">' + it.options.map(function (o, k) { return '<button data-k="' + k + '"><span>' + 'ABCD'[k] + '</span>' + esc(o) + '</button>'; }).join('') + '</div>';
+      }
+      function q() {
+        clearInterval(timer); used = {}; busy = false;
+        if (i >= n) return end();
+        var it = b.questions[i], secs = b.seconds + (it.type === 'type' || it.type === 'order' ? 10 : 0), left = secs;
+        var label = { listen: '🎧 Listen', type: '⌨ Type the missing word', order: '🧩 Build the sentence', mc: '' }[it.type] || '';
+        var qtext = it.type === 'listen' ? '<p class="sg-listen"><button class="sg-bigsay" data-say="' + esc(it.say) + '">🔊</button> ' + esc(it.q) + '</p>' : '<p>' + wrapWords(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + ' ' + VOICE.btn(it.q) + '</p>';
+        box.innerHTML = '<div class="sg-bp">' + bars() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (label ? ' · ' + label : '') + (it.point ? ' · ' + esc(it.point) : '') + '</small>' + qtext + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '<p class="sg-hint" hidden></p></div>' + body(it) + skillBar() + '</div>';
+        if (it.type === 'listen') setTimeout(function () { VOICE.say(it.say); }, 350);
+        var bar = box.querySelector('.sg-tm i');
+        box.querySelectorAll('[data-k]').forEach(function (btn) { btn.onclick = function () { pick({ choice: +btn.dataset.k }, btn); }; });
+        if (it.type === 'type') { var inp = box.querySelector('.sg-typer input'); inp.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') pick({ text: inp.value }); }; box.querySelector('[data-done]').onclick = function () { pick({ text: inp.value }); }; setTimeout(function () { inp.focus(); }, 50); }
+        if (it.type === 'order') {
+          var line = box.querySelector('[data-line]'), picked = [];
+          var paint = function () { line.innerHTML = picked.map(function (k) { return '<span>' + esc(it.tokens[k]) + '</span>'; }).join(' ') || '<small>Tap the words in order</small>'; box.querySelectorAll('[data-tok]').forEach(function (c) { c.disabled = picked.indexOf(+c.dataset.tok) >= 0; }); };
+          box.querySelectorAll('[data-tok]').forEach(function (c) { c.onclick = function () { picked.push(+c.dataset.tok); paint(); }; });
+          box.querySelector('[data-reset]').onclick = function () { picked = []; paint(); };
+          box.querySelector('[data-done]').onclick = function () { pick({ text: picked.map(function (k) { return it.tokens[k]; }).join(' ') }); };
+          paint();
+        }
+        bindSkills();
+        t0 = Date.now();
+        timer = setInterval(function () { left -= 0.1; bar.style.width = Math.max(0, left / secs * 100) + '%'; bar.classList.toggle('low', left < 5); if (left <= 0) pick({ choice: -1, text: '' }, null); }, 100);
+        G.keyPick = it.type === 'mc' || it.type === 'listen' ? function (k) { var bt = box.querySelector('[data-k="' + k + '"]'); if (bt && !bt.disabled) pick({ choice: k }, bt); } : null;
+      }
+      function bindSkills() {
+        box.querySelectorAll('[data-sk]').forEach(function (s) {
+          s.onclick = function () {
+            if (busy) return; var id = s.dataset.sk; s.disabled = true;
+            H.api('/world/skill', { method: 'POST', body: { battle: b.battle, skill: id } }).then(function (r) {
+              mana = r.mana; used[id] = 1;
+              if (r.remove != null) { var x = box.querySelector('[data-k="' + r.remove + '"]'); if (x) { x.disabled = true; x.classList.add('gone'); } }
+              if (r.hint || r.lemma) { var h = box.querySelector('.sg-hint'); h.hidden = false; var ar = r.lemma && H.lens ? H.lens.meanings(H.lens.lemmaOf(r.lemma)) : []; h.innerHTML = '💡 ' + esc(r.hint || '') + (ar.length ? ' <span dir="rtl">' + esc(ar[0].ar) + '</span>' : ''); }
+              if (r.hp != null) { me.hp = r.hp; scene.heal(); }
+              if (id === 'power') scene.charge();
+              paintBars();
+            }, function (x) { s.disabled = false; say(x.message); });
+          };
+        });
+      }
+      function pick(ans, btn) {
+        if (busy) return; busy = true;
+        clearInterval(timer); G.keyPick = null; box.querySelectorAll('.sg-ops button, .sg-chips button, .sg-typer button, .sg-order button, .sg-skills button').forEach(function (x) { x.disabled = true; });
+        H.api('/world/step', { method: 'POST', body: Object.assign({ battle: b.battle, i: i, ms: Date.now() - t0 }, ans) }).then(function (r) {
           if (btn) btn.classList.add(r.correct ? 'ok' : 'no');
           if (!r.correct) box.querySelectorAll('[data-k]').forEach(function (x) { if (x.textContent.slice(1) === r.right) x.classList.add('ok'); });
-          if (r.correct) { right++; scene.dmg += per; }
-          scene.hit(r.correct, per);
-          var head2 = box.querySelector('.sg-bh'); if (head2) { var tmp = el('div', '', head()); box.querySelector('.sg-bh').replaceWith(tmp.firstChild); box.querySelector('.sg-hpb').replaceWith(tmp.lastChild); }
-          if (!r.correct) { var fb = el('div', 'sg-fb', '✗ <b>' + wrapWords(r.right) + '</b>' + (r.why ? ' — ' + wrapWords(r.why) : '') + ' ' + VOICE.btn(r.right)); box.querySelector('.sg-bp').appendChild(fb); }
-          i++; setTimeout(q, r.correct ? 900 : 2300);
+          foe.hp = r.foeHp; me.hp = r.hp; combo = r.combo; phase = r.phase;
+          scene.hit(r.correct, r.correct ? r.dmg : r.taken, { quick: r.quick, combo: r.combo, blocked: r.blocked, enrage: r.enrage });
+          paintBars();
+          if (!r.correct) { var fb = el('div', 'sg-fb', '✗ <b>' + wrapWords(r.right) + '</b>' + (r.why ? ' — ' + wrapWords(r.why) : '') + ' ' + VOICE.btn(r.right)); var bp = box.querySelector('.sg-bp'); if (bp) bp.appendChild(fb); }
+          i++;
+          setTimeout(r.done ? end : q, r.correct ? 1000 : 2400);
         }, function (x) { say(x.message); i++; setTimeout(q, 600); });
       }
       function end() {
+        clearInterval(timer);
         box.innerHTML = '<div class="sg-bp"><p class="sg-wait">…</p></div>';
         H.api('/world/answer', { method: 'POST', body: { battle: b.battle } }).then(function (r) {
           if (r.world) H.setWorld(r.world);
-          scene.finish(r.won);
+          scene.finish(r.won && !r.ko);
           var pb = r.kind === 'pboss', duel = r.kind === 'duel';
-          var title = pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.damage + ' damage to the party boss') : duel ? (r.won ? '🏆 You beat the shadow!' : '💨 The shadow was stronger') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' was too strong';
-          var gains = (r.coins ? '+' + r.coins + ' 🪙 ' : '') + (r.elixirs ? '+' + r.elixirs + ' ⚗' : '');
-          box.innerHTML = '<div class="sg-bp sg-res"><h3>' + title + '</h3><p>' + r.right + ' of ' + r.total + ' right · attack ' + r.attack + (pb ? '' : ' vs ' + (duel ? r.shadow : r.foe.hp)) + '</p>'
-            + (gains ? '<p class="sg-gain">' + gains + '</p>' : '') + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
+          var title = r.ko ? '💫 You were knocked out' : pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.attack + ' damage to the party boss') : duel ? (r.won ? '🏆 You beat the shadow!' : '💨 The shadow was stronger') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' got away';
+          var gains = (r.coins ? '+' + r.coins + ' 🪙 ' : '') + (r.xp ? '+' + r.xp + ' XP ' : '') + (r.elixirs ? '+' + r.elixirs + ' ⚗' : '');
+          var hero = r.hero || {};
+          box.innerHTML = '<div class="sg-bp sg-res"><h3>' + title + '</h3><p>' + r.right + ' of ' + r.total + ' right · ' + r.attack + ' damage dealt' + (r.best >= 3 ? ' · best combo ×' + r.best : '') + '</p>'
+            + (r.ko ? '<p>You wake up at the inn. Review some cards there to heal faster.</p>' : '')
+            + (gains ? '<p class="sg-gain">' + gains + (r.partyBonus ? '<small> · party bonus +20%</small>' : '') + '</p>' : '')
+            + (duel && r.rating != null ? '<p>Arena: ' + (r.rating >= 0 ? '+' : '') + r.rating + ' · rank <b>' + esc(r.rank) + '</b></p>' : '')
+            + (hero.level ? '<div class="sg-xpbar"><span>Lv ' + hero.level + '</span><div><i style="width:' + Math.min(100, (hero.xp - hero.xpFrom) / Math.max(1, hero.xpNext - hero.xpFrom) * 100) + '%"></i></div><span>' + (hero.xpNext - hero.xp) + ' XP to Lv ' + (hero.level + 1) + '</span></div>' : '')
+            + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
             + (r.missedWords ? '<p class="small">📇 ' + r.missedWords + ' word' + (r.missedWords > 1 ? 's' : '') + ' you missed will come back in your review cards today.</p>' : '')
             + '<button class="pri" data-x="1">Continue</button></div>';
           box.querySelector('[data-x]').onclick = function () { close(r); };
@@ -729,6 +792,10 @@
       }
       q();
     },
+    levelUp: function (hr) {
+      var d = el('div', 'sg-levelup', '<div><small>LEVEL UP</small><b>' + hr.level + '</b><span>' + esc(hr.title) + '</span><p>❤ +10 · 💧 +5 · +' + (10 * hr.level) + ' 🪙</p></div>');
+      if (!ROOT) return; ROOT.appendChild(d); setTimeout(function () { d.classList.add('on'); }, 30); setTimeout(function () { d.classList.remove('on'); setTimeout(function () { d.remove(); }, 500); }, 3600);
+    },
     emote: function (e) { var w = G.phaser.scene.getScene('World'); w.emote = { e: e, until: Date.now() + 5000 }; H.api('/play/emote', { method: 'POST', body: { e: e } }).catch(function () {}); },
     look: function (first) {
       var L = Object.assign({}, H.avatar().look), d = $('.sg-dlg');
@@ -738,6 +805,7 @@
         + rows.map(function (r) { return '<div class="sg-lr"><span>' + r[1] + '</span><button data-l="' + r[0] + '" data-v="-1" aria-label="Previous">‹</button><button data-l="' + r[0] + '" data-v="1" aria-label="Next">›</button></div>'; }).join('')
         + '<div class="sg-opts"><button class="pri" data-o="save">Start my journey</button></div></div></div>';
       d.classList.add('on'); prev();
+      var w0 = G.phaser && G.phaser.scene.getScene('World'); if (w0) w0.frozen = true; // nothing attacks while you dress up
       d.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { var r = rows.filter(function (x) { return x[0] === b.dataset.l; })[0]; L[r[0]] = ((L[r[0]] || 0) + +b.dataset.v + r[2]) % r[2]; prev(); }; });
       d.querySelector('[data-o="save"]').onclick = function () { H.api('/play/look', { method: 'POST', body: L }).then(function (j) { H.setLook(j.look); d.classList.remove('on'); d.innerHTML = ''; var w = G.phaser.scene.getScene('World'); w.scene.restart({}); if (first) setTimeout(GAME.welcome, 900); }, function (x) { say(x.message); }); };
     },
@@ -745,6 +813,7 @@
       var steps = [
         (TOUCH ? 'Drag your thumb anywhere on the map to walk.' : 'Walk with the arrow keys or W A S D.') + ' ' + (TOUCH ? 'Tap the red button' : 'Press E') + ' to talk to people and read signs.',
         'Monsters live on the road east of town. Walk into one to fight it with your English: your own words, your mistakes and your weakest grammar.',
+        'Your bars: ❤ health — a monster hits you when you answer wrong. 💧 mana — you get it when you study (cards, your plan, writing), and you use it for battle skills. Your level goes up with XP from everything you learn.',
         'Other students walk here too. If they studied earlier today, you still see their echo — tap it to duel their shadow or invite them.',
         'Leave short English notes for the next traveller ✍, and talk to Elder Wen for your next task. Have a good journey!'
       ];
@@ -757,6 +826,8 @@
       if (k === 'quests' || k === 'party' || k === 'help') return H.panel(k);
       if (k === 'chat') return CHAT.show();
       if (k === 'today') return TODAY.show();
+      if (k === 'ranks') return RANKS.show();
+      if (k === 'more') { GAME.more = !GAME.more; return hud(); }
       if (k === 'cards') return REV.show();
       if (k === 'music') return MUSIC.toggle();
       if (k === 'note') return w.writeNote();
@@ -960,6 +1031,20 @@
       b.querySelector('.sg-ra').innerHTML = [['Again', 1], ['Hard', 2], ['Good', 3], ['Easy', 4]].map(function (g, k) { return '<button data-g2="' + g[1] + '"' + (g[1] === 3 ? ' class="pri"' : '') + '>' + g[0] + (nx[k] && nx[k] !== 'again' ? '<small> ' + esc(nx[k]) + '</small>' : '') + '</button>'; }).join('');
       b.querySelectorAll('[data-g2]').forEach(function (gb) { gb.onclick = function () { b.querySelectorAll('[data-g2]').forEach(function (x) { x.disabled = true; }); H.lens.api('review', { body: { key: c.key, grade: +gb.dataset.g2 } }).then(function (j) { REV.q.shift(); if (+gb.dataset.g2 === 1) REV.q.push(c); else REV.done++; if (j.known) say('🎉 “' + c.lemma + '” is now a known word!'); REV.card(); }, function (x) { say(x.message); b.querySelectorAll('[data-g2]').forEach(function (x2) { x2.disabled = false; }); }); }; });
     };
+  };
+
+  /* -------- rankings: level, this week, arena */
+  var RANKS = {};
+  RANKS.show = function (tab) {
+    tab = tab || 'level';
+    var b = panel('sg-ranksp', '🏆 Rankings', '<p class="sg-wait">…</p>');
+    H.api('/world/ranks').then(function (d) {
+      var bd = d[tab], label = { level: 'Level', week: 'This week', arena: 'Arena' };
+      b.innerHTML = '<div class="sg-tabs">' + Object.keys(label).map(function (k) { return '<button data-rt="' + k + '"' + (k === tab ? ' class="on"' : '') + '>' + label[k] + '</button>'; }).join('') + '</div>'
+        + '<p class="small">' + (tab === 'level' ? 'Your level grows with every word you learn and write.' : tab === 'week' ? 'XP earned since the start of the week. Everyone starts again on Saturday.' : 'Shadow duels move your arena rating up or down.') + (bd.me ? ' You are <b>#' + bd.me + '</b>.' : '') + '</p>'
+        + '<ol class="sg-rank">' + bd.top.map(function (p, k) { var v = tab === 'level' ? 'Lv ' + p.level : tab === 'week' ? p.week + ' XP' : p.rating + ' · ' + p.rank; return '<li class="' + (p.id === H.me().id ? 'me' : '') + '"><span>' + (k < 3 ? ['🥇', '🥈', '🥉'][k] : k + 1) + '</span>' + (p.avatar ? '<img src="' + esc(p.avatar) + '" alt="">' : '') + '<div><b>' + esc(p.name) + '</b><small>' + esc(p.title) + '</small></div><em>' + esc(v) + '</em></li>'; }).join('') + '</ol>';
+      b.querySelectorAll('[data-rt]').forEach(function (x) { x.onclick = function () { RANKS.show(x.dataset.rt); }; });
+    }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
 
   /* -------- today's plan (the same plan as the Today tab) */

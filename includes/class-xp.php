@@ -57,6 +57,7 @@ final class Sawa_Tracker_XP {
 		update_user_meta( $uid, 'sawa_tr_xp_log', array_slice( $log, -60, null, true ) );
 		update_user_meta( $uid, 'sawa_tr_xp', self::total( $uid ) + $n );
 		delete_transient( 'sawa_tr_board_xp' );
+		do_action( 'sawa_tracker_xp', $uid, $n ); // the Silk Road character levels up from XP
 		return $n;
 	}
 

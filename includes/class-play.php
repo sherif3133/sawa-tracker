@@ -89,6 +89,7 @@ final class Sawa_Tracker_Play {
 			'armor'  => (int) ( $rpg['gear']['armor']['grade'] ?? 0 ),
 			'title'  => (string) ( end( $w['titles'] ) ? end( $w['titles'] ) : '' ),
 			'level'  => Sawa_Tracker_World::TOWNS[ min( 6, $w['reached'] ) ][2],
+			'hero'   => array_intersect_key( Sawa_Tracker_Hero::sheet( $uid ), array_flip( array( 'level', 'title', 'rank', 'aura', 'hp', 'hpMax' ) ) ),
 		);
 	}
 
@@ -331,7 +332,7 @@ final class Sawa_Tracker_Play {
 		if ( in_array( $vs, $d['vs'], true ) ) {
 			return new WP_Error( 'duel', 'You already dueled this student today.', array( 'status' => 400 ) );
 		}
-		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, 5, array() ); // fair: grammar at your own level
+		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, 7, array() ); // fair: grammar at your own level
 		if ( count( $qs ) < 5 ) {
 			return new WP_Error( 'battle', 'Battles are not ready yet.', array( 'status' => 503 ) );
 		}
@@ -342,14 +343,14 @@ final class Sawa_Tracker_Play {
 		$shadow = (int) round( $rate * 5 * 20 * ( 1 + Sawa_Tracker_RPG::slot_bonus( Sawa_Tracker_RPG::get( $vs ), 'weapon' ) ) * ( wp_rand( 92, 108 ) / 100 ) );
 		$shadow = max( 30, $shadow );
 		$name   = Sawa_Tracker_Game::person( $vs )['name'];
-		return Sawa_Tracker_World::battle_start( $uid, 'duel', $qs, array( 'name' => $name . '\'s shadow', 'icon' => '👤', 'hp' => $shadow, 'shadow' => true, 'user' => $vs, 'avatar' => self::avatar( $vs ) ), array( 'vs' => $vs, 'shadow' => $shadow ) );
+		return Sawa_Tracker_World::battle_start( $uid, 'duel', $qs, array( 'name' => $name . '\'s shadow', 'icon' => '👤', 'hp' => $shadow + 20, 'atk' => (int) round( 8 + 14 * $rate ), 'shadow' => true, 'user' => $vs, 'avatar' => self::avatar( $vs ) ), array( 'vs' => $vs, 'shadow' => $shadow ) );
 	}
 
-	public static function after_duel( $uid, $b, $attack, $right ) {
+	public static function after_duel( $uid, $b, $won, $right ) {
 		$vs  = (int) $b['meta']['vs'];
-		$won = $attack >= (int) $b['meta']['shadow'];
+		$d   = Sawa_Tracker_Hero::duel_result( $uid, $vs, $won );
 		$c   = Sawa_Tracker_Raids::add_coins( $uid, $won ? 8 : 2 ); // new coins: nobody loses any
 		Sawa_Tracker_Game::event( $uid, 'duel', $vs, array( 'won' => $won, 'right' => $right ) );
-		return array( 'won' => $won, 'coins' => $c, 'shadow' => (int) $b['meta']['shadow'] );
+		return array( 'won' => $won, 'coins' => $c, 'shadow' => (int) $b['meta']['shadow'], 'rating' => $d, 'rank' => Sawa_Tracker_Hero::sheet( $uid )['rank'] );
 	}
 }

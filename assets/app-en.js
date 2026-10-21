@@ -423,6 +423,9 @@
   var HELP = [
     ['🗺', 'The map', 'Six towns from Chang\'an to Constantinople, one for each English level (A1 → C2). You start in the town of your level test. Beat a town\'s boss to open the road to the next one — or retake the level test.'],
     ['⚔', 'Monsters', 'Every fight is 5 English questions: words from <b>your</b> flashcards in the sentence where you found them, your own past mistakes, and the skill points you\'re weakest at. 20 attack per right answer (plus your weapon). Words you miss come back in today\'s review cards.'],
+    ['⭐', 'Level, health and mana', 'Your level goes up with XP — from cards, writing, chat and fights. Every level gives more health and mana, coins, new gear and titles (and a glowing aura from level 10). ❤ Health goes down when a monster hits you after a wrong answer; it comes back by itself, faster when you review cards at the inn. 💧 Mana comes only from studying today.'],
+    ['✨', 'Battle skills', 'Focus removes a wrong answer, Insight gives a hint, Power strike doubles your next hit, Second breath heals you. They cost mana. Fast answers hit harder, and 3 right answers in a row start a combo.'],
+    ['🏆', 'Rankings', 'See who has the highest level, who earned the most XP this week, and the best duel fighters (arena ranks from Bronze to Legend).'],
     ['⚡', 'Fights a day', '5 fights a day, plus one for every step of today\'s plan and one for a perfect day. Studying gives you more game.'],
     ['📜', 'Quests', 'Each town has a story: monsters → a learning task (cards, practice, chat, video quizzes…) → the boss. Daily and weekly quests pay coins and elixirs. Tap <b>Go</b> to jump to the right place in the app.'],
     ['🚶', 'Walking the world', 'Walk with the arrow keys (or drag your thumb on a phone). Press E or tap the red button to talk to people, read the notice board and leave notes. Monsters roam the road east of every town; the boss waits in its lair.'],

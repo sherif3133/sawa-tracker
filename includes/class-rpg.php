@@ -68,7 +68,12 @@ final class Sawa_Tracker_RPG {
 	/** Can this grade be bought? Needs the English level and (grade − 1) × 2 mastered points. */
 	public static function grade_ok( $uid, $grade, $eng = null ) {
 		$eng = $eng ? $eng : self::english( $uid );
-		return $eng['level'] >= $grade && $eng['mastered'] >= ( $grade - 1 ) * 2;
+		return Sawa_Tracker_Hero::level( $uid ) >= self::grade_level( $grade ) && $eng['mastered'] >= ( $grade - 1 ) * 2;
+	}
+
+	/** Character level needed for a gear grade: 1, 6, 11, 16, 21, 26. */
+	public static function grade_level( $grade ) {
+		return ( $grade - 1 ) * 5 + 1;
 	}
 
 	/** Bonus from one slot: 5% a grade + 2% a plus. */
@@ -136,7 +141,7 @@ final class Sawa_Tracker_RPG {
 					'name'  => $gname . ' ' . self::item_name( $slot, $r['job'] ),
 					'price' => self::PRICES[ $gr ],
 					'ok'    => self::grade_ok( $uid, $gr, $eng ),
-					'need'  => array( 'level' => array( 1 => 'A1', 2 => 'A2', 3 => 'B1', 4 => 'B2', 5 => 'C1', 6 => 'C2' )[ $gr ], 'mastered' => ( $gr - 1 ) * 2 ),
+					'need'  => array( 'level' => 'Lv ' . self::grade_level( $gr ), 'mastered' => ( $gr - 1 ) * 2 ),
 					'bonus' => 5 * $gr,
 				);
 			}
