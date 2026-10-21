@@ -292,7 +292,7 @@
     $('.sg-top').innerHTML = '<div class="sg-who"><span class="sg-face">' + (me.avatar ? '<img src="' + esc(me.avatar) + '" alt="">' : '') + '</span><div><b>' + esc(me.name) + '</b><small>' + esc(w.town.icon + ' ' + w.town.name + ' · ' + w.town.level) + (w.titles.length ? ' · ' + esc(w.titles[w.titles.length - 1]) : '') + '</small></div></div>'
       + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span><span title="Elixirs">⚗ ' + w.elixirs + '</span><span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>';
     var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
-    $('.sg-menu').innerHTML = [['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Say', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0]].map(function (b) {
+    $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0]].map(function (b) {
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
   }
@@ -301,7 +301,7 @@
     var d = $('.sg-dlg'); if (!d) return; d.innerHTML = '<div class="sg-box">' + (portrait ? '<span class="sg-por">' + portrait + '</span>' : '') + '<div class="sg-txt"><b>' + esc(name) + '</b><p></p><div class="sg-opts">' + (buttons || []).map(function (b, i) { return '<button data-o="' + i + '"' + (b.primary ? ' class="pri"' : '') + '>' + esc(b.label) + '</button>'; }).join('') + '<button data-o="x">Bye</button></div></div></div>';
     d.classList.add('on');
     var p = d.querySelector('p'), i = 0, full = text;
-    clearInterval(dialog.t); dialog.t = setInterval(function () { i += 2; p.textContent = full.slice(0, i); if (i >= full.length) clearInterval(dialog.t); }, 18);
+    clearInterval(dialog.t); dialog.t = setInterval(function () { i += 2; p.textContent = full.slice(0, i); if (i >= full.length) { clearInterval(dialog.t); p.innerHTML = wrapWords(full) + ' ' + VOICE.btn(full); } }, 18);
     d.querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { clearInterval(dialog.t); var o = b.dataset.o; d.classList.remove('on'); d.innerHTML = ''; if (o !== 'x' && buttons[+o]) buttons[+o].run(); }; });
   }
   function closeDialog() { var d = $('.sg-dlg'); if (d) { d.classList.remove('on'); d.innerHTML = ''; } }
@@ -390,7 +390,7 @@
         // the player
         var me = H.avatar();
         var key = ensureChar(S, me);
-        var sp = S.pos ? S.pos : S.spawn === 'east' ? { x: 68 * TS, y: 21 * TS } : S.spawn === 'west' ? { x: 4 * TS, y: 21 * TS } : { x: 19 * TS, y: 23 * TS };
+        var sp = S.pos ? S.pos : !S.spawn && w.pos ? w.pos : S.spawn === 'east' ? { x: 68 * TS, y: 21 * TS } : S.spawn === 'west' ? { x: 4 * TS, y: 21 * TS } : { x: 19 * TS, y: 23 * TS };
         var pl = S.physics.add.sprite(sp.x, sp.y, key, 0).setOrigin(0.5, 1); pl.body.setSize(10, 6).setOffset(3, 18); pl.setCollideWorldBounds(true); pl.key = key; pl.dir = 0; S.pl = pl;
         S.physics.add.collider(pl, layer); S.physics.add.collider(pl, S.solids); S.npcs.forEach(function (n) { S.physics.add.collider(pl, n); });
         S.physics.add.overlap(pl, S.monGroup, function (p, mo) { S.encounter(mo); });
@@ -444,9 +444,10 @@
         S.monsters.forEach(function (m) {
           if (!m.active) return;
           var dx = pl.x - m.x, dy = pl.y - m.y, dd = Math.hypot(dx, dy);
-          if (!tired && dd < 70 && S.cool < time) m.setVelocity(dx / dd * 34, dy / dd * 34);
+          if (m.flee > time) { m.setVelocity(-dx / dd * 40, -dy / dd * 40); m.setAlpha(0.6); }
+          else if (!tired && dd < 70 && S.cool < time) m.setVelocity(dx / dd * 34, dy / dd * 34);
           else { if (!m.wt || m.wt < time) { m.wt = time + 1500 + Math.random() * 2500; var a = Math.random() * 7; var back = Math.hypot(m.home.x - m.x, m.home.y - m.y) > 90; m.setVelocity(back ? (m.home.x - m.x) / 4 : Math.cos(a) * 18, back ? (m.home.y - m.y) / 4 : Math.sin(a) * 18); if (Math.random() < 0.4) m.setVelocity(0, 0); } }
-          m.setDepth(m.y); m.setAlpha(tired ? 0.6 : 1); m.setFlipX(m.body.velocity.x < 0);
+          m.setDepth(m.y); if (!(m.flee > time)) m.setAlpha(tired ? 0.6 : 1); m.setFlipX(m.body.velocity.x < 0);
         });
         S.npcs.forEach(function (n) { n.setVelocity(0, 0); });
         // what's near (for the action button)
@@ -499,16 +500,16 @@
           if (!cur) return dialog(L[0], 'You defeated the beast of ' + w.town.name + '. The road is open — go on to the next town, brave one!', [], L[1]);
           var txt = cur.state === 'claim' ? 'Well done! You finished: "' + cur.text + '". Take your reward.' : 'Your task: ' + cur.text + '. (' + cur.count + ' of ' + cur.n + ')';
           var btns = cur.state === 'claim' ? [{ label: 'Take the reward', primary: true, run: function () { H.api('/world/claim', { method: 'POST', body: { quest: 'story' } }).then(function (j) { H.setWorld(j.world); hud(); say('+' + j.got.coins + ' 🪙' + (j.got.elixirs ? ' +' + j.got.elixirs + ' ⚗' : '')); S.interact(); }, function (x) { say(x.message); }); } }]
-            : cur.go && cur.go !== 'map' ? [{ label: 'Show me where', primary: true, run: function () { H.go(cur.go); } }] : [];
+            : cur.go === 'review' ? [{ label: 'Review cards now', primary: true, run: function () { REV.show(); } }] : cur.go === 'chat' ? [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }] : cur.go === 'today' ? [{ label: 'Today\'s plan', primary: true, run: function () { TODAY.show(); } }] : cur.go && cur.go !== 'map' ? [{ label: 'Show me where', primary: true, run: function () { H.go(cur.go); } }] : [];
           return dialog(L[0], L[2] + ' ' + txt, btns.concat([{ label: 'All quests', run: function () { H.panel('quests'); } }]), L[1]);
         }
-        if (id === 'inn') return dialog(L[0], L[2], [{ label: 'Review my cards', primary: true, run: function () { H.go('review'); } }, { label: 'Today\'s plan', run: function () { H.go('today'); } }], L[1]);
+        if (id === 'inn') return dialog(L[0], L[2], [{ label: 'Review my cards', primary: true, run: function () { REV.show(); } }, { label: 'Today\'s plan', run: function () { TODAY.show(); } }], L[1]);
         if (id === 'smith') return H.stage() >= 4 ? dialog(L[0], L[2], [{ label: 'Open the forge', primary: true, run: function () { H.panel('forge'); } }], L[1]) : dialog(L[0], 'Come back when you are ready to carry a weapon. (Jobs and gear open at stage 4.)', [], L[1]);
-        if (id === 'crier') return dialog(L[0], L[2], [{ label: 'Say something', primary: true, run: function () { S.chat(); } }, { label: 'Open the town chat', run: function () { H.room(w.town.room); } }], L[1]);
+        if (id === 'crier') return dialog(L[0], L[2], [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }], L[1]);
         if (id === 'guard') return dialog(L[0], L[2] + ' Speak with Elder Wen to learn how.', [], L[1]);
       },
       encounter: function (mo) {
-        var S = this, now = S.time.now; if (S.frozen || S.cool > now) return;
+        var S = this, now = S.time.now; if (S.frozen || S.cool > now || mo.flee > now) return;
         var w = H.world();
         if (w.stamina.left < 1) { S.cool = now + 4000; S.pl.setVelocity(0); say('You are too tired to fight. Every step of today\'s plan gives you one more fight.'); return; }
         if (!w.ready) { S.cool = now + 4000; say('Battles open soon.'); return; }
@@ -523,7 +524,8 @@
         dialog(b.name, 'The ' + b.name + ' rises! 6 questions at ' + w.town.level + ' level. You need about 5 right. ' + b.tries + ' tries left today.', [{ label: 'Fight!', primary: true, run: function () { S.frozen = true; G.battle('/world/fight', { kind: 'boss' }, S.boss); } }], b.icon);
       },
       afterBattle: function (r) {
-        var S = this; S.frozen = false; S.cool = S.time.now + 2200;
+        var S = this; S.frozen = false; S.cool = S.time.now + 6000;
+        S.monsters.forEach(function (mm) { if (mm.active && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, mm.x, mm.y) < 90) mm.flee = S.time.now + 15000; });
         if (r && r.won && S.fighting) { var m = S.fighting; S.tweens.add({ targets: m, alpha: 0, scale: 1.6, duration: 300, onComplete: function () { m.disableBody(true, true); S.time.delayedCall(25000, function () { if (m.scene) m.enableBody(true, m.home.x, m.home.y, true, true).setAlpha(1).setScale(1); }); } }); }
         S.fighting = null; hud();
         if (r && r.kind === 'boss' && r.won) S.time.delayedCall(600, function () { S.scene.restart({ spawn: 'east' }); });
@@ -672,7 +674,7 @@
     battle: function (path, body, monster) {
       var world = G.phaser.scene.getScene('World');
       H.api(path, { method: 'POST', body: body || {} }).then(function (b) {
-        world.scene.pause(); $('.sg-labels').style.visibility = 'hidden'; GAME.battleUI(b, new Arena(b));
+        world.scene.pause(); $('.sg-labels').style.visibility = 'hidden'; MUSIC.battle(true); GAME.battleUI(b, new Arena(b));
       }, function (x) { world.frozen = false; world.cool = world.time.now + 2500; say(x.message, 4500); });
     },
     battleUI: function (b, scene) {
@@ -683,7 +685,7 @@
         clearInterval(timer);
         if (i >= n) return end();
         var it = b.questions[i], left = b.seconds;
-        box.innerHTML = '<div class="sg-bp">' + head() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (it.point ? ' · ' + esc(it.point) : '') + '</small><p>' + esc(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + '</p>' + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '</div><div class="sg-ops">' + it.options.map(function (o, k) { return '<button data-k="' + k + '"><span>' + 'ABCD'[k] + '</span>' + esc(o) + '</button>'; }).join('') + '</div></div>';
+        box.innerHTML = '<div class="sg-bp">' + head() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (it.point ? ' · ' + esc(it.point) : '') + '</small><p>' + wrapWords(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + ' ' + VOICE.btn(it.q) + '</p>' + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '</div><div class="sg-ops">' + it.options.map(function (o, k) { return '<button data-k="' + k + '"><span>' + 'ABCD'[k] + '</span>' + esc(o) + '</button>'; }).join('') + '</div></div>';
         var bar = box.querySelector('.sg-tm i');
         box.querySelectorAll('[data-k]').forEach(function (btn) { btn.onclick = function () { pick(+btn.dataset.k, btn); }; });
         timer = setInterval(function () { left -= 0.1; bar.style.width = Math.max(0, left / b.seconds * 100) + '%'; if (left <= 0) pick(-1, null); }, 100);
@@ -698,7 +700,7 @@
           if (r.correct) { right++; scene.dmg += per; }
           scene.hit(r.correct, per);
           var head2 = box.querySelector('.sg-bh'); if (head2) { var tmp = el('div', '', head()); box.querySelector('.sg-bh').replaceWith(tmp.firstChild); box.querySelector('.sg-hpb').replaceWith(tmp.lastChild); }
-          if (!r.correct) { var fb = el('div', 'sg-fb', '✗ <b>' + esc(r.right) + '</b>' + (r.why ? ' — ' + esc(r.why) : '')); box.querySelector('.sg-bp').appendChild(fb); }
+          if (!r.correct) { var fb = el('div', 'sg-fb', '✗ <b>' + wrapWords(r.right) + '</b>' + (r.why ? ' — ' + wrapWords(r.why) : '') + ' ' + VOICE.btn(r.right)); box.querySelector('.sg-bp').appendChild(fb); }
           i++; setTimeout(q, r.correct ? 900 : 2300);
         }, function (x) { say(x.message); i++; setTimeout(q, 600); });
       }
@@ -721,7 +723,7 @@
       function close(r) {
         G.keyPick = null; box.classList.remove('on'); box.innerHTML = '';
         if (close.done) return; close.done = true;
-        var world = G.phaser.scene.getScene('World'); scene.close(); world.scene.resume();
+        var world = G.phaser.scene.getScene('World'); scene.close(); world.scene.resume(); MUSIC.battle(false);
         if (GAME.needRebuild) { GAME.needRebuild = false; setTimeout(rebuild, 300); } $('.sg-labels').style.visibility = ''; world.afterBattle(r);
         if (r && r.kind === 'pboss') H.refreshParty();
       }
@@ -753,7 +755,10 @@
       if (k === 'exit') return window.SawaGame.stop(true);
       if (k === 'list') return window.SawaGame.stop(true, 'list');
       if (k === 'quests' || k === 'party' || k === 'help') return H.panel(k);
-      if (k === 'chat') return w.chat();
+      if (k === 'chat') return CHAT.show();
+      if (k === 'today') return TODAY.show();
+      if (k === 'cards') return REV.show();
+      if (k === 'music') return MUSIC.toggle();
       if (k === 'note') return w.writeNote();
       if (k === 'emote') { return dialog('Emote', 'Show how you feel. Everyone here sees it for a few seconds.', Object.keys(EMO_LIST).map(function (e) { return { label: EMO_LIST[e] + ' ' + e, run: function () { GAME.emote(e); } }; }).concat([{ label: '🎨 Change my look', run: function () { GAME.look(false); } }]), '🙂'); }
       if (k === 'map') {
@@ -764,6 +769,213 @@
   };
   var EMO_LIST = { wave: '👋', cheer: '🎉', clap: '👏', heart: '❤️', laugh: '😂', bow: '🙇' };
 
+  /* ================================================================ sound: read-aloud (the browser's own voices) and calm music
+     Music is generated live with WebAudio (soft pads and a slow pentatonic melody, a different mode in every town),
+     so there are no audio files to download. It starts after the student enters the world and can be muted. */
+  var VOICE = {
+    pick: function () {
+      if (!window.speechSynthesis) return null;
+      var vs = speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang); });
+      return vs.filter(function (v) { return /natural|neural|google us|samantha|aria|jenny/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]us/i.test(v.lang); })[0] || vs[0] || null;
+    },
+    say: function (text) {
+      if (!window.speechSynthesis || !text) return;
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text).replace(/_{2,}/g, ' blank ')); u.lang = 'en-US'; u.rate = 0.92;
+      var v = VOICE.pick(); if (v) u.voice = v;
+      MUSIC.duck(true); u.onend = u.onerror = function () { MUSIC.duck(false); };
+      speechSynthesis.speak(u);
+    },
+    btn: function (text) { return window.speechSynthesis ? '<button class="sg-say" data-say="' + esc(text) + '" aria-label="Listen">🔊</button>' : ''; }
+  };
+  var MODES = { 1: [0, 2, 4, 7, 9], 2: [0, 1, 4, 5, 7], 3: [0, 2, 3, 7, 9], 4: [0, 2, 3, 7, 10], 5: [0, 1, 4, 7, 8], 6: [0, 2, 3, 7, 8] };
+  var ROOTS = { 1: 57, 2: 55, 3: 52, 4: 53, 5: 50, 6: 52 };
+  var MUSIC = {
+    ctx: null, on: true, t: null, step: 0, fast: false,
+    pref: function () { try { return localStorage.getItem('sawaMusic') !== '0'; } catch (e) { return true; } },
+    start: function () {
+      MUSIC.on = MUSIC.pref(); if (!MUSIC.on || MUSIC.ctx) return;
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      var c = MUSIC.ctx = new AC(); MUSIC.master = c.createGain(); MUSIC.master.gain.value = 0;
+      // a soft room: a generated reverb tail
+      var len = c.sampleRate * 2.6, ir = c.createBuffer(2, len, c.sampleRate);
+      for (var ch = 0; ch < 2; ch++) { var d = ir.getChannelData(ch); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+      var rev = c.createConvolver(); rev.buffer = ir; var wet = c.createGain(); wet.gain.value = 0.55;
+      MUSIC.bus = c.createBiquadFilter(); MUSIC.bus.type = 'lowpass'; MUSIC.bus.frequency.value = 2400;
+      MUSIC.bus.connect(MUSIC.master); MUSIC.bus.connect(rev); rev.connect(wet); wet.connect(MUSIC.master); MUSIC.master.connect(c.destination);
+      MUSIC.master.gain.linearRampToValueAtTime(0.07, c.currentTime + 3);
+      MUSIC.loop();
+    },
+    hz: function (m) { return 440 * Math.pow(2, (m - 69) / 12); },
+    note: function (midi, when, dur, type, vol) {
+      var c = MUSIC.ctx, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = MUSIC.hz(midi);
+      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(vol, when + Math.min(0.9, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.0008, when + dur);
+      o.connect(g); g.connect(MUSIC.bus); o.start(when); o.stop(when + dur + 0.1);
+    },
+    loop: function () {
+      var c = MUSIC.ctx; if (!c) return;
+      var t = H && H.world ? H.world().at : 1, mode = MODES[t] || MODES[1], root = ROOTS[t] || 57, now = c.currentTime + 0.05, beat = MUSIC.fast ? 0.42 : 0.75;
+      if (MUSIC.step % 16 === 0) { var deg = [0, 3, 2, 4][(MUSIC.step / 16) % 4]; [0, 2, 4].forEach(function (k) { var s = mode[(deg + k) % 5] + ((deg + k) >= 5 ? 12 : 0); MUSIC.note(root - 12 + s, now, beat * 16, 'sine', 0.05); MUSIC.note(root + s, now + 0.02, beat * 16, 'triangle', 0.018); }); }
+      if (Math.random() < (MUSIC.fast ? 0.55 : 0.32)) { var n = mode[Math.floor(Math.random() * 5)] + (Math.random() < 0.3 ? 12 : 0); MUSIC.note(root + 12 + n, now, beat * 3, 'triangle', 0.035); }
+      MUSIC.step++;
+      MUSIC.t = setTimeout(MUSIC.loop, beat * 1000);
+    },
+    battle: function (on) { MUSIC.fast = on; },
+    duck: function (on) { if (MUSIC.ctx) MUSIC.master.gain.linearRampToValueAtTime(on ? 0.015 : 0.07, MUSIC.ctx.currentTime + 0.3); },
+    toggle: function () {
+      MUSIC.on = !MUSIC.ctx; try { localStorage.setItem('sawaMusic', MUSIC.on ? '1' : '0'); } catch (e) { /* private mode */ }
+      if (MUSIC.on) MUSIC.start(); else MUSIC.stop();
+      say(MUSIC.on ? '🎵 Music on' : '🔇 Music off'); hud();
+    },
+    stop: function () { clearTimeout(MUSIC.t); if (MUSIC.ctx) { var c = MUSIC.ctx; MUSIC.ctx = null; try { c.close(); } catch (e) { /* closed */ } } }
+  };
+
+  /* ================================================================ Language Lens inside the game: tap any English word */
+  function wrapWords(text, sentence) {
+    return '<span class="lws" data-s="' + esc(sentence || text) + '">' + esc(text).replace(/[A-Za-z]+(?:['’][A-Za-z]+)?/g, function (w) { return '<span class="lw">' + w + '</span>'; }) + '</span>';
+  }
+  var LENS = {
+    word: function (span) {
+      var L = H.lens; if (!L) return;
+      var word = span.textContent, holder = span.closest('[data-s]'), sentence = holder ? holder.dataset.s : word;
+      ROOT.querySelectorAll('.lw.on').forEach(function (x) { x.classList.remove('on'); }); span.classList.add('on');
+      var box = $('.sg-word'); box.classList.add('on'); box.innerHTML = '<div class="sg-wbox"><p class="sg-wait">…</p></div>';
+      L.lex().then(function () {
+        var lemma = L.lemmaOf(word), ms = L.meanings(lemma), town = H.world().town;
+        box.innerHTML = '<div class="sg-wbox"><div class="sg-wh"><b>' + esc(lemma) + '</b><button class="sg-x" data-w="x" aria-label="Close">✕</button></div>'
+          + (ms.length ? ms.slice(0, 2).map(function (m) { return '<div class="sg-wm"><small>' + esc(m.pos) + (m.level ? ' · ' + esc(m.level) : '') + '</small><p class="ar" dir="rtl">' + esc(m.ar) + '</p>' + (m.en ? '<p class="en">' + esc(m.en) + '</p>' : '') + '</div>'; }).join('') : '<p class="en">Not in the dictionary yet.</p>')
+          + '<div class="sg-wai"></div><p class="sg-wctx">“' + esc(sentence.slice(0, 160)) + '”</p>'
+          + '<div class="sg-opts"><button class="pri" data-w="learn">+ Learning</button><button data-w="ai">' + (ms.length ? 'Meaning here (AI)' : 'Explain (AI)') + '</button></div></div>';
+        box.querySelector('[data-w="x"]').onclick = LENS.close;
+        box.querySelector('[data-w="learn"]').onclick = function () { var b = this; b.disabled = true; L.api('library/word', { body: { lemma: lemma, status: 'learning', sentence: sentence, title: 'Silk Road · ' + town.name } }).then(function () { b.textContent = '✓ In your review cards'; say('“' + lemma + '” is now a review card — it may attack you later!'); }, function (x) { b.disabled = false; say(x.message); }); };
+        box.querySelector('[data-w="ai"]').onclick = function () { var b = this, out = box.querySelector('.sg-wai'); b.disabled = true; b.textContent = 'Explaining…'; L.api('library/explain', { body: { word: word, sentence: sentence } }).then(function (x) { b.remove(); out.innerHTML = '<p class="ar" dir="rtl">' + esc(x.meaning) + '</p>' + (x.note ? '<p class="ar small" dir="rtl">' + esc(x.note) + '</p>' : ''); }, function (x) { b.disabled = false; b.textContent = 'Try again'; say(x.message); }); };
+      });
+    },
+    close: function () { var b = $('.sg-word'); if (b) { b.classList.remove('on'); b.innerHTML = ''; } if (ROOT) ROOT.querySelectorAll('.lw.on').forEach(function (x) { x.classList.remove('on'); }); }
+  };
+
+  /* ================================================================ panels inside the game (chat, review cards, today's plan) */
+  function panel(cls, title, html) {
+    var p = $('.sg-panel'); p.className = 'sg-panel on ' + cls;
+    p.innerHTML = '<div class="sg-pbox"><div class="sg-ph"><b>' + title + '</b><button class="sg-x" data-p="x" aria-label="Close">✕</button></div><div class="sg-pb">' + html + '</div></div>';
+    p.querySelector('[data-p="x"]').onclick = closePanel;
+    var w = G.phaser && G.phaser.scene.getScene('World'); if (w) w.frozen = true;
+    return p.querySelector('.sg-pb');
+  }
+  function closePanel() {
+    var p = $('.sg-panel'); if (p) { p.className = 'sg-panel'; p.innerHTML = ''; }
+    clearTimeout(CHAT.t); CHAT.open = false; LENS.close();
+    var w = G.phaser && G.phaser.scene.getScene('World'); if (w) { w.frozen = false; w.cool = w.time.now + 800; }
+    if (H) H.refreshWorld().then(function () { hud(); }, function () {});
+  }
+
+  /* -------- chat: town and party, never leaving the world; Arabic or Franco-Arabic goes through translation */
+  var CHAT = { room: 0, rooms: [], msgs: [], t: null, open: false };
+  CHAT.show = function (roomId) {
+    var w = H.world(); CHAT.open = true;
+    CHAT.rooms = [{ id: w.town.room, name: w.town.icon + ' ' + w.town.name }];
+    var go = function () {
+      CHAT.room = roomId || CHAT.room && CHAT.rooms.some(function (r) { return r.id === CHAT.room; }) && CHAT.room || CHAT.rooms[0].id;
+      var b = panel('sg-chatp', '💬 Chat', '<div class="sg-tabs">' + CHAT.rooms.map(function (r) { return '<button data-room="' + r.id + '"' + (r.id === CHAT.room ? ' class="on"' : '') + '>' + esc(r.name) + '</button>'; }).join('') + '</div><div class="sg-msgs"><p class="sg-wait">…</p></div><div class="sg-tr"></div><div class="sg-send"><input maxlength="500" placeholder="Write in English — or in Arabic to get help" dir="auto"><button class="pri">Send</button></div>');
+      b.querySelectorAll('[data-room]').forEach(function (x) { x.onclick = function () { CHAT.show(+x.dataset.room); }; });
+      var inp = b.querySelector('.sg-send input');
+      inp.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') CHAT.send(); };
+      b.querySelector('.sg-send button').onclick = CHAT.send;
+      CHAT.msgs = []; CHAT.load();
+    };
+    if (w.party) H.api('/party').then(function (j) { if (j.party) CHAT.rooms.push({ id: j.party.room, name: '⚔ ' + j.party.name }); go(); }, go); else go();
+  };
+  CHAT.load = function () {
+    if (!CHAT.open) return;
+    var after = CHAT.msgs.length ? CHAT.msgs[CHAT.msgs.length - 1].id : 0, room = CHAT.room;
+    H.api('/chat/rooms/' + room + '/messages', after ? { query: { after: after } } : {}).then(function (j) {
+      if (!CHAT.open || room !== CHAT.room) return;
+      if (j.messages.length || !after) { CHAT.msgs = after ? CHAT.msgs.concat(j.messages) : j.messages; CHAT.paint(); }
+      clearTimeout(CHAT.t); CHAT.t = setTimeout(CHAT.load, 4000);
+    }, function () { clearTimeout(CHAT.t); CHAT.t = setTimeout(CHAT.load, 8000); });
+  };
+  CHAT.paint = function () {
+    var box = $('.sg-msgs'); if (!box) return; var me = H.me().id;
+    box.innerHTML = CHAT.msgs.length ? CHAT.msgs.slice(-40).map(function (m) {
+      var mine = m.who && m.who.id === me, txt = m.gone ? '<i>removed</i>' : m.body ? wrapWords(m.body) : m.audio ? '🎤 voice message' + (m.transcript ? ': ' + wrapWords(m.transcript) : '') : m.kind === 'gif' ? 'GIF' : m.kind === 'sticker' ? 'Sticker' : '';
+      return '<div class="sg-m' + (mine ? ' me' : '') + '"><b>' + esc(m.who ? m.who.name.split(' ')[0] : '') + '</b><p>' + txt + (m.translated ? ' <small>🌐 translated</small>' : '') + '</p></div>';
+    }).join('') : '<p class="sg-empty">No messages yet. Say hello in English!</p>';
+    box.scrollTop = box.scrollHeight;
+  };
+  CHAT.send = function () {
+    var inp = $('.sg-send input'); if (!inp) return; var v = inp.value.trim(); if (!v) return;
+    if (H.needsTr(v)) return CHAT.translate(v);
+    CHAT.post({ body: v }, inp);
+  };
+  CHAT.post = function (body, inp) {
+    var after = CHAT.msgs.length ? CHAT.msgs[CHAT.msgs.length - 1].id : 0, room = CHAT.room;
+    H.api('/chat/rooms/' + room + '/messages', { method: 'POST', body: body, query: { after: after } }).then(function (j) {
+      if (inp) inp.value = ''; var tr = $('.sg-tr'); if (tr) tr.innerHTML = '';
+      CHAT.msgs = CHAT.msgs.concat(j.messages || []); CHAT.paint();
+      var w = G.phaser.scene.getScene('World'); if (w && room === H.world().town.room) w.bubble = { text: body.body, until: Date.now() + 7000 };
+      if (j.xp) say('+' + (j.xp.gained || j.xp) + ' XP for writing in English');
+    }, function (x) { say(x.message, 4500); });
+  };
+  CHAT.translate = function (text) {
+    var tr = $('.sg-tr'); tr.innerHTML = '<p class="sg-wait">Translating…</p>';
+    H.api('/chat/translate', { method: 'POST', body: { text: text } }).then(function (j) {
+      tr.innerHTML = '<p class="small">Your message in English — check it, change it if you like, then send:</p><textarea rows="2" dir="ltr" maxlength="1000">' + esc(j.english) + '</textarea>'
+        + (j.phrases && j.phrases.length ? '<p class="small">Learn from it: ' + j.phrases.map(function (p) { return '<b>' + esc(p.en) + '</b> <span dir="rtl">' + esc(p.ar) + '</span>'; }).join(' · ') + '</p>' : '')
+        + '<div class="sg-opts"><button class="pri" data-t="send">Send in English</button><button data-t="x">Edit again</button></div>';
+      var ta = tr.querySelector('textarea'); ta.onkeydown = function (e) { e.stopPropagation(); };
+      tr.querySelector('[data-t="x"]').onclick = function () { tr.innerHTML = ''; };
+      tr.querySelector('[data-t="send"]').onclick = function () { var en = ta.value.trim(); if (!en) return; if (H.needsTr(en) && !H.isAdmin()) return say('Send it in English — change the Arabic words.'); CHAT.post({ body: en, orig: text }, $('.sg-send input')); };
+    }, function (x) { tr.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+
+  /* -------- review cards (the same cards as the Review tab), done at the inn or anywhere */
+  var REV = { q: [], i: 0, done: 0 };
+  REV.show = function () {
+    if (!H.lens) return H.go('review');
+    var b = panel('sg-revp', '🃏 Review cards', '<p class="sg-wait">Loading your cards…</p>');
+    Promise.all([H.lens.api('review'), H.lens.lex()]).then(function (r) { REV.q = r[0].cards; REV.done = 0; REV.stats = r[0].stats; REV.card(); }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+  REV.front = function (c) {
+    if (c.type === 'word') return '<small>Word · what does it mean?</small><p class="sg-cw">' + esc(c.lemma) + '</p>' + (c.text ? '<p class="sg-cs">“' + wrapWords(c.text) + '”</p>' : '') + (c.title ? '<small>from ' + esc(c.title) + '</small>' : '');
+    if (c.type === 'mistake') return '<small>Your mistake · fix it in your head</small><p class="sg-cs">' + wrapWords(c.sentence) + '</p>';
+    return '<small>' + (c.type === 'phrase' ? 'Phrase' : 'Sentence') + ' · do you understand it?</small>' + (c.focus ? '<p class="sg-cw">' + esc(c.focus) + '</p>' : '') + '<p class="sg-cs">' + wrapWords(c.text || '') + '</p>';
+  };
+  REV.back = function (c) {
+    if (c.type === 'word') { var ms = H.lens.meanings(c.lemma); return ms.length ? ms.slice(0, 3).map(function (m) { return '<div class="sg-wm"><small>' + esc(m.pos) + (m.level ? ' · ' + esc(m.level) : '') + '</small><p class="ar" dir="rtl">' + esc(m.ar) + '</p>' + (m.en ? '<p class="en">' + esc(m.en) + '</p>' : '') + '</div>'; }).join('') : '<p class="en">Not in the dictionary — tap the word in the sentence for help.</p>'; }
+    if (c.type === 'mistake') return '<p class="sg-cs ok">✓ ' + wrapWords(c.fixed) + '</p>' + (c.why ? '<p class="en">' + esc(c.why) + '</p>' : '') + (c.why_ar ? '<p class="ar" dir="rtl">' + esc(c.why_ar) + '</p>' : '');
+    return c.ar ? '<p class="ar" dir="rtl">' + esc(c.ar) + '</p>' : '<button data-r="ar">Show the Arabic translation</button><p class="ar" dir="rtl" data-r="arout"></p>';
+  };
+  REV.card = function () {
+    var b = $('.sg-revp .sg-pb'); if (!b) return;
+    var c = REV.q[0];
+    if (!c) {
+      b.innerHTML = '<div class="sg-card"><p class="sg-cw">' + (REV.done ? '✓ ' + REV.done + ' card' + (REV.done > 1 ? 's' : '') + ' done' : 'No cards due right now') + '</p><p class="en">' + (REV.done ? 'Well done, traveller. Your plan step counts, and the words you review are the ones monsters attack with.' : 'Save new words — tap any word in the game and press “+ Learning”.') + '</p><div class="sg-opts"><button class="pri" data-p="x">Back to the road</button></div></div>';
+      b.querySelector('[data-p="x"]').onclick = closePanel; return;
+    }
+    b.innerHTML = '<p class="small">' + REV.q.length + ' left · ' + REV.done + ' done</p><div class="sg-card">' + REV.front(c) + '<div class="sg-back"></div></div><div class="sg-opts sg-ra"><button class="pri" data-r="flip">Show answer</button></div>';
+    b.querySelector('[data-r="flip"]').onclick = function () {
+      var bk = b.querySelector('.sg-back'); bk.innerHTML = '<hr>' + REV.back(c);
+      var ar = bk.querySelector('[data-r="ar"]'); if (ar) ar.onclick = function () { ar.disabled = true; H.lens.api('library/translate', { body: { uuid: c.uuid } }).then(function (j) { ar.remove(); bk.querySelector('[data-r="arout"]').textContent = j.ar; }, function (x) { say(x.message); ar.disabled = false; }); };
+      var nx = c.next || ['again', '', '', ''];
+      b.querySelector('.sg-ra').innerHTML = [['Again', 1], ['Hard', 2], ['Good', 3], ['Easy', 4]].map(function (g, k) { return '<button data-g2="' + g[1] + '"' + (g[1] === 3 ? ' class="pri"' : '') + '>' + g[0] + (nx[k] && nx[k] !== 'again' ? '<small> ' + esc(nx[k]) + '</small>' : '') + '</button>'; }).join('');
+      b.querySelectorAll('[data-g2]').forEach(function (gb) { gb.onclick = function () { b.querySelectorAll('[data-g2]').forEach(function (x) { x.disabled = true; }); H.lens.api('review', { body: { key: c.key, grade: +gb.dataset.g2 } }).then(function (j) { REV.q.shift(); if (+gb.dataset.g2 === 1) REV.q.push(c); else REV.done++; if (j.known) say('🎉 “' + c.lemma + '” is now a known word!'); REV.card(); }, function (x) { say(x.message); b.querySelectorAll('[data-g2]').forEach(function (x2) { x2.disabled = false; }); }); }; });
+    };
+  };
+
+  /* -------- today's plan (the same plan as the Today tab) */
+  var TODAY = {};
+  TODAY.show = function () {
+    if (!H.lens) return H.go('today');
+    var b = panel('sg-todayp', '📅 Today\'s plan', '<p class="sg-wait">…</p>');
+    H.lens.api('today').then(function (d) {
+      var inGame = { review: 1, use: 1, log: 1 };
+      b.innerHTML = '<p class="small">Every step gives you one more fight today' + (d.perfect ? ' — and you had a perfect day! 🌟' : '.') + '</p><ul class="sg-plan">' + d.items.map(function (it) {
+        return '<li class="' + (it.done ? 'done' : '') + '"><span>' + (it.done ? '✓' : '○') + '</span><div><b>' + esc(it.t) + '</b><small>' + esc(it.sub || '') + '</small></div>' + (it.done ? '' : '<button data-go="' + esc(it.k) + '"' + (inGame[it.k] ? ' class="pri"' : '') + '>' + (inGame[it.k] ? 'Do it here' : 'Go') + '</button>') + '</li>';
+      }).join('') + '</ul>';
+      b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(k === 'collect' ? 'scan' : k); }; });
+    }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+
   /* ================================================================ start / stop */
   window.SawaGame = {
     running: function () { return running; },
@@ -771,9 +983,13 @@
       if (running) return Promise.resolve();
       H = hooks; running = true;
       ROOT = el('div', 'sg-root');
-      ROOT.innerHTML = '<div class="sg-cv"></div><canvas class="sg-dark"></canvas><div class="sg-labels"></div><div class="sg-top"></div><div class="sg-online"></div><div class="sg-menu"></div><div class="sg-hint"></div><div class="sg-joy"><i></i></div><button class="sg-act"></button><div class="sg-battle"></div><div class="sg-dlg"></div><div class="sg-load"><p>Loading the Silk Road…</p></div>';
+      ROOT.innerHTML = '<div class="sg-cv"></div><canvas class="sg-dark"></canvas><div class="sg-labels"></div><div class="sg-top"></div><div class="sg-online"></div><div class="sg-menu"></div><div class="sg-hint"></div><div class="sg-joy"><i></i></div><button class="sg-act"></button><div class="sg-battle"></div><div class="sg-dlg"></div><div class="sg-panel"></div><div class="sg-word"></div><div class="sg-load"><p>Loading the Silk Road…</p></div>';
       mount.appendChild(ROOT);
-      ROOT.addEventListener('click', function (e) { var b = e.target.closest('[data-g]'); if (b) GAME.menu(b.dataset.g); });
+      ROOT.addEventListener('click', function (e) {
+        var w = e.target.closest('.lw'); if (w) { e.stopPropagation(); return LENS.word(w); }
+        var sp = e.target.closest('[data-say]'); if (sp) { e.stopPropagation(); return VOICE.say(sp.dataset.say); }
+        var b = e.target.closest('[data-g]'); if (b) GAME.menu(b.dataset.g);
+      }, true);
       ROOT.querySelector('.sg-act').onclick = function () { var w = G && G.phaser.scene.getScene('World'); if (w) w.interact(); };
       G = GAME;
       G.keys = function (e) { if (!running) return; if (G.keyPick && /^[1-4]$/.test(e.key)) { G.keyPick(+e.key - 1); e.preventDefault(); } else if (G.keyPick && e.key === 'Enter' && $('.sg-res')) G.keyPick(); };
@@ -783,11 +999,14 @@
         GAME.phaser = new P.Game({ type: P.AUTO, parent: cv, pixelArt: true, roundPixels: true, backgroundColor: '#1e1620', scale: { mode: P.Scale.RESIZE, width: cv.clientWidth || 800, height: cv.clientHeight || 600 }, physics: { default: 'arcade', arcade: { debug: false } }, input: { keyboard: { target: window } }, scene: makeScenes(P), banner: false, audio: { noAudio: true } });
         var restored = function () { clearTimeout(GAME.rt); GAME.rt = setTimeout(rebuild, 80); };
         GAME.phaser.events.on('contextrestored', restored);
+        MUSIC.start();
         GAME.phaser.events.once('ready', function () { if (GAME.phaser.renderer && GAME.phaser.renderer.on) GAME.phaser.renderer.on('restorewebgl', restored); var l = ROOT.querySelector('.sg-load'); if (l) l.remove(); hud(); if (!H.avatar().look.set) setTimeout(function () { GAME.look(true); }, 400); });
       }, function (x) { ROOT.querySelector('.sg-load').innerHTML = '<p>' + esc(x.message) + '</p><button data-g="list">Use the list view</button>'; });
     },
     stop: function (back, mode) {
-      if (!running) return; running = false;
+      if (!running) return;
+      try { var w0 = GAME.phaser && GAME.phaser.scene.getScene('World'); if (w0 && w0.pl) H.api('/play/sync', { method: 'POST', body: { x: Math.round(w0.pl.x), y: Math.round(w0.pl.y), d: w0.pl.dir } }).catch(function () {}); } catch (e) { /* leaving anyway */ }
+      running = false; closePanel(); MUSIC.stop(); if (window.speechSynthesis) speechSynthesis.cancel();
       window.removeEventListener('keydown', G.keys);
       try { if (GAME.phaser) GAME.phaser.destroy(true); } catch (e) { /* already gone */ }
       if (ROOT) ROOT.remove(); ROOT = null; GAME.phaser = null;

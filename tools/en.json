@@ -482,7 +482,9 @@
   " حاربوا وكل واحد خد +3 🪙": " fought and each got +9 🪙",
   " 🪙 ومعاك ": " 🪙 and you have ",
   " 🪙</span><span class=\"pill\">بتستريح ": " 🪙</span><span class=\"pill\">Rests ",
-  "(+2 🪙 على نشاطك الجاي)": "(+6 🪙 on your next activity)"
+  "(+2 🪙 على نشاطك الجاي)": "(+6 🪙 on your next activity)",
+  "<div class=\"tr-btns\"><button class=\"btn ghost sm-btn\" data-act=\"tr-cancel\">ارجع عدّل</button>": "<div class=\"tr-btns\"><button class=\"btn ghost sm-btn\" data-act=\"tr-cancel\">Go back and edit</button>",
+  "<button class=\"btn primary sm-btn\" data-act=\"tr-send\">ابعتها بالإنجليزي</button></div>": "<button class=\"btn primary sm-btn\" data-act=\"tr-send\">Send it in English</button></div>"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

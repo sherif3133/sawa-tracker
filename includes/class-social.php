@@ -434,6 +434,22 @@ final class Sawa_Tracker_Social {
 		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::t( 'messages' ) . ' WHERE id = %d', $id ), ARRAY_A ); // phpcs:ignore
 	}
 
+	/** Franco-Arabic: Arabic written with English letters and numbers ("ana 3ayez aroo7"). */
+	public static function franco( $text ) {
+		static $words = null;
+		if ( null === $words ) {
+			$words = array_flip( explode( ' ', 'ana enta enty inta inti ente ehna e7na howa hwa heya hya homa 3ayez 3ayz 3awz 3awez 3ayza 3awza msh mesh mish mush ezay ezayak ezayek izzay izay keda kda kedda leh leih lih feen fein fen ahe aho ahy ahoh yalla yala yallah khalas 5alas 5las tayeb tayyeb tyb awy awi 2awy 2awi kteer ktir ketir wallahi wallah walahy walla inshallah insha2allah habibi 7abibi habibti mafeesh mafish mafesh delwa2ty dlwa2ty delwa2ti delwaqti dlw2ty bokra bokhra embare7 emba re7 ba2a ba2ah bardo kaman kman lessa lissa 3shan 3ashan alashan 3alashan 3la 3ala ma3a m3a ma3ak ma3aya ya3ni yaani ya3ny yani tamam mashy mashi ma3lesh maalesh ma3lsh shokran shukran sho2ran a7san ahsan gamed gamda gameel 7elw helw 7lw ra7 roo7 aroo7 bta3 bta3y bta3ak beta3 ezayko 3amel 3amla 3amlen 3amlo eih izayak sabah masa2 lazem lazm momken mmkn' ) );
+		}
+		preg_match_all( "/[a-z0-9']+/", strtolower( (string) $text ), $m );
+		$hits  = 0;
+		$mixed = 0;
+		foreach ( $m[0] as $w ) {
+			$hits  += isset( $words[ $w ] ) ? 1 : 0;
+			$mixed += preg_match( '/[a-z][2356789]|[2356789][a-z]/', $w ) && ! preg_match( '/^[0-9]+(st|nd|rd|th|s|am|pm|k|m)$/', $w ) ? 1 : 0;
+		}
+		return $mixed > 0 || $hits >= 2 || ( $hits >= 1 && count( $m[0] ) <= 3 );
+	}
+
 	/** Share of letters in Arabic script (0–1). */
 	public static function arabic_share( $text ) {
 		$ar  = preg_match_all( '/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{FB50}-\x{FDFF}\x{FE70}-\x{FEFF}]/u', (string) $text );
@@ -551,8 +567,8 @@ final class Sawa_Tracker_Social {
 			return new WP_Error( 'muted', sprintf( 'تقدر تقرا الشات بس مش هتقدر تبعت لحد %s.', wp_date( 'M j', strtotime( $muted . ' 12:00' ) ) ) );
 		}
 		$body = trim( mb_substr( sanitize_textarea_field( $body ), 0, 1000 ) );
-		// The chat is English only: Arabic is written in the translate box and sent as English.
-		if ( ! $is_admin && self::arabic_share( $body ) > 0.3 ) {
+		// The chat is English only: Arabic (and Franco-Arabic) is written in the translate box and sent as English.
+		if ( ! $is_admin && ( self::arabic_share( $body ) > 0 || ( '' === trim( (string) $orig ) && self::franco( $body ) ) ) ) {
 			return new WP_Error( 'arabic', 'الشات بالإنجليزي بس. اكتب بالعربي ودوس إرسال، وهنترجمها لك بالإنجليزي قبل ما تتبعت.' );
 		}
 		$orig = '' !== $body ? trim( mb_substr( sanitize_textarea_field( (string) $orig ), 0, 1000 ) ) : '';

@@ -232,10 +232,17 @@ final class Sawa_Tracker_World {
 			'job'      => $rpg['job'],
 			'titles'   => array_values( (array) $w['titles'] ),
 			'avatar'   => Sawa_Tracker_Play::avatar( $uid ),
+			'pos'      => self::last_pos( $uid, $t ),
 			'words'    => (int) apply_filters( 'sawa_tracker_word_count', 0, $uid ),
 			'party'    => Sawa_Tracker_Party::of( $uid ),
 			'ready'    => (bool) apply_filters( 'sawa_tracker_battle_ready', false ),
 		);
+	}
+
+	/** Where the student last stood in this town (the game puts them back there). */
+	public static function last_pos( $uid, $t ) {
+		$p = Sawa_Tracker_Game::m( $uid, 'wpos', array() );
+		return is_array( $p ) && (int) ( $p['t'] ?? 0 ) === (int) $t && $p['x'] > 0 ? array( 'x' => (int) $p['x'], 'y' => (int) $p['y'], 'd' => (int) $p['d'] ) : null;
 	}
 
 	public static function monster_hp( $t ) {

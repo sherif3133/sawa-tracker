@@ -523,6 +523,9 @@
           room: function (id) { window.SawaGame.stop(false); S.view = 'chat'; C.pending = +id; renderView(); loadRooms(); },
           raid: function (id) { raidBattle(id); }, wanted: function () { srWanted(null); },
           refreshParty: function () { api('/party').then(function (j) { W.party = j; }, function () {}); },
+          refreshWorld: function () { return api('/world').then(function (x) { W.data = x; return x; }); },
+          lens: window.SawaLens || null, needsTr: needsTranslation, isAdmin: function () { return !!C.admin || !!S.data.isAdmin; },
+          log: function () { openLogActivity(); },
           exit: function (mode) { S.view = 'community'; if (mode === 'list') openWorld('map'); else renderView(); }
         });
       }, function (x) { toast(x.message, 'bad'); });
@@ -1266,7 +1269,7 @@
     var ta = $('#m-body');
     if (ta) {
       ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMsg(); } });
-      ta.addEventListener('input', function () { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; var h = $('#ar-hint'); if (h) h.hidden = !(C.ai.translate && !C.admin && isArabic(ta.value)); });
+      ta.addEventListener('input', function () { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; var h = $('#ar-hint'); if (h) h.hidden = !(C.ai.translate && needsTranslation(ta.value)); });
       $('#f-msg').addEventListener('submit', function (e) { e.preventDefault(); sendMsg(); });
     }
     if (C.msgs.length && C.msgs.roomId === r.id) paintMessages(); else loadMsgs();
@@ -1292,7 +1295,7 @@
     var ta = $('#m-body'), r = C.room; if (!r) return;
     var body = extra ? '' : ta ? ta.value.trim() : '';
     if (!body && !form && !extra) return;
-    if (!form && !extra && !C.admin && isArabic(body)) { if (C.ai.translate) translateFlow(body); else toast('الشات بالإنجليزي بس.', 'bad'); return; }
+    if (!form && !extra && needsTranslation(body)) { if (C.ai.translate) translateFlow(body); else if (!C.admin) toast('الشات بالإنجليزي بس.', 'bad'); if (C.ai.translate || !C.admin) return; }
     var last = C.msgs.length ? C.msgs[C.msgs.length - 1].id : 0;
     var rt = C.replyTo ? C.replyTo.id : 0;
     if (form && rt) form.append('reply_to', rt);
@@ -1373,6 +1376,14 @@
     li.insertAdjacentHTML('beforeend', '<div class="react-pick">' + C.reactList.map(function (e) { return '<button data-act="msg-react" data-id="' + id + '" data-e="' + e + '">' + e + '</button>'; }).join('') + '</div>');
   }
   /** More than 30% of the letters are Arabic script. */
+  /** Arabic that needs translating: Arabic letters, or Franco-Arabic written with English letters ("ana 3ayez aroo7"). */
+  var FRANCO = "ana enta enty inta inti ente ehna e7na howa hwa heya hya homa 3ayez 3ayz 3awz 3awez 3ayza 3awza msh mesh mish mush ezay ezayak ezayek izzay izay keda kda kedda leh leih lih feen fein fen ahe aho ahy ahoh yalla yala yallah khalas 5alas 5las tayeb tayyeb tyb awy awi 2awy 2awi kteer ktir ketir wallahi wallah walahy walla inshallah insha2allah habibi 7abibi habibti mafeesh mafish mafesh delwa2ty dlwa2ty delwa2ti delwaqti dlw2ty bokra bokhra embare7 emba re7 ba2a ba2ah bardo kaman kman lessa lissa 3shan 3ashan alashan 3alashan 3la 3ala ma3a m3a ma3ak ma3aya ya3ni yaani ya3ny yani tamam mashy mashi ma3lesh maalesh ma3lsh shokran shukran sho2ran a7san ahsan gamed gamda gameel 7elw helw 7lw ra7 roo7 aroo7 bta3 bta3y bta3ak beta3 ezayko 3amel 3amla 3amlen 3amlo eih izayak sabah masa2 lazem lazm momken mmkn".split(' ').reduce(function (o, w) { o[w] = 1; return o; }, {});
+  function francoArabic(t) {
+    var words = String(t).toLowerCase().match(/[a-z0-9']+/g) || [], hits = 0, mixed = 0;
+    words.forEach(function (w) { if (FRANCO[w]) hits++; if (/[a-z][2356789]|[2356789][a-z]/.test(w) && !/^[0-9]+(st|nd|rd|th|s|am|pm|k|m)$/.test(w)) mixed++; });
+    return mixed > 0 || hits >= 2 || (hits >= 1 && words.length <= 3);
+  }
+  function needsTranslation(t) { return /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/.test(String(t)) || francoArabic(t); }
   function isArabic(t) {
     var ar = (String(t).match(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
     var all = (String(t).match(/\p{L}/gu) || []).length;
@@ -1389,7 +1400,7 @@
         + '<p class="tr-orig" dir="auto">' + esc(text) + '</p>'
         + '<textarea id="tr-en" rows="2" dir="ltr" maxlength="1000">' + esc(j.english) + '</textarea>'
         + (j.phrases && j.phrases.length ? '<div class="tr-ph"><span class="small muted">اتعلم من رسالتك:</span>' + j.phrases.map(function (x) { return '<span class="tr-chip"><b dir="ltr">' + esc(x.en) + '</b> ' + esc(x.ar) + '</span>'; }).join('') + '</div>' : '')
-        + '<div class="tr-btns"><button class="btn ghost sm-btn" data-act="tr-cancel">ارجع عدّل</button><button class="btn primary sm-btn" data-act="tr-send">ابعتها بالإنجليزي</button></div>';
+        + '<div class="tr-btns"><button class="btn ghost sm-btn" data-act="tr-cancel">ارجع عدّل</button>' + (C.admin ? '<button class="btn ghost sm-btn" data-act="tr-raw">Send as written (admin)</button>' : '') + '<button class="btn primary sm-btn" data-act="tr-send">ابعتها بالإنجليزي</button></div>';
       C.trOrig = text;
       var en = $('#tr-en'); if (en) en.focus();
     }, function (x) { p.hidden = true; toast(x.message, 'bad'); });
@@ -1649,12 +1660,13 @@
       case 'tr-send':
         var en2 = $('#tr-en'), eng = en2 ? en2.value.trim() : '';
         if (!eng) break;
-        if (isArabic(eng)) { toast('الرسالة لازم تتبعت بالإنجليزي.', 'bad'); break; }
+        if (needsTranslation(eng) && !C.admin) { toast('الرسالة لازم تتبعت بالإنجليزي.', 'bad'); break; }
         var mb2 = $('#m-body'); if (mb2) { mb2.value = ''; mb2.style.height = 'auto'; }
         var tp2 = $('#tr-panel'); if (tp2) { tp2.hidden = true; tp2.innerHTML = ''; }
         var ah = $('#ar-hint'); if (ah) ah.hidden = true;
         sendMsg(null, { body: eng, orig: C.trOrig || '' }); C.trOrig = '';
         break;
+      case 'tr-raw': var raw = C.trOrig || ''; var tpr = $('#tr-panel'); if (tpr) { tpr.hidden = true; tpr.innerHTML = ''; } var mbr = $('#m-body'); if (mbr) { mbr.value = ''; mbr.style.height = 'auto'; } if (raw) sendMsg(null, { body: raw }); C.trOrig = ''; break;
       case 'show-orig': C.showOrig = C.showOrig === +el.dataset.id ? 0 : +el.dataset.id; paintMessages(true); break;
       case 'msg-reply': C.replyTo = msgById(+el.dataset.id) || null; paintReplyBar(); var mb = $('#m-body'); if (mb) mb.focus(); break;
       case 'reply-cancel': C.replyTo = null; paintReplyBar(); break;
