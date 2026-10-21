@@ -295,16 +295,8 @@ final class Sawa_Tracker_Raids {
 			$fb[]   = array( 'ok' => $ok, 'answer' => (int) $a, 'q' => $b['qs'][ $i ]['q'], 'right' => $b['qs'][ $i ]['options'][ $a ] ?? '' );
 		}
 		$target = (int) $b['target'];
-		$wrong  = count( $b['answers'] ) - $right;
-		$eff    = $right + ( $wrong > 0 && Sawa_Tracker_RPG::skill_on( $uid, 'second_wind' ) ? 1 : 0 );
-		$streak = 0;
-		$best   = 0;
-		foreach ( $fb as $x ) {
-			$streak = $x['ok'] ? $streak + 1 : 0;
-			$best   = max( $best, $streak );
-		}
-		$rpg    = Sawa_Tracker_RPG::get( $uid );
-		$attack = (int) round( ( $eff * 20 + ( 'warrior' === Sawa_Tracker_Game::m( $uid, 'class' ) ? 10 : 0 ) + ( $best >= 3 && Sawa_Tracker_RPG::skill_on( $uid, 'critical' ) ? 15 : 0 ) ) * ( 1 + Sawa_Tracker_RPG::slot_bonus( $rpg, 'weapon' ) ) );
+		$attack = Sawa_Tracker_RPG::attack( $uid, array_column( $fb, 'ok' ) );
+		Sawa_Tracker_World::progress( $uid, 'right', $right );
 		$def    = self::defence( $target );
 		$s      = self::st( $uid );
 		if ( ! empty( $b['hunt'] ) ) {
@@ -331,6 +323,9 @@ final class Sawa_Tracker_Raids {
 		}
 		self::add_coins( $uid, 2 + $right ); // everyone who fights with English earns something
 		self::save_st( $uid, $s );
+		if ( $won ) {
+			Sawa_Tracker_World::progress( $uid, 'raid' );
+		}
 		// The defender sees it in their notifications (bell).
 		Sawa_Tracker_Game::event( $uid, 'raid', $target, array( 'won' => $won, 'loot' => $loot, 'right' => $right ) );
 		return array(
@@ -365,6 +360,7 @@ final class Sawa_Tracker_Raids {
 			$d['hunted'] = $uid;
 			$wpdb->update( $t, array( 'data' => wp_json_encode( $d ) ), array( 'id' => (int) $ev['id'] ) ); // phpcs:ignore
 			Sawa_Tracker_Game::event( $uid, 'returned', (int) $ev['target_id'], array( 'amount' => $back, 'thief' => Sawa_Tracker_Game::person( $thief )['name'] ) );
+			Sawa_Tracker_World::progress( $uid, 'hunt' );
 		}
 		self::add_coins( $uid, 2 + $right );
 		Sawa_Tracker_Game::event( $uid, 'hunt', $thief, array( 'won' => $won, 'amount' => $amount ) );

@@ -251,7 +251,8 @@
     if (EMB) {
       emit({ view: S.view });
       if (S.view === 'today') return renderToday();
-      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="raids"><div class="card"><p class="muted small">Loading raids…</p></div></div><div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + bossCard() + '</div><div class="col side">' + boardCard() + feedCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); loadRaids(); return; }
+      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="world-card"></div><div id="raids"><div class="card"><p class="muted small">Loading raids…</p></div></div><div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + bossCard() + '</div><div class="col side">' + boardCard() + feedCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); loadRaids(); loadWorldCard(); return; }
+      if (S.view === 'world') { openWorld(); return; }
       if (S.view === 'me') { $('#app').innerHTML = header() + '<div class="grid one">' + xpCard() + characterCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'; return; }
       if (S.view === 'chat') { $('#app').innerHTML = '<div id="view"></div>'; paintChat(); return; }
     }
@@ -353,6 +354,179 @@
       }
       q();
     }, function (x) { toast(x.message, 'bad'); });
+  }
+
+  /* ------------------------------------------------------------ the Silk Road world (map, quests, party) */
+  var W = { tab: 'map', data: null, party: null, live: null, liveT: null };
+  var JOB_IC = { thief: '🗡', hunter: '🏹', trader: '🐪' };
+  function loadWorldCard() {
+    api('/world').then(function (j) { W.data = j; paintWorldCard(); }, function () { var el = $('#world-card'); if (el) el.innerHTML = ''; });
+  }
+  function paintWorldCard() {
+    var el = $('#world-card'), w = W.data; if (!el || !w) return;
+    var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
+    el.innerHTML = '<section class="card wd-card" dir="ltr"><div class="row-between"><div><h3>🗺 The Silk Road</h3><p class="small muted">You are in ' + w.town.icon + ' <b>' + esc(w.town.name) + '</b> (' + w.town.level + ') · ⚡ ' + w.stamina.left + ' fights left today' + (w.words ? ' · ' + w.words + ' of your words are hiding in monsters' : '') + (ready ? ' · <b>' + ready + ' reward' + (ready > 1 ? 's' : '') + ' to claim</b>' : '') + '</p></div>'
+      + '<button class="btn primary" data-act="w-open">Enter the world</button></div>'
+      + '<div class="wd-mini">' + w.towns.map(function (t) { return '<span class="wd-dot' + (t.id === w.at ? ' here' : t.open ? ' open' : '') + '" title="' + esc(t.name) + '">' + (t.open ? t.icon : '🔒') + '</span>'; }).join('<i></i>') + '</div></section>';
+  }
+  function openWorld(tab) {
+    W.tab = tab || W.tab || 'map'; S.view = 'world';
+    emit({ view: 'community' }); // the world lives in the app's Community tab
+    $('#app').innerHTML = '<div id="world" dir="ltr"><div class="card"><p class="muted small">Loading the Silk Road…</p></div></div>';
+    try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+    Promise.all([api('/world'), api('/party')]).then(function (r) { W.data = r[0]; W.party = r[1]; paintWorld(); }, function (x) { $('#world').innerHTML = '<div class="card"><p class="err">' + esc(x.message) + '</p><button class="btn" data-act="w-back">Back</button></div>'; });
+  }
+  function bar(v, max, color) { return '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, v / Math.max(1, max) * 100)) + '%;background:' + (color || 'var(--fg)') + '"></i></div>'; }
+  function paintWorld() {
+    var el = $('#world'), w = W.data; if (!el || !w) return;
+    var tabs = [['map', '🗺 Map'], ['quests', '📜 Quests'], ['party', '⚔ Party']].map(function (t) { return '<button data-act="w-tab" data-tab="' + t[0] + '" aria-pressed="' + (W.tab === t[0]) + '">' + t[1] + '</button>'; }).join('');
+    el.innerHTML = '<div class="wd-top"><button class="btn ghost sm-btn" data-act="w-back">← Community</button><span class="pill">🪙 ' + w.coins + '</span><span class="pill">⚗ ' + w.elixirs + '</span><span class="pill" title="Fights left today. Every step of today\'s plan gives one more.">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>'
+      + '<div class="seg wd-tabs" role="tablist">' + tabs + '</div><div id="wd-body">' + (W.tab === 'quests' ? worldQuests() : W.tab === 'party' ? worldParty() : worldMap()) + '</div>';
+  }
+  function worldMap() {
+    var w = W.data, t = w.town, b = t.boss;
+    var route = '<div class="wd-route">' + w.towns.map(function (x) {
+      return '<button class="wd-town' + (x.id === w.at ? ' here' : '') + (x.open ? '' : ' locked') + '" data-act="w-travel" data-town="' + x.id + '"' + (x.open ? '' : ' disabled') + '><span class="wd-ic">' + (x.open ? x.icon : '🔒') + '</span><b>' + esc(x.name) + '</b><span class="small">' + x.level + (x.beaten ? ' ✓' : '') + '</span><span class="small muted">' + x.travelers + ' 👤</span>' + (x.id === w.at ? '<em>You</em>' : '') + '</button>';
+    }).join('') + '</div>';
+    var people = t.people.length ? '<div class="wd-people">' + t.people.map(function (p) { return '<span title="' + esc(p.name) + '">' + avatar(p, 30) + (p.job ? '<i>' + JOB_IC[p.job] + '</i>' : '') + '</span>'; }).join('') + '</div>' : '<p class="small muted">Nobody else is here yet.</p>';
+    var mons = '<div class="wd-mons">' + t.monsters.map(function (m, i) {
+      return '<div class="wd-mon"><span class="wd-big">' + m.icon + '</span><b>' + esc(m.name) + '</b><span class="small muted">❤ ' + m.hp + ' HP</span><button class="btn sm-btn" data-act="w-fight" data-m="' + i + '"' + (w.stamina.left && w.ready ? '' : ' disabled') + '>Fight ⚡1</button></div>';
+    }).join('') + '</div>';
+    var boss = '<div class="wd-boss' + (b.beaten ? ' beaten' : '') + '"><span class="wd-big">' + b.icon + '</span><div><b>Boss: ' + esc(b.name) + '</b><p class="small muted">❤ ' + b.hp + ' HP · 6 questions at ' + t.level + ' level · win with about 5 right' + (w.weapon ? ' (your weapon adds ' + w.weapon + '%)' : '') + '</p></div>'
+      + (b.beaten ? '<span class="pill">✓ Defeated</span>' : b.ready ? '<button class="btn primary sm-btn" data-act="w-boss"' + (b.tries && w.ready ? '' : ' disabled') + '>Fight · ' + b.tries + ' tries left</button>' : '<span class="small muted">🔒 Finish the story quests first</span>') + '</div>';
+    return route
+      + '<section class="card"><div class="row-between"><h3>' + t.icon + ' ' + esc(t.name) + ' <span class="small muted">' + t.level + '</span></h3><button class="btn ghost sm-btn" data-act="w-room" data-id="' + t.room + '">💬 Town chat</button></div>' + people + '</section>'
+      + '<section class="card"><h3>Monsters</h3><p class="small muted">Monsters attack with <b>your own English</b>: words from your flashcards and the videos and texts you saved, and the skill points you\'re weakest at. Win if your attack (20 per right answer + gear) reaches their HP. Words you miss come back in your review cards.' + (w.ready ? '' : ' Battles open soon.') + '</p>' + mons + boss + '</section>'
+      + (w.job ? '' : '<p class="note">Tip: choose a job (Thief, Hunter or Trader) in the Silk Road card in Community, then buy a weapon at the forge to hit harder.</p>');
+  }
+  function questRow(q) {
+    return '<li class="wd-q' + (q.claimed ? ' claimed' : '') + '"><div><b>' + esc(q.text) + '</b>' + bar(q.count, q.n) + '<span class="small muted">' + q.count + ' / ' + q.n + ' · ' + q.reward + '</span></div>'
+      + (q.claimed ? '<span class="pill">✓</span>' : '<button class="btn sm-btn" data-act="w-claim" data-q="' + q.key + '"' + (q.done ? '' : ' disabled') + '>Claim</button>') + '</li>';
+  }
+  function storyRow(s) {
+    var go = s.state === 'now' && s.go ? '<button class="btn sm-btn" data-act="w-go" data-go="' + s.go + '">Go</button>' : '';
+    var prog = s.state === 'now' || s.state === 'claim' ? bar(s.count, s.n) + '<span class="small muted">' + s.count + ' / ' + s.n + ' · ' + s.reward + '</span>' : '<span class="small muted">' + s.reward + '</span>';
+    var right = s.state === 'done' ? '<span class="pill">✓</span>' : s.state === 'claim' ? '<button class="btn primary sm-btn" data-act="w-claim" data-q="story">Claim</button>' : go;
+    return '<li class="' + s.state + '"><div><b>' + esc(s.text) + '</b>' + prog + '</div>' + right + '</li>';
+  }
+  function worldQuests() {
+    var w = W.data;
+    return '<section class="card"><h3>' + w.town.icon + ' The story of ' + esc(w.town.name) + '</h3><p class="small muted">Quests count while you are in this town. Beat the boss to open the road to the next one.</p><ol class="wd-story">' + w.story.map(storyRow).join('') + '</ol></section>'
+      + '<section class="card"><h3>Today</h3><ul class="wd-qs">' + w.daily.map(questRow).join('') + '</ul><p class="small muted">' + (w.dailyAll ? '✓ All three done — you got the bonus elixir!' : 'Claim all three for a bonus ⚗ elixir.') + '</p></section>'
+      + '<section class="card"><h3>This week</h3><ul class="wd-qs">' + w.weekly.map(questRow).join('') + '</ul></section>'
+      + (w.titles.length ? '<section class="card"><h3>Your titles</h3><div class="pills">' + w.titles.map(function (t) { return '<span class="pill">🏅 ' + esc(t) + '</span>'; }).join('') + '</div></section>' : '');
+  }
+  function worldParty() {
+    var P = W.party || {}, p = P.party, me = S.data.me.id;
+    if (!p) {
+      return (P.invites && P.invites.length ? '<section class="card"><h3>Invitations</h3><ul class="wd-qs">' + P.invites.map(function (x) { return '<li class="wd-q"><div><b>' + esc(x.name) + '</b><div class="wd-people">' + x.members.map(function (m) { return avatar(m, 26); }).join('') + '</div></div><span><button class="btn primary sm-btn" data-act="w-join" data-id="' + x.id + '">Join</button> <button class="btn ghost sm-btn" data-act="w-decline" data-id="' + x.id + '">No thanks</button></span></li>'; }).join('') + '</ul></section>' : '')
+        + '<section class="card"><h3>⚔ Start a party</h3><p class="small muted">Play with 2–4 friends: a private party chat, a big party boss you all hit for 48 hours, a weekly team goal, and live battles where everyone answers the same question at the same moment.</p>'
+        + '<div class="row"><input id="w-pname" maxlength="30" placeholder="Party name (optional)" dir="auto"><button class="btn primary" data-act="w-create">Create</button></div></section>';
+    }
+    var lead = p.leader === me, b = p.boss, wk = p.weekly, L = p.live;
+    var members = '<ul class="wd-members">' + p.members.map(function (m) {
+      return '<li>' + avatar(m, 36) + '<div><b>' + esc(m.name) + (m.leader ? ' 👑' : '') + '</b><span class="small muted">' + (m.job ? JOB_IC[m.job] + ' ' : '') + esc(m.town) + (m.weapon ? ' · ⚔ +' + m.weapon + '%' : '') + (m.title ? ' · ' + esc(m.title) : '') + '</span></div>'
+        + (lead && m.id !== me ? '<button class="btn ghost sm-btn" data-act="w-kick" data-id="' + m.id + '">Remove</button>' : '') + '</li>';
+    }).join('') + (p.invited.length ? '<li class="small muted">Invited: ' + p.invited.map(function (x) { return esc(x.name); }).join(', ') + '</li>' : '') + '</ul>';
+    var boss;
+    if (!b || b.down || b.failed) {
+      boss = (b ? '<p class="note">' + (b.down ? '🏆 Your party defeated the ' + esc(b.name) + '! Everyone who hit it got 40 🪙 + 2 ⚗.' : '💨 The ' + esc(b.name) + ' got away.') + '</p>' : '') + '<button class="btn primary" data-act="w-pboss">Summon a party boss (48 hours)</button>';
+    } else {
+      boss = '<div class="wd-boss"><span class="wd-big">' + b.icon + '</span><div style="flex:1"><b>' + esc(b.name) + '</b>' + bar(b.hp - b.damage, b.hp, 'var(--red)') + '<span class="small muted">' + (b.hp - b.damage) + ' / ' + b.hp + ' HP · ends ' + new Date(b.ends * 1000).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '</span>'
+        + '<p class="small">' + b.top.map(function (x) { return esc(x.name.split(' ')[0]) + ' ' + x.damage; }).join(' · ') + '</p></div><button class="btn primary sm-btn" data-act="w-hit"' + (b.hitsLeft ? '' : ' disabled') + '>Hit it · ' + b.hitsLeft + ' left</button></div>';
+    }
+    var live = L && L.id && L.phase !== 'end'
+      ? '<div class="row-between"><span>🔴 <b>' + esc(L.by) + '</b> started a live battle!</span><button class="btn primary sm-btn" data-act="w-live">' + (L.in ? 'Open' : 'Join') + '</button></div>'
+      : '<div class="row-between"><span class="small muted">Everyone online? Fight together in real time: 8 questions from the words your party is learning, 15 seconds each. ' + (L ? (L.left || 0) : 0) + ' left today.</span><button class="btn sm-btn" data-act="w-live-start"' + (L && L.left > 0 ? '' : ' disabled') + '>Start live battle</button></div>';
+    return '<section class="card"><div class="row-between"><h3>⚔ ' + esc(p.name) + '</h3><span><button class="btn ghost sm-btn" data-act="w-room" data-id="' + p.room + '">💬 Party chat</button>' + (p.members.length + p.invited.length < P.max ? ' <button class="btn sm-btn" data-act="w-invite">+ Invite</button>' : '') + '</span></div>' + members + '</section>'
+      + '<section class="card"><h3>🔴 Live battle</h3>' + live + '</section>'
+      + '<section class="card"><h3>Party boss</h3>' + boss + '</section>'
+      + '<section class="card"><h3>Weekly goal</h3><p class="small">Answer ' + wk.goal + ' battle questions correctly together this week.</p>' + bar(wk.count, wk.goal) + '<div class="row-between"><span class="small muted">' + wk.count + ' / ' + wk.goal + ' · ' + wk.reward + ' each</span>' + (wk.claimed ? '<span class="pill">✓ Claimed</span>' : '<button class="btn sm-btn" data-act="w-weekly"' + (wk.count >= wk.goal ? '' : ' disabled') + '>Claim</button>') + '</div></section>'
+      + '<button class="btn ghost" data-act="w-leave">Leave party</button>';
+  }
+  function wPost(path, body, then) {
+    return api(path, { method: 'POST', body: body || {} }).then(function (j) {
+      if (j.party !== undefined) W.party = j;
+      if (j.world) W.data = j.world; else if (j.towns) W.data = j;
+      paintWorld(); if (then) then(j); return j;
+    }, function (x) { toast(x.message, 'bad'); });
+  }
+  function worldInvite() {
+    api('/party/candidates').then(function (j) {
+      openModal(mHead('Invite to your party', 'Your clan first') + (j.people.length ? '<ul class="pick-list">' + j.people.map(function (p) {
+        return '<li><button class="pick" data-act="w-inv" data-id="' + p.id + '">' + avatar(p, 34) + '<span><b>' + esc(p.name) + '</b><br><small>' + (p.mate ? 'Your clan · ' : '') + esc(p.town) + '</small></span><em>+</em></button></li>';
+      }).join('') + '</ul>' : '<p class="muted">Everyone is in a party already.</p>'), 'narrow');
+    }, function (x) { toast(x.message, 'bad'); });
+  }
+  function qHtml(it) {
+    return (it.point ? '<span class="pill">' + esc(it.point) + '</span>' : '') + '<p class="bt-q">' + esc(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + '</p>' + (it.src ? '<p class="small muted">From: ' + esc(it.src) + '</p>' : '');
+  }
+  /** A solo battle (monster, boss) or a hit on the party boss: same quiz as raids, then the result. */
+  function worldBattle(path, body) {
+    api(path, { method: 'POST', body: body || {} }).then(function (b) {
+      var i = 0, ans = [], timer = null, n = b.questions.length;
+      function q() {
+        clearInterval(timer);
+        if (i >= n) return finish();
+        var it = b.questions[i], left = b.seconds;
+        openModal('<div class="battle" dir="ltr"><div class="row-between"><b>' + b.foe.icon + ' ' + esc(b.foe.name) + '</b><span class="small muted">❤ ' + b.foe.hp + ' · ' + (i + 1) + ' / ' + n + '</span></div>'
+          + '<div class="bar bt-time"><i style="width:100%"></i></div>' + qHtml(it)
+          + '<div class="bt-opts">' + it.options.map(function (o, k) { return '<button class="btn ghost" data-bt="' + k + '">' + esc(o) + '</button>'; }).join('') + '</div></div>', 'narrow');
+        $$('[data-bt]').forEach(function (x) { x.onclick = function () { ans.push(+x.dataset.bt); i++; q(); }; });
+        timer = setInterval(function () { left -= 0.25; var bb = $('.bt-time i'); if (!bb) { clearInterval(timer); return; } bb.style.width = Math.max(0, left / b.seconds * 100) + '%'; if (left <= 0) { ans.push(-1); i++; q(); } }, 250);
+      }
+      function finish() {
+        clearInterval(timer);
+        openModal('<div class="battle" dir="ltr"><p class="muted">Fighting…</p></div>', 'narrow');
+        api('/world/answer', { method: 'POST', body: { battle: b.battle, answers: ans } }).then(function (r) {
+          if (r.world) W.data = r.world;
+          var pb = r.kind === 'pboss';
+          var head = pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.damage + ' damage!') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' was too strong';
+          var gains = (r.coins ? '+' + r.coins + ' 🪙 ' : '') + (r.elixirs ? '+' + r.elixirs + ' ⚗' : '');
+          var tip = pb && !r.won ? '<p class="small muted">Your party can keep hitting it until it falls.</p>' : !r.won ? '<p class="small muted">Practise the points below and try again — or upgrade your weapon.</p>' : '';
+          var review = r.review.map(function (x) { return '<li class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓ ' : '✗ ') + esc(x.q) + (x.ok ? '' : ' → <b>' + esc(x.right) + '</b>' + (x.why ? '<br><small>' + esc(x.why) + '</small>' : '')) + '</li>'; }).join('');
+          openModal(mHead(head, r.right + ' of ' + r.total + ' right · attack ' + r.attack + (pb ? '' : ' vs ' + r.foe.hp + ' HP'))
+            + '<div class="stack" dir="ltr">' + (gains ? '<p class="rd-big">' + gains + '</p>' : '') + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
+            + tip + (r.missedWords ? '<p class="small">📇 ' + r.missedWords + ' word' + (r.missedWords > 1 ? 's' : '') + ' you missed will come back in your review cards today.</p>' : '')
+            + '<ul class="bt-review">' + review + '</ul><button class="btn primary wide" data-act="close">Done</button></div>', 'narrow');
+          if (pb) api('/party').then(function (j) { W.party = j; paintWorld(); }, function () {}); else paintWorld();
+        }, function (x) { closeModal(); toast(x.message, 'bad'); });
+      }
+      q();
+    }, function (x) { toast(x.message, 'bad'); });
+  }
+  /** Live party battle: poll every 1.5 s while it's open. */
+  function liveOpen(L) {
+    if (L) W.live = L;
+    clearTimeout(W.liveT); W.liveAt = Date.now(); paintLive();
+    W.liveT = setTimeout(livePoll, 1500);
+  }
+  function livePoll() {
+    if (!$('#modal .live-b')) return; // closed
+    api('/party/live').then(function (j) {
+      if (!$('#modal .live-b')) return; // closed while the request was on its way
+      W.live = j.live; W.liveAt = Date.now(); paintLive();
+      if (W.live && W.live.id && W.live.phase !== 'end') W.liveT = setTimeout(livePoll, document.hidden ? 4000 : 1500);
+      else api('/party').then(function (p) { W.party = p; paintWorld(); }, function () {});
+    }, function () { if ($('#modal .live-b')) W.liveT = setTimeout(livePoll, 3000); });
+  }
+  function paintLive() {
+    var L = W.live; if (!L || !L.id) { closeModal(); return; }
+    var drift = (Date.now() - W.liveAt) / 1000, foe = L.foe, body;
+    var people = '<div class="lv-people">' + L.joined.map(function (m) { return '<span class="' + (m.answered ? 'did' : '') + '" title="' + esc(m.name) + '">' + avatar(m, 30) + '<i>' + (m.answered ? '✓' : '') + '</i><small>' + m.marks.map(function (k) { return k === 1 ? '🟩' : k === 0 ? '🟥' : '⬜'; }).join('') + '</small></span>'; }).join('') + '</div>';
+    var hpbar = '<div class="row-between"><b>' + foe.icon + ' ' + esc(foe.name) + '</b><span class="small">' + (L.hp - L.damage) + ' / ' + L.hp + ' HP</span></div>' + bar(L.hp - L.damage, L.hp, 'var(--red)');
+    if (L.phase === 'lobby') {
+      var s = Math.max(0, Math.round(L.t0 - L.now - drift));
+      body = '<p class="lv-big">Starting in ' + s + 's</p>' + (L.in ? '<p class="small muted">You\'re in! Get ready: 8 questions, 15 seconds each.</p>' : '<button class="btn primary wide" data-act="w-live-join">Join the battle</button>');
+    } else if (L.phase === 'question') {
+      var q = L.q, left = Math.max(0, L.left - drift);
+      body = '<div class="bar bt-time"><i style="width:' + (left / L.secs * 100) + '%"></i></div><span class="small muted">Question ' + (L.i + 1) + ' / ' + L.n + '</span>' + qHtml(q)
+        + (L.in ? '<div class="bt-opts">' + q.options.map(function (o, k) { return '<button class="btn ' + (q.mine === k ? 'primary' : 'ghost') + '" data-act="w-live-ans" data-i="' + L.i + '" data-k="' + k + '"' + (q.mine !== null ? ' disabled' : '') + '>' + esc(o) + '</button>'; }).join('') + '</div>' : '<p class="small muted">You\'re watching — join the next one in the lobby.</p>');
+    } else {
+      body = '<p class="lv-big">' + (L.won ? '🏆 Victory!' : '💨 It got away') + '</p><p>' + L.damage + ' damage of ' + L.hp + ' needed.' + (L.reward ? ' You got <b>' + L.reward + '</b>.' : '') + '</p><button class="btn primary wide" data-act="close">Done</button>';
+    }
+    var last = L.last && L.phase !== 'lobby' ? '<p class="small lv-last">Last: ' + esc(L.last.q) + ' → <b>' + esc(L.last.right) + '</b>' + (L.last.mine === true ? ' ✓ you got it' : L.last.mine === false ? ' ✗' : '') + '</p>' : '';
+    openModal('<div class="battle live-b" dir="ltr"><div class="row-between"><span class="pill">🔴 Live</span><button class="icon-btn" data-act="close" aria-label="Close">' + ico('x') + '</button></div>' + hpbar + people + body + last + '</div>', 'narrow');
   }
 
   /** The app's Today tab: how today is going, the quest, and the buttons to log it. */
@@ -624,12 +798,18 @@
       case 'hunt': return name(e.who) + (d.won ? ' (صياد) مسكك ورجّع ' + d.amount + ' 🪙 لصاحبها.' : ' (صياد) حاول يمسكك وهربت!');
       case 'returned': return name(e.who) + ' (صياد) مسك ' + esc(d.thief) + ' ورجّعلك ' + d.amount + ' 🪙!';
       case 'raid': return name(e.who) + (d.won ? ' هجم عليك وخد ' + d.loot + ' 🪙. اعمل خطة النهارده عشان دفاعك يعلى، وتقدر تنتقم!' : ' حاول يهجم عليك ودفاعك صدّه 🛡');
+      case 'party_invite': return name(e.who) + ' invited you to the party <b dir="auto">' + esc(d.name) + '</b> ⚔';
+      case 'party_live': return name(e.who) + ' started a live battle in <b dir="auto">' + esc(d.party) + '</b>. Join now! 🔴';
+      case 'party_boss': return name(e.who) + ' summoned the ' + esc(d.boss) + '. Hit it with your party! ⚔';
+      case 'party_win': return '🏆 Your party <b dir="auto">' + esc(d.party) + '</b> defeated the ' + esc(d.boss) + '! +' + d.coins + ' 🪙 +' + d.elixirs + ' ⚗';
+      case 'party_down': return '⚔ The party <b dir="auto">' + esc(d.party) + '</b> defeated the ' + esc(d.boss) + (d.live ? ' in a live battle' : '') + '!';
+      case 'town': return name(e.who) + ' defeated the ' + esc(d.boss) + ' in ' + esc(d.town) + (d.next ? ' and set off for ' + esc(d.next) : '') + ' 🐫';
       case 'reply': return name(e.who) + ' رد على رسالتك' + (d.voice ? ' برسالة صوتية' : d.sticker ? ' بـ ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -843,7 +1023,7 @@
       }
       return eventText(e);
     };
-    openModal(mHead('الإشعارات', 'الردود على رسايلك، والمهارات اللي زمايلك استخدموها عليك') + (n.length ? '<ul class="events">' + n.map(function (e) { var inner = (e.who ? avatar(e.who, 32) : '') + '<div class="ev-main"><p>' + text(e) + '</p><div class="ev-foot"><time>' + ago(e.at) + '</time></div></div>'; return e.type === 'reply' && e.data && e.data.room ? '<li><button class="ev ev-link" data-act="notif-room" data-room="' + e.data.room + '" data-msg="' + (e.data.msg || 0) + '">' + inner + '</button></li>' : '<li class="ev">' + inner + '</li>'; }).join('') + '</ul>' : '<p class="muted">لسه مفيش. لما حد يرد على رسالتك أو يعالجك أو يبعتلك Rally، هيظهر هنا.</p>'), 'narrow');
+    openModal(mHead('الإشعارات', 'الردود على رسايلك، والمهارات اللي زمايلك استخدموها عليك') + (n.length ? '<ul class="events">' + n.map(function (e) { var inner = (e.who ? avatar(e.who, 32) : '') + '<div class="ev-main"><p>' + text(e) + '</p><div class="ev-foot"><time>' + ago(e.at) + '</time></div></div>'; return /^party_/.test(e.type) ? '<li><button class="ev ev-link" data-act="notif-world" data-tab="party"' + (e.type === 'party_live' ? ' data-live="1"' : '') + '>' + inner + '</button></li>' : e.type === 'reply' && e.data && e.data.room ? '<li><button class="ev ev-link" data-act="notif-room" data-room="' + e.data.room + '" data-msg="' + (e.data.msg || 0) + '">' + inner + '</button></li>' : '<li class="ev">' + inner + '</li>'; }).join('') + '</ul>' : '<p class="muted">لسه مفيش. لما حد يرد على رسالتك أو يعالجك أو يبعتلك Rally، هيظهر هنا.</p>'), 'narrow');
     if (S.data.unread && n.length) { api('/notifications/seen', { method: 'POST', body: { id: n[0].id } }).then(function () { S.data.unread = 0; var b = $('.bell i'); if (b) b.remove(); var bell = $('.bell'); if (bell) bell.setAttribute('aria-label', 'الإشعارات'); }); }
   }
 
@@ -1031,6 +1211,7 @@
       if (j.xp > 0) { toast('+' + j.xp + ' XP' + (extra && extra.orig ? ' · اكتب بالإنجليزي على طول عشان تاخد XP أكتر' : ''), 'good'); if (S.data && S.data.xp) { S.data.xp.total += j.xp; S.data.xp.today += j.xp; S.data.xp.base += j.xp; } }
     }, function (x) { if (ta && !form && !extra) ta.value = body; toast(x.message, 'bad'); });
   }
+  function confirmLeave() { return window.confirm('Leave your party?'); }
   function openRoom(id) {
     var r = (C.rooms || []).filter(function (x) { return x.id === id; })[0]; if (!r) return;
     C.room = r; C.msgs = []; C.replyTo = null; S.view = 'chat';
@@ -1327,6 +1508,29 @@
       case 'sr-skill': srPost('/raids/skill', { skill: el.dataset.id }).catch(function () {}); break;
       case 'sr-wanted': srWanted(el); break;
       case 'sr-hunt': closeModal(); raidBattle(0, +el.dataset.ev); break;
+      case 'w-open': openWorld('map'); break;
+      case 'w-back': S.view = 'community'; renderView(); break;
+      case 'w-tab': W.tab = el.dataset.tab; paintWorld(); break;
+      case 'w-travel': wPost('/world/travel', { town: +el.dataset.town }); break;
+      case 'w-fight': worldBattle('/world/fight', { kind: 'monster', m: +el.dataset.m }); break;
+      case 'w-boss': worldBattle('/world/fight', { kind: 'boss' }); break;
+      case 'w-claim': wPost('/world/claim', { quest: el.dataset.q }, function (j) { toast('+' + j.got.coins + ' 🪙' + (j.got.elixirs ? ' +' + j.got.elixirs + ' ⚗' : ''), 'good'); }); break;
+      case 'w-go': if (el.dataset.go === 'map') { W.tab = 'map'; paintWorld(); } else { emit({ go: el.dataset.go }); } break;
+      case 'w-room': S.view = 'chat'; C.pending = +el.dataset.id; renderView(); loadRooms(); break;
+      case 'w-create': wPost('/party/create', { name: ($('#w-pname') || {}).value || '' }); break;
+      case 'w-join': wPost('/party/join', { party: +el.dataset.id }); break;
+      case 'w-decline': wPost('/party/decline', { party: +el.dataset.id }); break;
+      case 'w-leave': if (confirmLeave()) wPost('/party/leave'); break;
+      case 'w-kick': wPost('/party/kick', { user: +el.dataset.id }); break;
+      case 'w-invite': worldInvite(); break;
+      case 'w-inv': closeModal(); wPost('/party/invite', { user: +el.dataset.id }, function () { toast('Invitation sent!', 'good'); }); break;
+      case 'w-pboss': wPost('/party/boss'); break;
+      case 'w-hit': worldBattle('/party/hit'); break;
+      case 'w-weekly': wPost('/party/weekly', {}, function () { toast('+40 🪙 +1 ⚗', 'good'); }); break;
+      case 'w-live': api('/party/live').then(function (j) { liveOpen(j.live); }, function (x) { toast(x.message, 'bad'); }); break;
+      case 'w-live-start': api('/party/live/start', { method: 'POST' }).then(function (j) { liveOpen(j.live); }, function (x) { toast(x.message, 'bad'); }); break;
+      case 'w-live-join': api('/party/live/join', { method: 'POST' }).then(function (j) { W.live = j.live; W.liveAt = Date.now(); paintLive(); }, function (x) { toast(x.message, 'bad'); }); break;
+      case 'w-live-ans': $$('[data-act="w-live-ans"]').forEach(function (b) { b.disabled = true; }); el.classList.add('primary'); api('/party/live/answer', { method: 'POST', body: { i: +el.dataset.i, choice: +el.dataset.k } }).then(function (j) { W.live = j.live; W.liveAt = Date.now(); paintLive(); }, function (x) { toast(x.message, 'bad'); }); break;
       case 'rd-start': closeModal(); raidBattle(+el.dataset.id); break;
       case 'rd-buy': api('/raids/shop', { method: 'POST', body: { item: el.dataset.item } }).then(function (j) { RD = j; paintRaids(); toast('Bought!', 'good'); }, function (x) { toast(x.message, 'bad'); }); break;
       case 'tray': paintTray(C.tray ? '' : 'st'); break;
@@ -1360,6 +1564,7 @@
         api('/chat/messages/' + el.dataset.id + '/transcript', { method: 'POST' }).then(function (j) { var m = msgById(+el.dataset.id); if (m) m.transcript = j.transcript; paintMessages(true); }, function (x) { busy(el, false); toast(x.message, 'bad'); });
         break;
       case 'feedback': openFeedback(+el.dataset.id, el); break;
+      case 'notif-world': closeModal(); S.view = 'world'; openWorld(el.dataset.tab); if (el.dataset.live) api('/party/live').then(function (j) { if (j.live && j.live.id) liveOpen(j.live); }, function () {}); break;
       case 'notif-room': closeModal(); C.pendingMsg = +el.dataset.msg; S.view = 'chat'; if (C.room && C.room.id === +el.dataset.room) { renderView(); } else { C.pending = +el.dataset.room; if (C.rooms) { var pr = C.pending; C.pending = 0; openRoom(pr); } else loadRooms(); } break;
       case 'rec-cancel': if (C.rec) { C.rec.send = false; C.rec.rec.stop(); } break;
       case 'rec-send': if (C.rec) { C.rec.send = true; C.rec.rec.stop(); } break;

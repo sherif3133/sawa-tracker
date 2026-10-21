@@ -17,7 +17,7 @@ final class Sawa_Tracker_Social {
 	const GROUP_MAX = 5;
 	const GROUPS_PER_USER = 3;
 
-	private static function t( $n ) {
+	public static function t( $n ) {
 		return Sawa_Tracker_Game::table( $n );
 	}
 
@@ -341,6 +341,9 @@ final class Sawa_Tracker_Social {
 		if ( 'clan' === $room['type'] ) {
 			return user_can( $uid, 'manage_options' ) || self::clan_of( $uid ) === (int) $room['clan_id'];
 		}
+		if ( 'town' === $room['type'] ) {
+			return Sawa_Tracker_World::reached( $uid ) >= (int) $room['clan_id'];
+		}
 		global $wpdb;
 		return (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t( 'room_members' ) . ' WHERE room_id = %d AND user_id = %d', $room['id'], $uid ) ); // phpcs:ignore
 	}
@@ -358,8 +361,11 @@ final class Sawa_Tracker_Social {
 		if ( $clan ) {
 			$ids[] = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . self::t( 'rooms' ) . " WHERE type = 'clan' AND clan_id = %d", $clan ) ); // phpcs:ignore
 		}
-		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT r.id FROM ' . self::t( 'rooms' ) . ' r JOIN ' . self::t( 'room_members' ) . " m ON m.room_id = r.id WHERE r.type = 'group' AND m.user_id = %d ORDER BY r.id", $uid ) ) as $g ) { // phpcs:ignore
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT r.id FROM ' . self::t( 'rooms' ) . ' r JOIN ' . self::t( 'room_members' ) . " m ON m.room_id = r.id WHERE r.type IN ('group','party') AND m.user_id = %d ORDER BY r.id", $uid ) ) as $g ) { // phpcs:ignore
 			$ids[] = (int) $g;
+		}
+		if ( Sawa_Tracker_World::started( $uid ) ) {
+			$ids[] = Sawa_Tracker_World::town_room( Sawa_Tracker_World::at( $uid ) ); // the chat of the town you're in
 		}
 		$out = array();
 		foreach ( array_filter( $ids ) as $id ) {
@@ -381,7 +387,9 @@ final class Sawa_Tracker_Social {
 			if ( 'clan' === $r['type'] ) {
 				$c            = self::clan( (int) $r['clan_id'] );
 				$row['emoji'] = $c ? $c['emoji'] : '🛡️';
-			} elseif ( 'group' === $r['type'] ) {
+			} elseif ( 'town' === $r['type'] ) {
+				$row['members'] = array();
+			} elseif ( 'group' === $r['type'] || 'party' === $r['type'] ) {
 				$row['members']  = array_map( array( 'Sawa_Tracker_Game', 'person' ), self::group_members( $id ) );
 				$row['owner']    = (int) $r['created_by'];
 			}

@@ -87,6 +87,23 @@ final class Sawa_Tracker_RPG {
 		return $k && ( $eng['mastery'][ $k[1] ] ?? 0 ) >= $k[2];
 	}
 
+	/**
+	 * Attack from a battle: 20 per right answer, Second Wind forgives one wrong answer, Warriors +10,
+	 * Critical Strike +15 after 3 right in a row, all times the weapon bonus. $oks = list of true/false per question.
+	 */
+	public static function attack( $uid, $oks ) {
+		$right  = count( array_filter( $oks ) );
+		$eff    = $right + ( $right < count( $oks ) && self::skill_on( $uid, 'second_wind' ) ? 1 : 0 );
+		$streak = 0;
+		$best   = 0;
+		foreach ( $oks as $ok ) {
+			$streak = $ok ? $streak + 1 : 0;
+			$best   = max( $best, $streak );
+		}
+		$base = $eff * 20 + ( 'warrior' === Sawa_Tracker_Game::m( $uid, 'class' ) ? 10 : 0 ) + ( $best >= 3 && self::skill_on( $uid, 'critical' ) ? 15 : 0 );
+		return (int) round( $base * ( 1 + self::slot_bonus( self::get( $uid ), 'weapon' ) ) );
+	}
+
 	/** Coins earned from learning, with Trader and amulet bonuses. */
 	public static function learn_multiplier( $uid ) {
 		$r = self::get( $uid );
