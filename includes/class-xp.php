@@ -68,6 +68,7 @@ final class Sawa_Tracker_XP {
 		}
 		if ( '' !== (string) $audio ) {
 			self::$last = self::award( $uid, 5 + intdiv( (int) $m['duration'], 10 ), 'voice' );
+			self::study( $uid, max( 1, (int) $m['duration'] / 30 ) );
 			return;
 		}
 		$body = (string) $m['body'];
@@ -92,6 +93,14 @@ final class Sawa_Tracker_XP {
 			$xp = (int) max( 1, round( $xp * 0.3 ) ); // translated from Arabic
 		}
 		self::$last = self::award( $uid, $xp, 'chat' );
+		self::study( $uid, $words / 15 );
+	}
+
+	/** Speaking and writing English in the chat counts as study time (via Sawa Lens' automatic study log). */
+	private static function study( $uid, $minutes ) {
+		if ( class_exists( 'Sawa_Lens_Activity' ) ) {
+			Sawa_Lens_Activity::add( $uid, '', 1, 'Others', $minutes );
+		}
 	}
 
 	/** Level from total XP: level n needs 100 × (1 + 2 + … + (n−1)) XP. */

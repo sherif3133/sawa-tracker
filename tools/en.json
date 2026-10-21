@@ -466,7 +466,10 @@
   "المهمة خلصت! +": "Quest done! +",
   "</div><h2>التراكر مش راضي يفتح</h2><p class=\"muted\">": "</div><h2>The tracker won't open</h2><p class=\"muted\">",
   "</p><button class=\"btn primary\" onclick=\"location.reload()\">جرب تاني</button></div>": "</p><button class=\"btn primary\" onclick=\"location.reload()\">Try again</button></div>",
-  " امبارح": " yesterday"
+  " امبارح": " yesterday",
+  " نقاط الإنجليزي (XP)</h3></div>": " English points (XP)</h3></div>",
+  "</b> الأسبوع ده</span></div>": "</b> this week</span></div>",
+  " أتقن <b dir=\"ltr\">": " mastered <b dir=\"ltr\">"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

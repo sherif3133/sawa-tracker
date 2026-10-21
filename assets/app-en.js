@@ -468,9 +468,8 @@
     var pct = Math.min(100, Math.round((x.total - x.from) / Math.max(1, x.to - x.from) * 100));
     var why = { chat: 'Chat', voice: 'Voice notes', write: 'Writing', improve: 'Fixing your mistakes', mastered: 'Mastering a skill' };
     var max = Math.max.apply(null, x.days.concat([1]));
-    return '<section class="card xp-card"><div class="card-h"><h3>' + ico('bolt') + ' English points (XP)</h3><span class="xp-lv" dir="ltr">Lv ' + x.level + '</span></div>'
-      + '<div class="xp-row"><b class="xp-big" dir="ltr">' + x.total.toLocaleString('en-US') + ' XP</b><span class="muted small" dir="ltr">' + (x.to - x.total) + ' XP to Lv ' + (x.level + 1) + '</span></div>'
-      + '<div class="bar"><i style="width:' + pct + '%;background:var(--fg)"></i></div>'
+    return '<section class="card xp-card"><div class="card-h"><h3>' + ico('bolt') + ' English points (XP)</h3></div>'
+      + '<div class="xp-row"><b class="xp-big" dir="ltr">' + x.total.toLocaleString('en-US') + ' XP</b><span class="muted small"><b dir="ltr">+' + x.week + '</b> this week</span></div>'
       + '<div class="xp-today"><span>Today: <b dir="ltr">+' + x.today + '</b></span><span class="muted small">' + (x.base >= x.cap ? 'You hit the daily limit for chat and writing 👏' : 'Left: ' + (x.cap - x.base) + ' XP from chat and writing today') + '</span></div>'
       + (Object.keys(x.why || {}).length ? '<p class="small muted">' + Object.keys(x.why).map(function (k) { return (why[k] || k) + ' +' + x.why[k]; }).join(' · ') + '</p>' : '')
       + '<div class="lens-bars" title="Last 14 days">' + x.days.map(function (d, i) { return '<i' + (i === x.days.length - 1 ? ' class="now"' : '') + '><b style="height:' + Math.round(d / max * 100) + '%"></b></i>'; }).join('') + '</div>'
@@ -528,12 +527,13 @@
       case 'joined': return name(e.who) + ' joined as ' + esc(cls(d.class).ar) + '. Welcome!';
       case 'quest_done': return name(e.who) + ' completed today\'s quest' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
       case 'group_invite': return name(e.who) + ' added you to the group <b dir="auto">' + esc(d.name) + '</b>';
+      case 'mastered': return name(e.who) + ' mastered <b dir="ltr">' + esc(d.name) + '</b> 🏆';
       case 'reply': return name(e.who) + ' replied to your message' + (d.voice ? ' with a voice note' : d.sticker ? ' with ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' did something';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -1295,6 +1295,7 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden && S.data) { loadFeed('new'); } });
   }
   function start() {
+    if (EMB && !S.data.me.class && !S.autoClass) { S.autoClass = 1; return api('/class', { method: 'POST', body: { class: 'warrior', auto: 1 } }).then(function (j) { S.data = j; start(); }, function () { renderClassPick(false); }); }
     if (!S.data.me.class) return renderClassPick(false);
     if (!S.data.me.avatar && !S.data.isAdmin) { S.photoGate = true; return renderPhotoGate(); }
     var h = (location.hash || '').slice(1);
