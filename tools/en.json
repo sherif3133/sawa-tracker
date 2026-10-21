@@ -472,7 +472,12 @@
   " أتقن <b dir=\"ltr\">": " mastered <b dir=\"ltr\">",
   " هجم عليك وخد ": " raided you and took ",
   " 🪙. اعمل خطة النهارده عشان دفاعك يعلى، وتقدر تنتقم!": " 🪙. Do today's plan to raise your defence — and take your revenge!",
-  " حاول يهجم عليك ودفاعك صدّه 🛡": " tried to raid you, but your defence held 🛡"
+  " حاول يهجم عليك ودفاعك صدّه 🛡": " tried to raid you, but your defence held 🛡",
+  " (صياد) مسكك ورجّع ": " (Hunter) caught you and returned ",
+  " 🪙 لصاحبها.": " 🪙 to its owner.",
+  " (صياد) حاول يمسكك وهربت!": " (Hunter) tried to catch you — you got away!",
+  " (صياد) مسك ": " (Hunter) caught ",
+  " ورجّعلك ": " and gave you back "
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

@@ -30,7 +30,7 @@ final class Sawa_Tracker_Raids {
 	}
 
 	public static function routes() {
-		foreach ( array( array( '/raids', 'GET', 'state' ), array( '/raids/find', 'POST', 'find' ), array( '/raids/start', 'POST', 'start' ), array( '/raids/answer', 'POST', 'answer' ), array( '/raids/shop', 'POST', 'shop' ), array( '/raids/peace', 'POST', 'peace' ) ) as $r ) {
+		foreach ( array( array( '/raids', 'GET', 'state' ), array( '/raids/find', 'POST', 'find' ), array( '/raids/start', 'POST', 'start' ), array( '/raids/answer', 'POST', 'answer' ), array( '/raids/shop', 'POST', 'shop' ), array( '/raids/peace', 'POST', 'peace' ), array( '/raids/wanted', 'GET', 'wanted' ), array( '/raids/job', 'POST', 'job' ), array( '/raids/buy', 'POST', 'buy' ), array( '/raids/upgrade', 'POST', 'upgrade' ), array( '/raids/skill', 'POST', 'skill' ) ) as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
 		}
 	}
@@ -43,6 +43,9 @@ final class Sawa_Tracker_Raids {
 
 	/** Adds (or with a negative $n removes) coins. */
 	public static function add_coins( $uid, $n, $reason = '' ) {
+		if ( 'learn' === $reason && $n > 0 ) {
+			$n = (int) round( $n * Sawa_Tracker_RPG::learn_multiplier( $uid ) );
+		}
 		$n = (int) $n;
 		if ( ! $n || ! $uid ) {
 			return 0;
@@ -76,7 +79,12 @@ final class Sawa_Tracker_Raids {
 		if ( 'healer' === Sawa_Tracker_Game::m( $uid, 'class' ) ) {
 			$d = (int) round( $d * 1.1 );
 		}
-		return min( 95, $d );
+		$rpg = Sawa_Tracker_RPG::get( $uid );
+		$d   = $d * ( 1 + Sawa_Tracker_RPG::slot_bonus( $rpg, 'armor' ) ) + ( Sawa_Tracker_RPG::skill_on( $uid, 'iron_skin' ) ? 10 : 0 );
+		if ( Sawa_Tracker_RPG::skill_on( $uid, 'fortress' ) ) {
+			$d *= 1.15;
+		}
+		return (int) min( 120, round( $d ) );
 	}
 
 	/** Raid-proof right now? (shield bought or earned, or a perfect day) */
@@ -94,6 +102,26 @@ final class Sawa_Tracker_Raids {
 
 	private static function lootable( $uid ) {
 		return max( 0, self::coins( $uid ) - self::SAFE_COINS );
+	}
+
+	private static function per_day( $uid ) {
+		return self::RAIDS_PER_DAY + ( Sawa_Tracker_RPG::skill_on( $uid, 'sprint' ) ? 1 : 0 );
+	}
+
+	/** Wanted thieves: students with the Thief job who won a raid in the last 24 hours and weren't caught yet. */
+	public static function wanted_list( $hunter ) {
+		global $wpdb;
+		$t    = Sawa_Tracker_Game::table( 'events' );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE type = 'raid' AND created_at >= %s ORDER BY id DESC LIMIT 60", gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS + (int) ( get_option( 'gmt_offset' ) * HOUR_IN_SECONDS ) ) ), ARRAY_A ); // phpcs:ignore
+		$out  = array();
+		foreach ( (array) $rows as $r ) {
+			$d = json_decode( $r['data'], true );
+			if ( empty( $d['won'] ) || ! empty( $d['hunted'] ) || (int) $r['user_id'] === $hunter || (int) $r['target_id'] === $hunter ) {
+				continue;
+			}
+			$out[] = array( 'event' => (int) $r['id'], 'thief' => Sawa_Tracker_Game::person( (int) $r['user_id'] ) + array( 'defence' => self::defence( (int) $r['user_id'] ) ), 'victim' => Sawa_Tracker_Game::person( (int) $r['target_id'] ), 'loot' => (int) $d['loot'], 'at' => mysql2date( 'c', $r['created_at'] ) );
+		}
+		return $out;
 	}
 
 	/* ------------------------------------------------------------------ REST */
@@ -117,7 +145,8 @@ final class Sawa_Tracker_Raids {
 			'safe'      => self::SAFE_COINS,
 			'defence'   => self::defence( $uid ),
 			'shield'    => self::shielded( $uid ),
-			'raidsLeft' => max( 0, self::RAIDS_PER_DAY - (int) $s['used'] ),
+			'raidsLeft' => max( 0, self::per_day( $uid ) - (int) $s['used'] ),
+			'rpg'       => Sawa_Tracker_RPG::sheet( $uid ),
 			'peace'     => ! empty( $s['peace'] ),
 			'revenge'   => $rev,
 			'class'     => (string) Sawa_Tracker_Game::m( $uid, 'class' ),
@@ -159,11 +188,14 @@ final class Sawa_Tracker_Raids {
 		if ( ! empty( $s['peace'] ) ) {
 			return new WP_Error( 'peace', 'Peace mode is on. Switch it off to raid.', array( 'status' => 400 ) );
 		}
+		if ( 'thief' !== Sawa_Tracker_RPG::job( $uid ) ) {
+			return new WP_Error( 'job', 'Only Thieves raid. Hunters catch thieves; Traders earn more coins.', array( 'status' => 400 ) );
+		}
 		$mine = Sawa_Tracker_Social::clan_of( $uid );
 		$myxp = class_exists( 'Sawa_Tracker_XP' ) ? Sawa_Tracker_XP::total( $uid ) : 0;
 		$cand = array();
 		foreach ( Sawa_Tracker_Game::member_ids() as $id ) {
-			if ( $id === $uid || '' === Sawa_Tracker_Game::m( $id, 'class' ) ) {
+			if ( $id === $uid || '' === Sawa_Tracker_Game::m( $id, 'class' ) || 'thief' === Sawa_Tracker_RPG::job( $id ) ) {
 				continue;
 			}
 			$o = self::st( $id );
@@ -187,6 +219,7 @@ final class Sawa_Tracker_Raids {
 				'defence' => self::defence( $c['id'] ),
 				'loot'    => min( self::MAX_LOOT, (int) ceil( self::lootable( $c['id'] ) * 0.15 ) ),
 				'clan'    => $cl ? $cl['emoji'] . ' ' . $cl['name'] : '',
+				'job'     => Sawa_Tracker_RPG::job( $c['id'] ),
 			);
 		}
 		return array( 'opponents' => $out );
@@ -195,19 +228,40 @@ final class Sawa_Tracker_Raids {
 	public static function start( WP_REST_Request $r ) {
 		$uid    = self::uid();
 		$target = (int) $r->get_param( 'target' );
+		$hunt   = (int) $r->get_param( 'hunt' );
 		$s      = self::st( $uid );
+		if ( $hunt ) {
+			if ( 'hunter' !== Sawa_Tracker_RPG::job( $uid ) ) {
+				return new WP_Error( 'job', 'Only Hunters hunt thieves.', array( 'status' => 400 ) );
+			}
+			if ( (int) $s['used'] >= self::per_day( $uid ) ) {
+				return new WP_Error( 'limit', 'No hunts left today. Come back tomorrow!', array( 'status' => 400 ) );
+			}
+			$w = null;
+			foreach ( self::wanted_list( $uid ) as $x ) {
+				if ( $x['event'] === $hunt ) {
+					$w = $x;
+				}
+			}
+			if ( ! $w ) {
+				return new WP_Error( 'wanted', 'This thief was already caught.', array( 'status' => 400 ) );
+			}
+			$target = (int) $w['thief']['id'];
+		} elseif ( ! in_array( $target, array_map( 'intval', (array) $s['revenge'] ), true ) && 'thief' !== Sawa_Tracker_RPG::job( $uid ) ) {
+			return new WP_Error( 'job', 'Only Thieves raid.', array( 'status' => 400 ) );
+		}
 		$rev    = in_array( $target, array_map( 'intval', (array) $s['revenge'] ), true );
 		if ( ! empty( $s['peace'] ) ) {
 			return new WP_Error( 'peace', 'Peace mode is on.', array( 'status' => 400 ) );
 		}
-		if ( ! $rev && (int) $s['used'] >= self::RAIDS_PER_DAY ) {
+		if ( ! $hunt && ! $rev && (int) $s['used'] >= self::per_day( $uid ) ) {
 			return new WP_Error( 'limit', 'No raids left today. Come back tomorrow!', array( 'status' => 400 ) );
 		}
 		if ( $target === $uid || ! Sawa_Tracker_Game::is_member( $target ) ) {
 			return new WP_Error( 'target', 'Choose an opponent.', array( 'status' => 400 ) );
 		}
 		$o = self::st( $target );
-		if ( ! empty( $o['peace'] ) || self::shielded( $target ) || (int) $o['lost'] >= 2 ) {
+		if ( ! $hunt && ( ! empty( $o['peace'] ) || self::shielded( $target ) || (int) $o['lost'] >= 2 ) ) {
 			return new WP_Error( 'target', 'This student is protected right now. Pick another.', array( 'status' => 400 ) );
 		}
 		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, 5 );
@@ -215,11 +269,12 @@ final class Sawa_Tracker_Raids {
 			return new WP_Error( 'battle', 'Battles are not ready yet.', array( 'status' => 503 ) );
 		}
 		$id = wp_generate_password( 20, false );
-		set_transient( 'sawa_tr_battle_' . $id, array( 'uid' => $uid, 'target' => $target, 'rev' => $rev, 'answers' => array_column( $qs, 'answer' ), 'qs' => $qs, 't' => time() ), 15 * MINUTE_IN_SECONDS );
+		set_transient( 'sawa_tr_battle_' . $id, array( 'uid' => $uid, 'target' => $target, 'rev' => $rev, 'hunt' => $hunt, 'answers' => array_column( $qs, 'answer' ), 'qs' => $qs, 't' => time() ), 15 * MINUTE_IN_SECONDS );
 		return array(
 			'battle'    => $id,
 			'questions' => array_map( function ( $q ) { return array( 'q' => $q['q'], 'options' => $q['options'] ); }, $qs ),
-			'seconds'   => 20,
+			'seconds'   => 20 + ( Sawa_Tracker_RPG::skill_on( $uid, 'eagle_eye' ) ? 5 : 0 ),
+			'hunt'      => (bool) $hunt,
 			'defender'  => Sawa_Tracker_Game::person( $target ) + array( 'defence' => self::defence( $target ) ),
 		);
 	}
@@ -240,18 +295,32 @@ final class Sawa_Tracker_Raids {
 			$fb[]   = array( 'ok' => $ok, 'answer' => (int) $a, 'q' => $b['qs'][ $i ]['q'], 'right' => $b['qs'][ $i ]['options'][ $a ] ?? '' );
 		}
 		$target = (int) $b['target'];
-		$attack = $right * 20 + ( 'warrior' === Sawa_Tracker_Game::m( $uid, 'class' ) ? 10 : 0 );
+		$wrong  = count( $b['answers'] ) - $right;
+		$eff    = $right + ( $wrong > 0 && Sawa_Tracker_RPG::skill_on( $uid, 'second_wind' ) ? 1 : 0 );
+		$streak = 0;
+		$best   = 0;
+		foreach ( $fb as $x ) {
+			$streak = $x['ok'] ? $streak + 1 : 0;
+			$best   = max( $best, $streak );
+		}
+		$rpg    = Sawa_Tracker_RPG::get( $uid );
+		$attack = (int) round( ( $eff * 20 + ( 'warrior' === Sawa_Tracker_Game::m( $uid, 'class' ) ? 10 : 0 ) + ( $best >= 3 && Sawa_Tracker_RPG::skill_on( $uid, 'critical' ) ? 15 : 0 ) ) * ( 1 + Sawa_Tracker_RPG::slot_bonus( $rpg, 'weapon' ) ) );
 		$def    = self::defence( $target );
+		$s      = self::st( $uid );
+		if ( ! empty( $b['hunt'] ) ) {
+			return self::finish_hunt( $uid, $b, $s, $right, $attack, $def, $fb );
+		}
 		$won    = $attack > $def && ! self::shielded( $target );
 		$loot   = 0;
-		$s      = self::st( $uid );
 		if ( $b['rev'] ) {
 			$s['revenge'] = array_values( array_diff( array_map( 'intval', (array) $s['revenge'] ), array( $target ) ) );
 		} else {
 			$s['used'] = (int) $s['used'] + 1;
 		}
 		if ( $won ) {
-			$loot = min( self::MAX_LOOT, (int) ceil( self::lootable( $target ) * 0.15 ) );
+			$trader = 'trader' === Sawa_Tracker_RPG::job( $target );
+			$loot   = (int) min( self::MAX_LOOT * ( $trader ? 1.5 : 1 ), ceil( self::lootable( $target ) * ( $trader ? 0.22 : 0.15 ) * ( Sawa_Tracker_RPG::skill_on( $uid, 'silver' ) ? 1.2 : 1 ) ) );
+			$loot   = min( $loot, self::lootable( $target ) );
 			self::add_coins( $target, -$loot );
 			self::add_coins( $uid, $loot );
 			$o                 = self::st( $target );
@@ -273,6 +342,57 @@ final class Sawa_Tracker_Raids {
 			'bonus'   => 2 + $right,
 			'review'  => $fb,
 		) + self::state();
+	}
+
+	/** A hunt: beat the thief and the stolen coins go back — half to the victim, half to the hunter. */
+	private static function finish_hunt( $uid, $b, $s, $right, $attack, $def, $fb ) {
+		global $wpdb;
+		$thief     = (int) $b['target'];
+		$s['used'] = (int) $s['used'] + 1;
+		self::save_st( $uid, $s );
+		$t   = Sawa_Tracker_Game::table( 'events' );
+		$ev  = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE id = %d", (int) $b['hunt'] ), ARRAY_A ); // phpcs:ignore
+		$d   = $ev ? json_decode( $ev['data'], true ) : array();
+		$won = $attack > $def && $ev && empty( $d['hunted'] );
+		$amount = 0;
+		if ( $won ) {
+			$amount = min( (int) $d['loot'], self::coins( $thief ) );
+			self::add_coins( $thief, -$amount );
+			$back  = (int) ceil( $amount / 2 );
+			$bounty = (int) round( ( $amount - $back + 5 ) * ( Sawa_Tracker_RPG::skill_on( $uid, 'silver' ) ? 1.2 : 1 ) );
+			self::add_coins( (int) $ev['target_id'], $back );
+			self::add_coins( $uid, $bounty );
+			$d['hunted'] = $uid;
+			$wpdb->update( $t, array( 'data' => wp_json_encode( $d ) ), array( 'id' => (int) $ev['id'] ) ); // phpcs:ignore
+			Sawa_Tracker_Game::event( $uid, 'returned', (int) $ev['target_id'], array( 'amount' => $back, 'thief' => Sawa_Tracker_Game::person( $thief )['name'] ) );
+		}
+		self::add_coins( $uid, 2 + $right );
+		Sawa_Tracker_Game::event( $uid, 'hunt', $thief, array( 'won' => $won, 'amount' => $amount ) );
+		return array( 'won' => $won, 'hunt' => true, 'right' => $right, 'attack' => $attack, 'defence' => $def, 'loot' => $won ? $bounty : 0, 'returned' => $won ? $back : 0, 'bonus' => 2 + $right, 'review' => $fb ) + self::state();
+	}
+
+	public static function wanted() {
+		return array( 'wanted' => self::wanted_list( self::uid() ) );
+	}
+
+	public static function job( WP_REST_Request $r ) {
+		$res = Sawa_Tracker_RPG::set_job( self::uid(), sanitize_key( (string) $r->get_param( 'job' ) ) );
+		return is_wp_error( $res ) ? $res : self::state();
+	}
+
+	public static function buy( WP_REST_Request $r ) {
+		$res = Sawa_Tracker_RPG::buy( self::uid(), sanitize_key( (string) $r->get_param( 'slot' ) ), (int) $r->get_param( 'grade' ) );
+		return is_wp_error( $res ) ? $res : self::state();
+	}
+
+	public static function upgrade( WP_REST_Request $r ) {
+		$res = Sawa_Tracker_RPG::upgrade( self::uid(), sanitize_key( (string) $r->get_param( 'slot' ) ) );
+		return is_wp_error( $res ) ? $res : self::state();
+	}
+
+	public static function skill( WP_REST_Request $r ) {
+		$res = Sawa_Tracker_RPG::toggle_skill( self::uid(), sanitize_key( (string) $r->get_param( 'skill' ) ) );
+		return is_wp_error( $res ) ? $res : self::state();
 	}
 
 	public static function shop( WP_REST_Request $r ) {

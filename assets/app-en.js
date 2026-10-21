@@ -273,15 +273,26 @@
     var shield = r.shield ? '<span class="pill">🛡 Raid-proof until ' + new Date(r.shield * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</span>' : '';
     var log = r.log.slice(0, 5).map(function (e) {
       var d = e.data || {}, mine = e.who && e.who.id === S.data.me.id;
+      if (e.type !== 'raid') return '';
       return '<li class="rd-log">' + (mine ? '⚔ You raided ' + esc(e.target ? e.target.name : '') + (d.won ? ' and took <b>' + d.loot + ' 🪙</b>' : ' — their defence held') : '🛡 ' + esc(e.who ? e.who.name : '') + (d.won ? ' raided you and took <b>' + d.loot + ' 🪙</b>' : ' tried to raid you — your defence held')) + ' <time>' + ago(e.at) + '</time></li>';
     }).join('');
-    el.innerHTML = '<section class="card raids"><div class="card-h"><h3>⚔ Raids</h3><span class="rd-coins">' + r.coins + ' 🪙</span></div>'
-      + '<p class="small muted">Win coins from students in other clans with English. Your first ' + r.safe + ' coins are always safe' + (safeLeft ? '; ' + safeLeft + ' can be raided.' : '.') + '</p>'
+    var g = r.rpg || {}, J = g.jobs || {}, job = g.job;
+    var who = job ? '<div class="sr-who"><span class="sr-job">' + J[job][0] + ' ' + J[job][1] + '</span><span class="small muted">' + esc(J[job][2]) + '</span>' + (g.canJob ? '<button class="btn ghost sm-btn" data-act="sr-jobs" style="justify-self:start">Change job</button>' : '') + '</div>'
+      : '<div class="stack"><b>Choose your job</b><div class="sr-jobs">' + Object.keys(J).map(function (k) { return '<button class="sr-jobc" data-act="sr-job" data-job="' + k + '"><b>' + J[k][0] + ' ' + J[k][1] + '</b><span class="small">' + esc(J[k][2]) + '</span></button>'; }).join('') + '</div></div>';
+    var gear = '<div class="sr-gear">' + Object.keys(g.gear || {}).map(function (k) { var x = g.gear[k]; return '<button class="sr-slot' + (x.grade ? ' g' + x.grade : '') + '" data-act="sr-forge" data-slot="' + k + '"><span class="small muted">' + esc(x.slot) + '</span><b>' + (x.grade ? esc(x.name) : 'Empty') + '</b><span class="small">' + (x.grade ? '+' + x.bonus + '% ' + esc(x.stat) : 'Tap to get one') + '</span></button>'; }).join('') + '</div>'
+      + '<p class="small muted">⚗ ' + (g.elixirs || 0) + ' elixirs (for upgrades) · Your English: ' + ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'][g.english ? g.english.level : 1] + ', ' + (g.english ? g.english.mastered : 0) + ' points mastered — better English unlocks better gear.</p>';
+    var skills = '<div class="sr-skills"><b class="small">Combat skills</b> <span class="small muted">(up to 3 · unlocked by mastering English points)</span><div class="sr-sk">' + (g.skills || []).map(function (k) { return '<button class="sr-skb' + (k.on ? ' on' : '') + (k.unlocked ? '' : ' locked') + '" data-act="sr-skill" data-id="' + k.id + '" title="' + esc(k.text) + '"' + (k.unlocked ? '' : ' disabled') + '><b>' + esc(k.name) + '</b><span>' + (k.unlocked ? esc(k.text) : '🔒 Master ' + k.need + ' ' + ({ grammar: 'grammar', pron: 'pronunciation', tone: 'tone' }[k.track]) + ' point' + (k.need > 1 ? 's' : '')) + '</span></button>'; }).join('') + '</div></div>';
+    el.innerHTML = '<section class="card raids"><div class="card-h"><h3>🐫 Silk Road</h3><span class="rd-coins">' + r.coins + ' 🪙</span></div>'
+      + who + (job ? gear + skills : '')
+      + '<p class="small muted">Your first ' + r.safe + ' coins are always safe' + (safeLeft ? '; ' + safeLeft + ' can be stolen.' : '.') + '</p>'
       + '<div class="rd-def"><div class="row-between"><b>Your defence ' + r.defence + '</b>' + shield + '</div><div class="bar"><i style="width:' + r.defence + '%;background:var(--fg)"></i></div>'
       + '<p class="small muted">Raise it with English today: every step of today\'s plan adds 10, your streak adds armour, and a perfect day makes you raid-proof until midnight.' + (r.class === 'healer' ? ' Healers get +10%.' : r.class === 'warrior' ? ' Warriors attack 10% harder.' : '') + '</p></div>'
       + (r.peace ? '<p class="note">🕊 Peace mode is on: you can\'t raid or be raided.</p>'
         : !r.canBattle ? '<p class="note">Raids open soon.</p>'
-        : '<div class="rd-acts"><button class="btn primary" data-act="rd-find"' + (r.raidsLeft ? '' : ' disabled') + '>⚔ Find an opponent</button><span class="small muted">' + r.raidsLeft + ' raid' + (r.raidsLeft === 1 ? '' : 's') + ' left today</span></div>'
+        : !job ? ''
+        : job === 'thief' ? '<div class="rd-acts"><button class="btn primary" data-act="rd-find"' + (r.raidsLeft ? '' : ' disabled') + '>🗡 Raid someone</button><span class="small muted">' + r.raidsLeft + ' raid' + (r.raidsLeft === 1 ? '' : 's') + ' left today</span></div>'
+        : job === 'hunter' ? '<div class="rd-acts"><button class="btn primary" data-act="sr-wanted"' + (r.raidsLeft ? '' : ' disabled') + '>🏹 Wanted board</button><span class="small muted">' + r.raidsLeft + ' hunt' + (r.raidsLeft === 1 ? '' : 's') + ' left today</span></div>'
+        : '<p class="note">🐪 Traders don\'t fight: you earn 25% more coins from learning. Keep your defence high!</p>'
           + (r.revenge.length ? '<div class="rd-rev"><span class="small">Revenge (free):</span>' + r.revenge.map(function (p) { return '<button class="btn sm-btn" data-act="rd-start" data-id="' + p.id + '">' + avatar(p, 22) + ' ' + esc(p.name.split(' ')[0]) + '</button>'; }).join('') + '</div>' : ''))
       + '<div class="rd-shop"><span class="small muted">Shop:</span>' + Object.keys(r.shop).map(function (k) { return '<button class="btn ghost sm-btn" data-act="rd-buy" data-item="' + k + '"' + (r.coins < r.shop[k][0] ? ' disabled' : '') + '>' + (k === 'shield' ? '🛡 ' : '❄ ') + esc(r.shop[k][1]) + ' · ' + r.shop[k][0] + ' 🪙</button>'; }).join('') + '</div>'
       + (log ? '<ul class="rd-logs">' + log + '</ul>' : '')
@@ -297,15 +308,36 @@
       }).join('') + '</ul><p class="small muted">To win, your attack (20 per right answer) must beat their defence.</p>' : '<p class="muted">Nobody can be raided right now — everyone is protected. Try later!</p>'), 'narrow');
     }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
   }
+  function srForge(slot) {
+    var g = RD.rpg, x = g.gear[slot], items = g.shop.filter(function (i) { return i.slot === slot; });
+    openModal(mHead('🔨 Forge · ' + x.slot, 'Better grades need better English: your level and mastered points') + '<div class="stack" dir="ltr">'
+      + (x.grade ? '<div class="card row-between"><div><b>' + esc(x.name) + '</b><br><span class="small muted">+' + x.bonus + '% ' + esc(x.stat) + '</span></div>' + (x.next ? '<button class="btn sm-btn" data-act="sr-up" data-slot="' + slot + '">Upgrade to +' + x.next + ' · ' + x.next + ' ⚗</button>' : '<span class="pill">Max +5</span>') + '</div>' : '')
+      + '<ul class="sr-shop">' + items.map(function (i) {
+        var have = x.grade >= i.grade;
+        return '<li class="sr-it g' + i.grade + (i.ok ? '' : ' locked') + '"><div><b>' + esc(i.name) + '</b><span class="small muted">+' + i.bonus + '% ' + esc(x.stat) + (i.ok ? '' : ' · 🔒 needs ' + i.need.level + (i.need.mastered ? ' and ' + i.need.mastered + ' points mastered' : '')) + '</span></div>'
+          + (have ? '<span class="pill">Owned</span>' : '<button class="btn sm-btn" data-act="sr-buy" data-slot="' + slot + '" data-grade="' + i.grade + '"' + (i.ok && RD.coins >= i.price ? '' : ' disabled') + '>' + i.price + ' 🪙</button>') + '</li>';
+      }).join('') + '</ul></div>', 'narrow');
+  }
+  function srWanted(btn) {
+    busy(btn, true, 'Looking…');
+    api('/raids/wanted').then(function (j) {
+      busy(btn, false);
+      openModal(mHead('🏹 Wanted board', 'Thieves who stole in the last 24 hours') + (j.wanted.length ? '<ul class="pick-list">' + j.wanted.map(function (w) {
+        return '<li><button class="pick" data-act="sr-hunt" data-ev="' + w.event + '">' + avatar(w.thief, 36) + '<span><b>' + esc(w.thief.name) + '</b><br><small>stole ' + w.loot + ' 🪙 from ' + esc(w.victim.name) + ' · defence ' + w.thief.defence + '</small></span><em>🏹</em></button></li>';
+      }).join('') + '</ul><p class="small muted">Win and the coins go back: half to the victim, half to you as a bounty.</p>' : '<p class="muted">No wanted thieves right now. The streets are safe!</p>'), 'narrow');
+    }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
+  }
+  function srPost(path, body) { return api(path, { method: 'POST', body: body }).then(function (j) { RD = j; paintRaids(); return j; }, function (x) { toast(x.message, 'bad'); throw x; }); }
+
   /** The battle: 5 questions, 20 seconds each. */
-  function raidBattle(target) {
-    api('/raids/start', { method: 'POST', body: { target: target } }).then(function (b) {
+  function raidBattle(target, hunt) {
+    api('/raids/start', { method: 'POST', body: hunt ? { hunt: hunt } : { target: target } }).then(function (b) {
       var i = 0, ans = [], timer = null;
       function q() {
         clearInterval(timer);
         if (i >= b.questions.length) return finish();
         var it = b.questions[i], left = b.seconds;
-        openModal('<div class="battle" dir="ltr"><div class="row-between"><b>⚔ vs ' + esc(b.defender.name) + '</b><span class="small muted">' + (i + 1) + ' / ' + b.questions.length + '</span></div>'
+        openModal('<div class="battle" dir="ltr"><div class="row-between"><b>' + (b.hunt ? '🏹 Hunting ' : '⚔ vs ') + esc(b.defender.name) + '</b><span class="small muted">' + (i + 1) + ' / ' + b.questions.length + '</span></div>'
           + '<div class="bar bt-time"><i style="width:100%"></i></div><p class="bt-q">' + esc(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + '</p>'
           + '<div class="bt-opts">' + it.options.map(function (o, k) { return '<button class="btn ghost" data-bt="' + k + '">' + esc(o) + '</button>'; }).join('') + '</div></div>', 'narrow');
         $$('[data-bt]').forEach(function (x) { x.onclick = function () { ans.push(+x.dataset.bt); i++; q(); }; });
@@ -316,8 +348,8 @@
         openModal('<div class="battle" dir="ltr"><p class="muted">Fighting…</p></div>', 'narrow');
         api('/raids/answer', { method: 'POST', body: { battle: b.battle, answers: ans } }).then(function (r) {
           RD = r; paintRaids();
-          openModal(mHead(r.won ? '🏆 You won!' : '🛡 Their defence held', r.right + ' of 5 right · attack ' + r.attack + ' vs defence ' + r.defence)
-            + '<div class="stack" dir="ltr">' + (r.won ? '<p class="rd-big">+' + r.loot + ' 🪙 loot</p>' : '<p class="muted">Get more answers right to beat higher defences.</p>') + '<p class="small muted">+' + r.bonus + ' 🪙 for fighting in English</p>'
+          openModal(mHead(r.won ? (r.hunt ? '🏹 Thief caught!' : '🏆 You won!') : (r.hunt ? '💨 The thief got away' : '🛡 Their defence held'), r.right + ' of 5 right · attack ' + r.attack + ' vs defence ' + r.defence)
+            + '<div class="stack" dir="ltr">' + (r.won ? '<p class="rd-big">+' + r.loot + ' 🪙 ' + (r.hunt ? 'bounty' : 'loot') + '</p>' + (r.hunt ? '<p class="small">' + r.returned + ' 🪙 went back to the victim.</p>' : '') : '<p class="muted">Get more answers right to beat higher defences.</p>') + '<p class="small muted">+' + r.bonus + ' 🪙 for fighting in English</p>'
             + '<ul class="bt-review">' + r.review.map(function (x) { return '<li class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓ ' : '✗ ') + esc(x.q) + (x.ok ? '' : ' → <b>' + esc(x.right) + '</b>') + '</li>'; }).join('') + '</ul>'
             + '<button class="btn primary wide" data-act="close">Done</button></div>', 'narrow');
         }, function (x) { closeModal(); toast(x.message, 'bad'); });
@@ -592,13 +624,15 @@
       case 'quest_done': return name(e.who) + ' completed today\'s quest' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
       case 'group_invite': return name(e.who) + ' added you to the group <b dir="auto">' + esc(d.name) + '</b>';
       case 'mastered': return name(e.who) + ' mastered <b dir="ltr">' + esc(d.name) + '</b> 🏆';
+      case 'hunt': return name(e.who) + (d.won ? ' (Hunter) caught you and returned ' + d.amount + ' 🪙 to its owner.' : ' (Hunter) tried to catch you — you got away!');
+      case 'returned': return name(e.who) + ' (Hunter) caught ' + esc(d.thief) + ' and gave you back ' + d.amount + ' 🪙!';
       case 'raid': return name(e.who) + (d.won ? ' raided you and took ' + d.loot + ' 🪙. Do today\'s plan to raise your defence — and take your revenge!' : ' tried to raid you, but your defence held 🛡');
       case 'reply': return name(e.who) + ' replied to your message' + (d.voice ? ' with a voice note' : d.sticker ? ' with ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' did something';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -1288,6 +1322,14 @@
         break;
       case 'mic': startRec(); break;
       case 'rd-find': raidFind(el); break;
+      case 'sr-job': srPost('/raids/job', { job: el.dataset.job }).then(function () { toast('Welcome, ' + RD.rpg.jobs[el.dataset.job][1] + '!', 'good'); }, function () {}); break;
+      case 'sr-jobs': RD.rpg.job = ''; paintRaids(); break;
+      case 'sr-forge': srForge(el.dataset.slot); break;
+      case 'sr-buy': srPost('/raids/buy', { slot: el.dataset.slot, grade: +el.dataset.grade }).then(function () { srForge(el.dataset.slot); toast('Equipped!', 'good'); }, function () {}); break;
+      case 'sr-up': srPost('/raids/upgrade', { slot: el.dataset.slot }).then(function () { srForge(el.dataset.slot); toast('Upgraded!', 'good'); }, function () {}); break;
+      case 'sr-skill': srPost('/raids/skill', { skill: el.dataset.id }).catch(function () {}); break;
+      case 'sr-wanted': srWanted(el); break;
+      case 'sr-hunt': closeModal(); raidBattle(0, +el.dataset.ev); break;
       case 'rd-start': closeModal(); raidBattle(+el.dataset.id); break;
       case 'rd-buy': api('/raids/shop', { method: 'POST', body: { item: el.dataset.item } }).then(function (j) { RD = j; paintRaids(); toast('Bought!', 'good'); }, function (x) { toast(x.message, 'bad'); }); break;
       case 'tray': paintTray(C.tray ? '' : 'st'); break;

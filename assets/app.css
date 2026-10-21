@@ -481,6 +481,29 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .bt-review .ok { color: var(--ink); } .bt-review .no { color: var(--red); }
 .rd-big { font-family: var(--display); font-weight: 800; font-size: 30px; color: var(--fg); }
 
+/* Silk Road */
+.sr-who { display: grid; gap: 2px; }
+.sr-job { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--fg); }
+.sr-jobs { display: grid; gap: 8px; }
+.sr-jobc { text-align: start; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; cursor: pointer; font: inherit; color: inherit; }
+.sr-jobc:hover { border-color: var(--fg); }
+.sr-gear { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sr-slot { border: 1px dashed var(--line); background: var(--panel-2); border-radius: 12px; padding: 8px; display: grid; gap: 2px; text-align: center; cursor: pointer; font: inherit; color: inherit; min-height: 84px; align-content: center; }
+.sr-slot b { font-size: 13px; color: var(--fg); }
+.g1 { border-style: solid; border-color: #b0773c; } .g2 { border-style: solid; border-color: #7d8790; } .g3 { border-style: solid; border-color: #4b6b8a; }
+.g4 { border-style: solid; border-color: #9aa7b5; background: #f3f6f9; } .g5 { border-style: solid; border-color: #d4a017; background: #fdf7e3; } .g6 { border-style: solid; border-color: #2e8b57; background: #e9f6ee; }
+.sr-skills { display: grid; gap: 6px; }
+.sr-sk { display: flex; gap: 6px; flex-wrap: wrap; }
+.sr-skb { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 6px 10px; display: grid; text-align: start; font: inherit; color: inherit; cursor: pointer; max-width: 100%; }
+.sr-skb span { font-size: 11.5px; color: var(--muted); }
+.sr-skb.on { border-color: var(--fg); background: var(--fg); color: var(--on-fg); }
+.sr-skb.on span { color: color-mix(in srgb, var(--on-fg) 70%, transparent); }
+.sr-skb.locked { opacity: .55; cursor: default; }
+.sr-shop { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sr-it { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.sr-it > div { display: grid; }
+.sr-it.locked { opacity: .6; }
+
 /* Inside the one Sawa English app */
 .emb-bar { display: flex; gap: 8px; align-items: center; justify-content: flex-start; margin-bottom: 12px; flex-wrap: wrap; }
 .emb-bar .bell, .emb-bar .me-btn { margin-inline-start: 0; }
