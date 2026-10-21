@@ -354,7 +354,7 @@ final class Sawa_Tracker_Admin {
 		wp_nonce_field( 'sawa_tr_quest' );
 		echo '<input type="hidden" name="action" value="sawa_tr_quest">';
 		echo '<p><label for="q-text"><b>Quest</b></label><br><input id="q-text" name="text" class="large-text" maxlength="200" placeholder="e.g. Record a 1-minute voice note describing your morning" value="' . esc_attr( $live ? $q['text'] : '' ) . '"></p>';
-		echo '<p><label>Bonus skill points <input type="number" name="sp" min="0" max="10" value="' . (int) ( $live ? $q['sp'] : 2 ) . '" class="small-text"></label></p>';
+		echo '<p><label>Bonus (× 3 coins) <input type="number" name="sp" min="0" max="10" value="' . (int) ( $live ? $q['sp'] : 2 ) . '" class="small-text"></label></p>';
 		submit_button( $live ? 'Update today\'s quest' : 'Set today\'s quest', 'primary', 'submit', false );
 		global $wpdb;
 		$done = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Sawa_Tracker_Game::table( 'events' ) . " WHERE type = 'quest_done' AND created_at >= %s", $today . ' 00:00:00' ) ); // phpcs:ignore

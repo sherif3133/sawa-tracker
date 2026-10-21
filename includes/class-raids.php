@@ -27,6 +27,7 @@ final class Sawa_Tracker_Raids {
 
 	public static function init() {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
+		add_action( 'init', array( __CLASS__, 'sp_to_coins' ) );
 	}
 
 	public static function routes() {
@@ -36,6 +37,19 @@ final class Sawa_Tracker_Raids {
 	}
 
 	/* ------------------------------------------------------------------ coins */
+
+	/** Skill points were merged into coins: move every old SP balance once (1 SP = 3 coins). */
+	public static function sp_to_coins() {
+		if ( get_option( 'sawa_tr_sp_coins' ) ) {
+			return;
+		}
+		update_option( 'sawa_tr_sp_coins', time(), false );
+		global $wpdb;
+		foreach ( (array) $wpdb->get_results( "SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = 'sawa_sp' AND meta_value > 0", ARRAY_A ) as $r ) { // phpcs:ignore
+			self::add_coins( (int) $r['user_id'], (int) $r['meta_value'] * Sawa_Tracker_Game::SP_COINS );
+			update_user_meta( (int) $r['user_id'], 'sawa_sp', 0 );
+		}
+	}
 
 	public static function coins( $uid ) {
 		return (int) Sawa_Tracker_Game::m( $uid, 'coins', 0 );

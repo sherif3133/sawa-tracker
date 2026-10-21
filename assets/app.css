@@ -609,7 +609,8 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .wd-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); font-size: 15px; opacity: .55; }
 .wd-dot.open { opacity: 1; }
 .wd-dot.here { opacity: 1; background: var(--fg); box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--red); }
-.wd-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wd-top { display: flex; align-items: center; gap: 4px; }
+.wd-top .pill { white-space: nowrap; }
 .wd-top .btn { margin-right: auto; }
 .wd-tabs { display: flex; }
 .wd-tabs button { flex: 1; }
@@ -653,3 +654,10 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .wd-route { width: 100%; }
 .wd-card .row-between, #world .row-between { gap: 10px; }
 #world .row-between > span.small { flex: 1; }
+.wd-help { width: 34px; height: 34px; font-weight: 700; font-size: 16px; }
+.wd-tour h2 { margin: 0; }
+.wd-helpl > div { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.wd-helpl p { margin: 4px 0 0; }
+.wd-sq { border: 2px solid var(--red); }
+.wd-sq .row, #world .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.wd-sq input, #w-pname { flex: 1; min-width: 160px; }

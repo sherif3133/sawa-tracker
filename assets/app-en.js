@@ -254,9 +254,9 @@
     if (EMB) {
       emit({ view: S.view });
       if (S.view === 'today') return renderToday();
-      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="world-card"></div><div id="raids"><div class="card"><p class="muted small">Loading raids…</p></div></div><div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + bossCard() + '</div><div class="col side">' + boardCard() + feedCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); loadRaids(); loadWorldCard(); return; }
+      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="world-card"></div><div id="raids">' + (stage() >= 4 ? '<div class="card"><p class="muted small">Loading…</p></div>' : '<section class="card" dir="ltr"><p class="small muted">🔒 <b>Jobs, gear and raids</b> open at stage 4 (Speak). Until then: fight monsters and finish quests in the Silk Road.</p></section>') + '</div><div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + feedCard() + '</div><div class="col side">' + boardCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); if (stage() >= 4) loadRaids(); loadWorldCard(); return; }
       if (S.view === 'world') { openWorld(); return; }
-      if (S.view === 'me') { $('#app').innerHTML = header() + '<div class="grid one">' + xpCard() + characterCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'; return; }
+      if (S.view === 'me') { $('#app').innerHTML = header() + '<div class="grid one">' + xpCard() + helpCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'; return; }
       if (S.view === 'chat') { $('#app').innerHTML = '<div id="view"></div>'; paintChat(); return; }
     }
     if (S.view === 'clan') { $('#app').innerHTML = header() + '<div id="view">' + clanView() + '</div>'; if (!S.clanLoading) loadClan(); return; }
@@ -287,7 +287,7 @@
       + who + (job ? gear + skills : '')
       + '<p class="small muted">Your first ' + r.safe + ' coins are always safe' + (safeLeft ? '; ' + safeLeft + ' can be stolen.' : '.') + '</p>'
       + '<div class="rd-def"><div class="row-between"><b>Your defence ' + r.defence + '</b>' + shield + '</div><div class="bar"><i style="width:' + r.defence + '%;background:var(--fg)"></i></div>'
-      + '<p class="small muted">Raise it with English today: every step of today\'s plan adds 10, your streak adds armour, and a perfect day makes you raid-proof until midnight.' + (r.class === 'healer' ? ' Healers get +10%.' : r.class === 'warrior' ? ' Warriors attack 10% harder.' : '') + '</p></div>'
+      + '<p class="small muted">Raise it with English today: every step of today\'s plan adds 10, your streak adds armour, and a perfect day makes you raid-proof until midnight.' + '</p></div>'
       + (r.peace ? '<p class="note">🕊 Peace mode is on: you can\'t raid or be raided.</p>'
         : !r.canBattle ? '<p class="note">Raids open soon.</p>'
         : !job ? ''
@@ -361,6 +361,10 @@
 
   /* ------------------------------------------------------------ the Silk Road world (map, quests, party) */
   var W = { tab: 'map', data: null, party: null, live: null, liveT: null };
+  /** The app's stage (1–5). Stage 3: map, monsters, quests. Stage 4: jobs, gear, raids. Stage 5: parties. */
+  function stage() { return EMB ? (+window.SawaAppStage || 5) : 5; }
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
   var JOB_IC = { thief: '🗡', hunter: '🏹', trader: '🐪' };
   function loadWorldCard() {
     api('/world').then(function (j) { W.data = j; paintWorldCard(); }, function () { var el = $('#world-card'); if (el) el.innerHTML = ''; });
@@ -377,13 +381,13 @@
     emit({ view: 'community' }); // the world lives in the app's Community tab
     $('#app').innerHTML = '<div id="world" dir="ltr"><div class="card"><p class="muted small">Loading the Silk Road…</p></div></div>';
     try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
-    Promise.all([api('/world'), api('/party')]).then(function (r) { W.data = r[0]; W.party = r[1]; paintWorld(); }, function (x) { $('#world').innerHTML = '<div class="card"><p class="err">' + esc(x.message) + '</p><button class="btn" data-act="w-back">Back</button></div>'; });
+    Promise.all([api('/world'), api('/party')]).then(function (r) { W.data = r[0]; W.party = r[1]; paintWorld(); if (!lsGet('sawaWorldTour')) worldTour(0); }, function (x) { $('#world').innerHTML = '<div class="card"><p class="err">' + esc(x.message) + '</p><button class="btn" data-act="w-back">Back</button></div>'; });
   }
   function bar(v, max, color) { return '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, v / Math.max(1, max) * 100)) + '%;background:' + (color || 'var(--fg)') + '"></i></div>'; }
   function paintWorld() {
     var el = $('#world'), w = W.data; if (!el || !w) return;
     var tabs = [['map', '🗺 Map'], ['quests', '📜 Quests'], ['party', '⚔ Party']].map(function (t) { return '<button data-act="w-tab" data-tab="' + t[0] + '" aria-pressed="' + (W.tab === t[0]) + '">' + t[1] + '</button>'; }).join('');
-    el.innerHTML = '<div class="wd-top"><button class="btn ghost sm-btn" data-act="w-back">← Community</button><span class="pill">🪙 ' + w.coins + '</span><span class="pill">⚗ ' + w.elixirs + '</span><span class="pill" title="Fights left today. Every step of today\'s plan gives one more.">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>'
+    el.innerHTML = '<div class="wd-top"><button class="btn ghost sm-btn" data-act="w-back">← Community</button><span class="pill">🪙 ' + w.coins + '</span><span class="pill">⚗ ' + w.elixirs + '</span><span class="pill" title="Fights left today. Every step of today\'s plan gives one more.">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span><button class="icon-btn wd-help" data-act="w-help" aria-label="How the Silk Road works">?</button></div>'
       + '<div class="seg wd-tabs" role="tablist">' + tabs + '</div><div id="wd-body">' + (W.tab === 'quests' ? worldQuests() : W.tab === 'party' ? worldParty() : worldMap()) + '</div>';
   }
   function worldMap() {
@@ -399,8 +403,47 @@
       + (b.beaten ? '<span class="pill">✓ Defeated</span>' : b.ready ? '<button class="btn primary sm-btn" data-act="w-boss"' + (b.tries && w.ready ? '' : ' disabled') + '>Fight · ' + b.tries + ' tries left</button>' : '<span class="small muted">🔒 Finish the story quests first</span>') + '</div>';
     return route
       + '<section class="card"><div class="row-between"><h3>' + t.icon + ' ' + esc(t.name) + ' <span class="small muted">' + t.level + '</span></h3><button class="btn ghost sm-btn" data-act="w-room" data-id="' + t.room + '">💬 Town chat</button></div>' + people + '</section>'
+      + worldBossCard()
       + '<section class="card"><h3>Monsters</h3><p class="small muted">Monsters attack with <b>your own English</b>: words from your flashcards and the videos and texts you saved, and the skill points you\'re weakest at. Win if your attack (20 per right answer + gear) reaches their HP. Words you miss come back in your review cards.' + (w.ready ? '' : ' Battles open soon.') + '</p>' + mons + boss + '</section>'
-      + (w.job ? '' : '<p class="note">Tip: choose a job (Thief, Hunter or Trader) in the Silk Road card in Community, then buy a weapon at the forge to hit harder.</p>');
+      + (w.job || stage() < 4 ? '' : '<p class="note">Tip: choose a job (Thief, Hunter or Trader) in the Silk Road card in Community, then buy a weapon at the forge to hit harder.</p>');
+  }
+  function worldBossCard() {
+    var b = S.data.boss; if (!b) return '';
+    var left = Math.max(0, b.hp - b.damage), days = Math.max(0, Math.round((new Date(b.ends + 'T23:59:59') - Date.now()) / 86400000));
+    return '<section class="card"><h3>🌍 World boss: ' + esc(bossName(b.name)) + '</h3>'
+      + (b.defeated ? '<p class="note">🏆 Defeated this week! Everyone who studied got +9 🪙. A new one comes ' + (days ? 'in ' + days + ' day' + (days > 1 ? 's' : '') : 'tomorrow') + '.</p>'
+        : bar(left, b.hp, 'var(--red)') + '<p class="small muted">' + left + ' / ' + b.hp + ' HP · ' + b.fighters + (b.fighters === 1 ? ' student' : ' students') + ' fighting · every minute anyone studies this week is a hit. Ends ' + (days ? 'in ' + days + ' day' + (days > 1 ? 's' : '') : 'today') + '.</p>')
+      + '</section>';
+  }
+  function sherifQuest() {
+    var q = S.data.quest; if (!q) return '';
+    return '<section class="card wd-sq"><h3>⭐ Today\'s quest from Sherif</h3><p dir="auto">' + esc(q.text) + '</p>'
+      + (q.done ? '<span class="pill">✓ Done</span>' : '<div class="row"><input id="w-qnote" maxlength="200" placeholder="How did you do it? (optional)" dir="auto"><button class="btn primary" data-act="w-squest">Done · +' + q.sp + ' 🪙</button></div>') + '</section>';
+  }
+  var HELP = [
+    ['🗺', 'The map', 'Six towns from Chang\'an to Constantinople, one for each English level (A1 → C2). You start in the town of your level test. Beat a town\'s boss to open the road to the next one — or retake the level test.'],
+    ['⚔', 'Monsters', 'Every fight is 5 English questions: words from <b>your</b> flashcards in the sentence where you found them, your own past mistakes, and the skill points you\'re weakest at. 20 attack per right answer (plus your weapon). Words you miss come back in today\'s review cards.'],
+    ['⚡', 'Fights a day', '5 fights a day, plus one for every step of today\'s plan and one for a perfect day. Studying gives you more game.'],
+    ['📜', 'Quests', 'Each town has a story: monsters → a learning task (cards, practice, chat, video quizzes…) → the boss. Daily and weekly quests pay coins and elixirs. Tap <b>Go</b> to jump to the right place in the app.'],
+    ['🌍', 'World boss', 'One boss for the whole community each week. Every minute anyone studies hits it.'],
+    ['🪙', 'Coins and ⚗ elixirs', 'Coins come from learning (plan steps, quizzes, quests, fights). Spend them on gear, shields and helping classmates. Elixirs come from mastering skill points, perfect days and big wins; they upgrade your gear.'],
+    ['🗡', 'Jobs, gear and raids (stage 4)', 'Thief, Hunter or Trader. Gear grades follow your English level: Bronze = A1 … Jade = C2. Thieves raid, hunters catch thieves, traders earn more from learning. Your first 20 coins are always safe, and peace mode turns raids off.'],
+    ['👥', 'Parties (stage 5)', '2–4 friends: party chat, a 48-hour party boss, a weekly team goal and live battles where everyone answers the same question at the same time.'],
+    ['📈', 'What never changes', 'The game never takes away learning progress: your streak, XP, cards and skill tree are safe whatever happens in a fight.']
+  ];
+  function worldHelp() {
+    openModal(mHead('How the Silk Road works', 'Learning is the way to get stronger') + '<div class="stack wd-helpl" dir="ltr">' + HELP.map(function (h) { return '<div><b>' + h[0] + ' ' + h[1] + '</b><p class="small">' + h[2] + '</p></div>'; }).join('') + '<button class="btn ghost" data-act="w-tour">Show me the tour again</button></div>', 'narrow');
+  }
+  var TOUR = [
+    ['🗺 Welcome to the Silk Road!', 'A journey from Chang\'an to Constantinople — one town for each English level. You start in the town of your level.'],
+    ['⚔ Monsters use your English', 'They attack with the words you saved from videos and articles, your own mistakes and your weakest grammar. Every fight is a quick review.'],
+    ['📜 Quests send you to learn', 'Review cards, practise, chat and watch — then beat the town\'s boss to travel on. Tap “Go” on a quest to jump there.'],
+    ['⚡ Study = more game', 'You get 5 fights a day, plus one for each step of today\'s plan. Jobs and gear open at stage 4, parties at stage 5. Tap ? any time for help.']
+  ];
+  function worldTour(i) {
+    lsSet('sawaWorldTour', '1');
+    if (i >= TOUR.length) { closeModal(); return; }
+    openModal('<div class="stack wd-tour" dir="ltr"><span class="small muted">' + (i + 1) + ' / ' + TOUR.length + '</span><h2>' + TOUR[i][0] + '</h2><p>' + TOUR[i][1] + '</p><div class="row-between"><button class="btn ghost" data-act="close">Skip</button><button class="btn primary" data-act="w-tour" data-i="' + (i + 1) + '">' + (i + 1 < TOUR.length ? 'Next' : 'Let\'s go!') + '</button></div></div>', 'narrow');
   }
   function questRow(q) {
     return '<li class="wd-q' + (q.claimed ? ' claimed' : '') + '"><div><b>' + esc(q.text) + '</b>' + bar(q.count, q.n) + '<span class="small muted">' + q.count + ' / ' + q.n + ' · ' + q.reward + '</span></div>'
@@ -414,13 +457,14 @@
   }
   function worldQuests() {
     var w = W.data;
-    return '<section class="card"><h3>' + w.town.icon + ' The story of ' + esc(w.town.name) + '</h3><p class="small muted">Quests count while you are in this town. Beat the boss to open the road to the next one.</p><ol class="wd-story">' + w.story.map(storyRow).join('') + '</ol></section>'
+    return sherifQuest() + '<section class="card"><h3>' + w.town.icon + ' The story of ' + esc(w.town.name) + '</h3><p class="small muted">Quests count while you are in this town. Beat the boss to open the road to the next one.</p><ol class="wd-story">' + w.story.map(storyRow).join('') + '</ol></section>'
       + '<section class="card"><h3>Today</h3><ul class="wd-qs">' + w.daily.map(questRow).join('') + '</ul><p class="small muted">' + (w.dailyAll ? '✓ All three done — you got the bonus elixir!' : 'Claim all three for a bonus ⚗ elixir.') + '</p></section>'
       + '<section class="card"><h3>This week</h3><ul class="wd-qs">' + w.weekly.map(questRow).join('') + '</ul></section>'
       + (w.titles.length ? '<section class="card"><h3>Your titles</h3><div class="pills">' + w.titles.map(function (t) { return '<span class="pill">🏅 ' + esc(t) + '</span>'; }).join('') + '</div></section>' : '');
   }
   function worldParty() {
     var P = W.party || {}, p = P.party, me = S.data.me.id;
+    if (stage() < 5) return '<section class="card"><h3>⚔ Parties</h3><p>🔒 Parties open at stage 5.</p><p class="small muted">Then you can play with 2–4 friends: a party chat, a big party boss you all hit for 48 hours, a weekly team goal and live battles on the words you are all learning. For now: fight monsters, finish quests and keep your daily plan going.</p></section>';
     if (!p) {
       return (P.invites && P.invites.length ? '<section class="card"><h3>Invitations</h3><ul class="wd-qs">' + P.invites.map(function (x) { return '<li class="wd-q"><div><b>' + esc(x.name) + '</b><div class="wd-people">' + x.members.map(function (m) { return avatar(m, 26); }).join('') + '</div></div><span><button class="btn primary sm-btn" data-act="w-join" data-id="' + x.id + '">Join</button> <button class="btn ghost sm-btn" data-act="w-decline" data-id="' + x.id + '">No thanks</button></span></li>'; }).join('') + '</ul></section>' : '')
         + '<section class="card"><h3>⚔ Start a party</h3><p class="small muted">Play with 2–4 friends: a private party chat, a big party boss you all hit for 48 hours, a weekly team goal, and live battles where everyone answers the same question at the same moment.</p>'
@@ -564,7 +608,7 @@
   function questCard() {
     var q = S.data.quest; if (!q) return '';
     return '<section class="card quest' + (q.done ? ' done' : '') + '"><div class="quest-row"><span class="q-badge">' + ico('target') + '</span><div class="quest-main"><span class="eyebrow">Today\'s quest from Sherif</span><p class="quest-text" dir="auto">' + esc(q.text) + '</p></div>'
-      + (q.done ? '<span class="pill">' + ico('check') + ' I did it</span>' : '<span class="pill sp">+' + q.sp + ' SP</span>') + '</div>'
+      + (q.done ? '<span class="pill">' + ico('check') + ' I did it</span>' : '<span class="pill sp">+' + q.sp + ' 🪙</span>') + '</div>'
       + (q.done ? '' : '<form class="quest-form" id="f-quest"><input id="q-note" maxlength="200" placeholder="How did you do it? (optional)" dir="auto" aria-label="Note about the quest"><button class="btn primary" type="submit">I did it</button></form>') + '</section>';
   }
 
@@ -607,19 +651,31 @@
     var pct = s.next ? Math.round((s.studyDays - s.from) / (s.next - s.from) * 100) : 100;
     var skills = d.skills.map(function (k) {
       var st = k.locked ? 'locked' : k.readyOn ? 'cooling' : s.sp < k.cost ? 'poor' : 'ready';
-      var tip = (k.descriptionAr || k.description) + (k.locked ? ' · unlocks at level ' + k.unlock : k.readyOn ? ' · ready ' + fmtDay(k.readyOn) : ' · costs ' + k.cost + ' SP');
+      var tip = (k.descriptionAr || k.description) + (k.locked ? ' · unlocks at level ' + k.unlock : k.readyOn ? ' · ready ' + fmtDay(k.readyOn) : ' · costs ' + k.cost + ' 🪙');
       return '<button class="skill ' + st + '" data-act="skill-info" data-skill="' + k.id + '" title="' + esc(tip) + '">'
         + '<span class="sk-ic">' + ico(k.locked ? 'lock' : (SKILL_IC[k.id] || 'spark')) + '</span><span class="sk-name" dir="ltr">' + esc(k.locked ? 'Lv ' + k.unlock : k.name) + '</span>'
-        + (!k.locked ? '<span class="sk-cost">' + (k.readyOn ? ico('hourglass', 'tiny') : k.cost + ' SP') + '</span>' : '') + '</button>';
+        + (!k.locked ? '<span class="sk-cost">' + (k.readyOn ? ico('hourglass', 'tiny') : k.cost + ' 🪙') + '</span>' : '') + '</button>';
     }).join('');
     return '<section class="card char"><div class="char-top">'
       + '<div class="char-av">' + avatar(d.me, 72) + '<span class="class-badge" title="' + esc(c.ar) + '">' + ico(c.ic) + '</span></div>'
       + '<div class="char-info"><div class="char-line"><h2 dir="ltr">Level ' + s.level + '</h2><span class="tag" dir="ltr">' + esc(s.title) + '</span><button class="tag link" data-act="change-class">' + ico(c.ic, 'tiny') + ' ' + esc(c.ar || 'Choose a class') + '</button></div>'
       + '<div class="bars"><div class="lbl"><span>' + (s.nextLevel ? 'Until level ' + s.nextLevel : 'Max level') + '</span><span>' + (s.next ? s.studyDays + ' / ' + s.next + ' study days' : 'You reached the top') + '</span></div>'
       + '<div class="bar xp"><i style="width:' + pct + '%"></i></div>'
-      + '<div class="lbl"><span>Skill points</span><span>' + s.sp + ' SP' + (s.spBonus ? ' · +' + s.spBonus + ' bonus waiting for you' : '') + '</span></div></div></div></div>'
+      + '<div class="lbl"><span>Skill points</span><span>' + s.sp + ' 🪙' + (s.spBonus ? ' · +' + s.spBonus + ' bonus waiting for you' : '') + '</span></div></div></div></div>'
       + '<div class="skills">' + skills + '</div>'
       + '<p class="muted small">Tap a skill to use it. You can also use skills that help your classmates from the ' + ico('bolt', 'tiny') + ' button next to their name on the leaderboard.</p></section>';
+  }
+
+  /** In the app: the old class skills, now paid with coins, as "help your classmates". */
+  function helpCard() {
+    var d = S.data, ready = d.skills.filter(function (k) { return !k.locked; });
+    if (!d.skills.length) return '';
+    return '<section class="card" dir="ltr"><div class="card-h"><h3>🤝 Help your classmates</h3><span class="rd-coins">' + d.stats.sp + ' 🪙</span></div>'
+      + '<p class="small muted">Spend coins to cheer up or protect a classmate. Tap ⚡ next to a name in the leaderboard.</p><div class="skills">'
+      + d.skills.map(function (k) {
+        var st = k.locked ? 'locked' : k.readyOn ? 'cooling' : d.stats.sp < k.cost ? 'poor' : 'ready';
+        return '<button class="skill ' + st + '" data-act="skill-info" data-skill="' + k.id + '" title="' + esc(k.description) + '"><span class="sk-ic">' + ico(k.locked ? 'lock' : (SKILL_IC[k.id] || 'spark')) + '</span><span class="sk-name">' + esc(k.name) + '</span><span class="sk-cost">' + (k.locked ? 'later' : k.readyOn ? ico('hourglass', 'tiny') : k.cost + ' 🪙') + '</span></button>';
+      }).join('') + '</div>' + (ready.length ? '' : '<p class="small muted">More open as you keep studying.</p>') + '</section>';
   }
 
   function bossCard() {
@@ -629,7 +685,7 @@
     return '<section class="card boss' + (b.defeated ? ' won' : '') + '"><div class="boss-top"><span class="boss-ic">' + ico('boss') + '</span>'
       + '<div class="boss-info"><span class="eyebrow">This week\'s boss</span><h2>' + esc(bossName(b.name)) + '</h2>'
       + (b.defeated
-        ? '<p class="win">Defeated. Everyone who fought got +3 SP and the Boss Slayer badge. The next boss comes ' + (daysLeft ? 'in ' + daysLeft + ' days' : 'tomorrow') + '.</p>'
+        ? '<p class="win">Defeated. Everyone who fought got +9 🪙 and the Boss Slayer badge. The next boss comes ' + (daysLeft ? 'in ' + daysLeft + ' days' : 'tomorrow') + '.</p>'
         : '<div class="bar boss-hp"><i style="width:' + pct + '%"></i><em dir="ltr">' + left.toLocaleString(LOC) + ' / ' + b.hp.toLocaleString(LOC) + ' HP</em></div>'
           + '<p class="muted small">Every study minute from anyone = a hit. ' + b.fighters + ' fighting · ' + (daysLeft ? 'Left: ' + daysLeft + ' days' : 'Last day!') + '</p>')
       + '</div></div>' + (top ? '<div class="boss-top5"><span class="eyebrow">Top hitters this week (minutes)</span><ol>' + top + '</ol></div>' : '') + '</section>';
@@ -791,7 +847,7 @@
       case 'skill': return name(e.who) + ' used <span dir="ltr">' + esc(d.name) + '</span> on ' + (e.target && e.who && e.target.id === e.who.id ? 'themselves' : name(e.target));
       case 'level_up': return name(e.who) + ' reached <b dir="ltr">Level ' + d.level + '</b> · <span dir="ltr">' + esc(d.title) + '</span>';
       case 'badge': return name(e.who) + ' earned the badge <b>' + esc(badgeByName(d.name).name) + '</b>';
-      case 'boss_down': return '<b>The community defeated ' + esc(bossName(d.name)) + '!</b> ' + d.fighters + ' fought and each got +3 SP';
+      case 'boss_down': return '<b>The community defeated ' + esc(bossName(d.name)) + '!</b> ' + d.fighters + ' fought and each got +9 🪙';
       case 'streak_lost': return name(e.who) + ' lost a ' + d.streak + ' day streak. Send some support.';
       case 'freeze_used': return name(e.who) + ' kept a ' + d.streak + ' day streak with a freeze';
       case 'joined': return name(e.who) + ' joined as ' + esc(cls(d.class).ar) + '. Welcome!';
@@ -886,7 +942,7 @@
       if (!(min >= 1 && min <= 720)) { err.textContent = 'Enter minutes from 1 to 720.'; return; }
       busy(btn, true);
       api('/log', { method: 'POST', body: { activity: c.value, minutes: min, cards: parseInt($('#l-cards').value, 10) || 0, notes: $('#l-notes').value.trim(), day: day } })
-        .then(function (j) { closeModal(); afterAction(j, 'Logged!' + (j.sp ? ' +' + j.sp + ' SP' : '')); }, function (x) { busy(btn, false); err.textContent = x.message; });
+        .then(function (j) { closeModal(); afterAction(j, 'Logged!' + (j.sp ? ' +' + j.sp + ' 🪙' : '')); }, function (x) { busy(btn, false); err.textContent = x.message; });
     });
   }
 
@@ -962,18 +1018,18 @@
       + '<p class="muted">' + hm(tot) + ' · ' + entries.length + ' activities' + (cards ? ' · ' + cards + ' cards' : '') + '</p>'
       + (st.moodAfter ? '<p>Mood <span dir="ltr">' + st.moodAfter + '/10</span>' + (st.moodBefore ? (st.moodAfter >= st.moodBefore ? ' (was ' + st.moodBefore + ')' : ' (from ' + st.moodBefore + ')') : '') + '</p>' : '')
       + '<p class="serif">keep going.</p>'
-      + '<div class="pills"><span class="pill sp">+' + j.sp + ' SP</span>' + (j.levelUp ? '<span class="pill lv" dir="ltr">Level ' + j.levelUp + '</span>' : '') + (j.badges || []).map(function (b) { var bi = badgeInfo(b); return '<span class="pill bd">' + ico(bi.ic, 'tiny') + ' ' + esc(bi.name) + '</span>'; }).join('') + '</div>'
+      + '<div class="pills"><span class="pill sp">+' + j.sp + ' 🪙</span>' + (j.levelUp ? '<span class="pill lv" dir="ltr">Level ' + j.levelUp + '</span>' : '') + (j.badges || []).map(function (b) { var bi = badgeInfo(b); return '<span class="pill bd">' + ico(bi.ic, 'tiny') + ' ' + esc(bi.name) + '</span>'; }).join('') + '</div>'
       + '<button class="btn primary wide" data-act="close" autofocus>OK</button></div>', 'narrow');
   }
 
   /* Skills */
   function openSkill(id) {
     var k = S.data.skills.filter(function (x) { return x.id === id; })[0]; if (!k) return;
-    var s = S.data.stats, why = k.locked ? 'Unlocks at level ' + k.unlock + '. You are at level ' + s.level + '.' : k.readyOn ? 'Resting. Ready again ' + fmtDay(k.readyOn) + '.' : s.sp < k.cost ? 'Needs ' + k.cost + ' SP and you have ' + s.sp + '. Log activities to collect more.' : '';
+    var s = S.data.stats, why = k.locked ? 'Unlocks at level ' + k.unlock + '. You are at level ' + s.level + '.' : k.readyOn ? 'Resting. Ready again ' + fmtDay(k.readyOn) + '.' : s.sp < k.cost ? 'Needs ' + k.cost + ' 🪙 and you have ' + s.sp + '. Log activities to collect more.' : '';
     var others = k.target === 'other';
     openModal(mHead('<span class="h-ic">' + ico(SKILL_IC[k.id] || 'spark') + '</span><span dir="ltr">' + esc(k.name) + '</span>', others ? 'Used on a classmate' : 'Used on yourself')
       + '<p dir="rtl">' + esc(k.descriptionAr || k.description) + '</p>'
-      + '<div class="pills"><span class="pill sp">' + k.cost + ' SP</span><span class="pill">Rests ' + k.cooldown + ' days after you use it</span></div>'
+      + '<div class="pills"><span class="pill sp">' + k.cost + ' 🪙</span><span class="pill">Rests ' + k.cooldown + ' days after you use it</span></div>'
       + (why ? '<p class="note">' + esc(why) + '</p>' : others ? '<div class="f"><span>Choose a classmate</span><input id="t-search" placeholder="Search by name" autocomplete="off" dir="auto"><ul class="pick-list" id="t-list"></ul></div>' : '')
       + '<p class="err" role="alert"></p>'
       + (!why && !others ? '<button class="btn primary wide" data-act="cast" data-skill="' + k.id + '" data-target="0">Use <span dir="ltr">' + esc(k.name) + '</span></button>' : ''));
@@ -992,10 +1048,10 @@
     var t = S.board.rows.filter(function (r) { return r.id === targetId; })[0] || { id: targetId, name: 'This classmate' };
     var list = S.data.skills.filter(function (k) { return k.target === 'other'; }).map(function (k) {
       var s = S.data.stats, dis = k.locked || k.readyOn || s.sp < k.cost;
-      var why = k.locked ? 'Lv ' + k.unlock : k.readyOn ? 'Ready ' + fmtDay(k.readyOn) : s.sp < k.cost ? 'Needs ' + k.cost + ' SP' : k.cost + ' SP';
+      var why = k.locked ? 'Lv ' + k.unlock : k.readyOn ? 'Ready ' + fmtDay(k.readyOn) : s.sp < k.cost ? 'Needs ' + k.cost + ' 🪙' : k.cost + ' 🪙';
       return '<li><button class="pick skillpick" data-act="cast" data-skill="' + k.id + '" data-target="' + targetId + '"' + (dis ? ' disabled' : '') + '><span class="sk-ic">' + ico(k.locked ? 'lock' : (SKILL_IC[k.id] || 'spark')) + '</span><span><b dir="ltr">' + esc(k.name) + '</b><small>' + esc(k.descriptionAr || k.description) + '</small></span><em>' + esc(why) + '</em></button></li>';
     }).join('');
-    openModal(mHead('Help ' + esc(t.name), 'You have ' + S.data.stats.sp + ' SP') + '<ul class="pick-list">' + list + '</ul><p class="err" role="alert"></p>');
+    openModal(mHead('Help ' + esc(t.name), 'You have ' + S.data.stats.sp + ' 🪙') + '<ul class="pick-list">' + list + '</ul><p class="err" role="alert"></p>');
   }
   function doCast(btn) {
     busy(btn, true, 'Working on it…');
@@ -1021,7 +1077,7 @@
     var text = function (e) {
       var d = e.data || {};
       if (e.type === 'skill') {
-        var effects = { rally: 'is cheering you on: let\'s study!', heal: '(+15% health)', inner_peace: '', war_cry: '(+10% health)', shield_ally: '(+1 streak freeze)', fortify: '(2 days of health protection)', unbreakable: '(freeze + 3 days of protection)', empower: '(+2 SP on your next activity)', revitalize: '(+10% health and a freeze)', sanctuary: '(3 days of protection)', guardian_angel: '(+20% health and 3 days of protection)' };
+        var effects = { rally: 'is cheering you on: let\'s study!', heal: '(+15% health)', inner_peace: '', war_cry: '(+10% health)', shield_ally: '(+1 streak freeze)', fortify: '(2 days of health protection)', unbreakable: '(freeze + 3 days of protection)', empower: '(+6 🪙 on your next activity)', revitalize: '(+10% health and a freeze)', sanctuary: '(3 days of protection)', guardian_angel: '(+20% health and 3 days of protection)' };
         return name(e.who) + (d.skill === 'rally' ? ' ' + effects.rally : ' used <span dir="ltr">' + esc(d.name) + '</span> on you ' + (effects[d.skill] || ''));
       }
       return eventText(e);
@@ -1040,7 +1096,7 @@
       + '<label class="f">Email reminder <small>sent only on days you haven\'t studied yet</small><select id="remind">'
       + '<option value="">Off</option>' + [7, 9, 12, 15, 17, 18, 19, 20, 21, 22].map(function (h) { return '<option value="' + h + '"' + (String(h) === String(d.remindHour) ? ' selected' : '') + '>' + hr(h) + '</option>'; }).join('')
       + '</select></label>'
-      + '<hr><button class="btn ghost" data-act="change-class">Change class</button>'
+      + (EMB ? '' : '<hr><button class="btn ghost" data-act="change-class">Change class</button>')
       + '<a class="btn ghost" href="' + esc(cfg.logoutUrl) + '">Log out</a></div>', 'narrow');
   }
   function uploadAvatar(file) {
@@ -1512,6 +1568,9 @@
       case 'sr-wanted': srWanted(el); break;
       case 'sr-hunt': closeModal(); raidBattle(0, +el.dataset.ev); break;
       case 'w-open': openWorld('map'); break;
+      case 'w-help': worldHelp(); break;
+      case 'w-tour': worldTour(+(el.dataset.i || 0)); break;
+      case 'w-squest': busy(el, true, 'Saving…'); api('/quest', { method: 'POST', body: { note: (($('#w-qnote') || {}).value || '').trim() } }).then(function (j) { if (j.data) S.data = j.data; return api('/world'); }).then(function (w) { W.data = w; paintWorld(); toast('Quest done, coins added', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); }); break;
       case 'w-back': S.view = 'community'; renderView(); break;
       case 'w-tab': W.tab = el.dataset.tab; paintWorld(); break;
       case 'w-travel': wPost('/world/travel', { town: +el.dataset.town }); break;
@@ -1594,7 +1653,7 @@
     if (e.target.id !== 'f-quest') return;
     e.preventDefault();
     var btn = e.target.querySelector('button'); busy(btn, true);
-    api('/quest', { method: 'POST', body: { note: $('#q-note').value.trim() } }).then(function (j) { afterAction(j, 'Quest done! +' + j.sp + ' SP'); }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
+    api('/quest', { method: 'POST', body: { note: $('#q-note').value.trim() } }).then(function (j) { afterAction(j, 'Quest done! +' + j.sp + ' 🪙'); }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
   });
   root.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('#modal').innerHTML) { S.dayWizard = null; closeModal(); } });
 

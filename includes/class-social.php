@@ -709,7 +709,7 @@ final class Sawa_Tracker_Social {
 		}
 		return array(
 			'text' => (string) $q['text'],
-			'sp'   => max( 0, (int) ( $q['sp'] ?? 2 ) ),
+			'sp'   => max( 0, (int) ( $q['sp'] ?? 2 ) ) * Sawa_Tracker_Game::SP_COINS, // coins
 		);
 	}
 
@@ -726,7 +726,7 @@ final class Sawa_Tracker_Social {
 			return new WP_Error( 'done', 'إنت خلّصت مهمة النهارده خلاص.' );
 		}
 		Sawa_Tracker_Game::set( $uid, 'quest_day', Sawa_Tracker_Game::today() );
-		Sawa_Tracker_Game::set( $uid, 'sp', (int) Sawa_Tracker_Game::m( $uid, 'sp', 0 ) + $q['sp'] );
+		Sawa_Tracker_Raids::add_coins( $uid, $q['sp'] );
 		Sawa_Tracker_Game::event(
 			$uid,
 			'quest_done',
@@ -778,7 +778,7 @@ final class Sawa_Tracker_Social {
 		}
 		if ( ! empty( $q['day'] ) && $q['day'] === $today && '' !== trim( (string) $q['text'] ) ) {
 			$lines[] = '';
-			$lines[] = '🎯 Today\'s quest (+' . (int) $q['sp'] . ' SP): ' . $q['text'];
+			$lines[] = '🎯 Today\'s quest (+' . (int) $q['sp'] . ' 🪙): ' . $q['text'];
 		}
 		$lines[] = '';
 		$lines[] = '👉 Log your day on the tracker: ' . $page;

@@ -13,6 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Sawa_Tracker_Game {
 
+	/** Skill points became coins (one currency to spend): 1 SP = 3 coins. */
+	const SP_COINS = 3;
+
 	const ACTIVITIES = array(
 		'Flashcards'            => array( 'emoji' => '🃏', 'cards' => true, 'color' => '#7c5cff' ),
 		'Active Immersion'      => array( 'emoji' => '👀', 'cards' => false, 'color' => '#e0633a' ),
@@ -103,7 +106,7 @@ final class Sawa_Tracker_Game {
 					'icon'        => $s[2],
 					'unlock'      => $s[3],
 					'target'      => $s[4],
-					'cost'        => $s[5],
+					'cost'        => $s[5] * self::SP_COINS, // in coins
 					'cooldown'    => $s[6],
 					'description' => $s[7],
 					'descriptionAr' => $s[8],
@@ -441,7 +444,7 @@ final class Sawa_Tracker_Game {
 			'studyDays'    => $days,
 			'freezes'      => (int) self::m( $uid, 'freezes', 0 ),
 			'shieldUntil'  => (string) self::m( $uid, 'shield_until', '' ),
-			'sp'           => (int) self::m( $uid, 'sp', 0 ),
+			'sp'           => class_exists( 'Sawa_Tracker_Raids' ) ? Sawa_Tracker_Raids::coins( $uid ) : 0, // coins (SP were merged into coins)
 			'spBonus'      => (int) self::m( $uid, 'sp_bonus', 0 ),
 		) + self::level_for( $days );
 	}
@@ -527,9 +530,9 @@ final class Sawa_Tracker_Game {
 		$cap     = (array) self::m( $uid, 'sp_day', array() );
 		$count   = ( isset( $cap['day'] ) && $cap['day'] === $today ) ? (int) $cap['n'] : 0;
 		if ( $count < (int) self::settings()['sp_daily_cap'] ) {
-			$sp_gain = 1 + (int) self::m( $uid, 'sp_bonus', 0 );
+			$sp_gain = ( 1 + (int) self::m( $uid, 'sp_bonus', 0 ) ) * self::SP_COINS;
 			self::set( $uid, 'sp_bonus', 0 );
-			self::set( $uid, 'sp', (int) self::m( $uid, 'sp', 0 ) + $sp_gain );
+			Sawa_Tracker_Raids::add_coins( $uid, $sp_gain, 'learn' );
 			self::set(
 				$uid,
 				'sp_day',
@@ -662,7 +665,7 @@ final class Sawa_Tracker_Game {
 			return new WP_Error( 'locked', sprintf( '%s بتتفتح في مستوى %d.', $sk['name'], $sk['unlock'] ) );
 		}
 		if ( $me['sp'] < $sk['cost'] ) {
-			return new WP_Error( 'sp', sprintf( 'محتاج %d SP عشان %s. معاك %d. كل نشاط بتسجّله بيديك نقطة.', $sk['cost'], $sk['name'], $me['sp'] ) );
+			return new WP_Error( 'sp', sprintf( 'You need %d coins for %s. You have %d. Learning earns coins.', $sk['cost'], $sk['name'], $me['sp'] ) );
 		}
 		$cds = (array) self::m( $uid, 'cooldowns', array() );
 		if ( ! empty( $cds[ $skill_id ] ) && $cds[ $skill_id ] > $today ) {
@@ -731,7 +734,7 @@ final class Sawa_Tracker_Game {
 				$shield( 3 );
 				break;
 		}
-		self::set( $uid, 'sp', $me['sp'] - $sk['cost'] );
+		Sawa_Tracker_Raids::add_coins( $uid, -$sk['cost'] );
 		$cds[ $skill_id ] = self::add_days( $today, $sk['cooldown'] );
 		self::set( $uid, 'cooldowns', $cds );
 		if ( $target !== $uid ) {
@@ -817,7 +820,7 @@ final class Sawa_Tracker_Game {
 		global $wpdb;
 		$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT user_id FROM ' . self::table( 'logs' ) . ' WHERE day BETWEEN %s AND %s', $b['week'], self::add_days( $b['week'], 6 ) ) ); // phpcs:ignore
 		foreach ( $ids as $id ) {
-			self::set( (int) $id, 'sp', (int) self::m( (int) $id, 'sp', 0 ) + 3 );
+			Sawa_Tracker_Raids::add_coins( (int) $id, 3 * self::SP_COINS );
 			self::award( (int) $id, 'boss_slayer' );
 		}
 		self::event(
