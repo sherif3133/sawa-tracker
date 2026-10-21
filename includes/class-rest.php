@@ -212,6 +212,9 @@ final class Sawa_Tracker_Rest {
 
 	public static function log( WP_REST_Request $r ) {
 		$uid = self::uid();
+		if ( ! current_user_can( 'manage_options' ) && '' === (string) Sawa_Tracker_Game::m( $uid, 'avatar', '' ) ) {
+			return new WP_Error( 'photo', 'ارفع صورتك الأول عشان تقدر تسجّل مذاكرتك.', array( 'status' => 400 ) );
+		}
 		$res = Sawa_Tracker_Game::add_log(
 			$uid,
 			(string) $r->get_param( 'activity' ),

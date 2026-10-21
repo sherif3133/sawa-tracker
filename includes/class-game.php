@@ -127,6 +127,8 @@ final class Sawa_Tracker_Game {
 			'boss_hp'      => 3000,
 			'notify_admin' => 1,
 			'chat_enabled' => 1,
+			'chat_max_row' => 5,
+			'giphy_key'    => '',
 			'blocked_words' => '',
 			'skool_url'    => 'https://www.skool.com/sawa-english-7655',
 			'clan_size'    => 8,

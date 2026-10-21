@@ -35,6 +35,10 @@ final class Sawa_Tracker_Rest_Social {
 		self::route( '/chat/groups/(?P<id>\d+)/members', 'POST', 'add_members' );
 		self::route( '/chat/groups/(?P<id>\d+)/leave', 'POST', 'leave' );
 		self::route( '/chat/messages/(?P<id>\d+)/report', 'POST', 'report' );
+		self::route( '/chat/messages/(?P<id>\d+)/transcript', 'POST', 'transcript' );
+		self::route( '/chat/messages/(?P<id>\d+)/feedback', 'POST', 'feedback' );
+		self::route( '/chat/messages/(?P<id>\d+)/react', 'POST', 'react' );
+		self::route( '/chat/gifs', 'GET', 'gifs' );
 		self::route( '/chat/messages/(?P<id>\d+)', 'DELETE', 'delete_message' );
 		self::route( '/members', 'GET', 'members' );
 		self::route( '/quest', 'POST', 'quest' );
@@ -74,6 +78,12 @@ final class Sawa_Tracker_Rest_Social {
 			'enabled' => (bool) Sawa_Tracker_Game::settings()['chat_enabled'],
 			'muted'   => (string) Sawa_Tracker_Game::m( $uid, 'muted_until', '' ),
 			'admin'   => current_user_can( 'manage_options' ),
+			'maxRow'  => (int) ( Sawa_Tracker_Game::settings()['chat_max_row'] ?? 5 ),
+			'gifs'    => '' !== (string) ( Sawa_Tracker_Game::settings()['giphy_key'] ?? '' ),
+			'stickers' => Sawa_Tracker_Social::STICKERS,
+			'reacts'  => Sawa_Tracker_Social::REACTS,
+			// Transcripts and feedback come from the Sawa Lens plugin when it's set up.
+			'ai'      => (array) apply_filters( 'sawa_tracker_chat_ai', array( 'transcribe' => false, 'feedback' => false ), $uid ),
 		);
 	}
 
@@ -94,7 +104,14 @@ final class Sawa_Tracker_Rest_Social {
 		if ( $msgs && ! $r->get_param( 'before' ) ) {
 			Sawa_Tracker_Social::mark_read( self::uid(), (int) $room['id'], end( $msgs )['id'] );
 		}
-		return array( 'messages' => $msgs );
+		$first = $msgs ? (int) $msgs[0]['id'] : 0;
+		if ( $r->get_param( 'after' ) ) {
+			$first = max( 0, (int) $r->get_param( 'after' ) - 400 );
+		}
+		return array(
+			'messages' => $msgs,
+			'reacts'   => Sawa_Tracker_Social::reactions( (int) $room['id'], self::uid(), $first ),
+		);
 	}
 
 	public static function send( WP_REST_Request $r ) {
@@ -124,7 +141,7 @@ final class Sawa_Tracker_Rest_Social {
 			}
 			$audio = esc_url_raw( $up['url'] );
 		}
-		$id = Sawa_Tracker_Social::send( $uid, (int) $room['id'], (string) $r->get_param( 'body' ), $audio );
+		$id = Sawa_Tracker_Social::send( $uid, (int) $room['id'], (string) $r->get_param( 'body' ), $audio, (int) $r->get_param( 'reply_to' ), (int) $r->get_param( 'duration' ), (string) $r->get_param( 'kind' ), (string) $r->get_param( 'media' ) );
 		if ( is_wp_error( $id ) ) {
 			return self::fail( $id );
 		}
@@ -186,8 +203,117 @@ final class Sawa_Tracker_Rest_Social {
 	}
 
 	private static function message_row( $id ) {
+		return Sawa_Tracker_Social::message_row( $id );
+	}
+
+	/** Local file of an uploaded voice message, or ''. */
+	private static function audio_path( $url ) {
+		$up = wp_upload_dir();
+		if ( '' === $url || 0 !== strpos( set_url_scheme( $url, 'https' ), set_url_scheme( $up['baseurl'], 'https' ) ) ) {
+			return '';
+		}
+		$path = $up['basedir'] . substr( set_url_scheme( $url, 'https' ), strlen( set_url_scheme( $up['baseurl'], 'https' ) ) );
+		return is_file( $path ) ? $path : '';
+	}
+
+	/** Voice message → text. Done once per message, then saved for everyone in the chat. */
+	private static function transcript_of( $m ) {
+		if ( '' !== (string) $m['transcript'] ) {
+			return (string) $m['transcript'];
+		}
+		$path = self::audio_path( (string) $m['audio'] );
+		if ( '' === $path ) {
+			return new WP_Error( 'audio', 'ملقيناش ملف الرسالة الصوتية.' );
+		}
+		$text = apply_filters( 'sawa_tracker_transcribe', new WP_Error( 'off', 'تحويل الصوت لنص مش متفعّل لسه.' ), $path, self::uid() );
+		if ( is_wp_error( $text ) ) {
+			return $text;
+		}
+		$text = trim( (string) $text );
+		if ( '' === $text ) {
+			$text = '…';
+		}
 		global $wpdb;
-		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Sawa_Tracker_Game::table( 'messages' ) . ' WHERE id = %d', $id ), ARRAY_A ); // phpcs:ignore
+		$wpdb->update( Sawa_Tracker_Game::table( 'messages' ), array( 'transcript' => $text ), array( 'id' => (int) $m['id'] ) ); // phpcs:ignore
+		return $text;
+	}
+
+	public static function react( WP_REST_Request $r ) {
+		$m = self::message_row( (int) $r['id'] );
+		if ( ! $m || $m['deleted'] || ! Sawa_Tracker_Social::can_access( self::uid(), Sawa_Tracker_Social::room( (int) $m['room_id'] ) ) ) {
+			return self::fail( 'ملقيناش الرسالة.' );
+		}
+		// The emoji is sent by its position in the list (some servers mangle emoji in JSON bodies).
+		$i     = $r->get_param( 'i' );
+		$emoji = null !== $i && isset( Sawa_Tracker_Social::REACTS[ (int) $i ] ) ? Sawa_Tracker_Social::REACTS[ (int) $i ] : (string) $r->get_param( 'emoji' );
+		$res   = Sawa_Tracker_Social::toggle_react( self::uid(), (int) $m['id'], $emoji );
+		if ( is_wp_error( $res ) ) {
+			return self::fail( $res );
+		}
+		return array( 'ok' => true, 'reacts' => Sawa_Tracker_Social::reactions( (int) $m['room_id'], self::uid(), (int) $m['id'] ) );
+	}
+
+	/** GIF search through GIPHY (family-friendly rating only). Cached 1 hour per query. */
+	public static function gifs( WP_REST_Request $r ) {
+		$key = (string) ( Sawa_Tracker_Game::settings()['giphy_key'] ?? '' );
+		if ( '' === $key ) {
+			return self::fail( 'الـ GIFs مش متفعّلة.' );
+		}
+		$q  = mb_substr( trim( sanitize_text_field( (string) $r->get_param( 'q' ) ) ), 0, 50 );
+		$ck = 'sawa_tr_gif_' . md5( $q );
+		$out = get_transient( $ck );
+		if ( false === $out ) {
+			$url = '' === $q
+				? add_query_arg( array( 'api_key' => $key, 'limit' => 24, 'rating' => 'g' ), 'https://api.giphy.com/v1/gifs/trending' )
+				: add_query_arg( array( 'api_key' => $key, 'q' => $q, 'limit' => 24, 'rating' => 'g', 'lang' => 'en' ), 'https://api.giphy.com/v1/gifs/search' );
+			$res = wp_remote_get( $url, array( 'timeout' => 10 ) );
+			$j   = is_wp_error( $res ) ? null : json_decode( wp_remote_retrieve_body( $res ), true );
+			if ( ! is_array( $j ) || ! isset( $j['data'] ) ) {
+				return self::fail( 'الـ GIFs مش راضية تحمّل دلوقتي.' );
+			}
+			$out = array();
+			foreach ( (array) $j['data'] as $g ) {
+				$small = $g['images']['fixed_height_small']['url'] ?? ( $g['images']['fixed_height']['url'] ?? '' );
+				$send  = $g['images']['fixed_height']['url'] ?? $small;
+				$small = preg_replace( '~\?.*$~', '', (string) $small );
+				$send  = preg_replace( '~\?.*$~', '', (string) $send );
+				if ( Sawa_Tracker_Social::gif_ok( $send ) && Sawa_Tracker_Social::gif_ok( $small ) ) {
+					$out[] = array( 'preview' => $small, 'url' => $send, 'title' => mb_substr( (string) ( $g['title'] ?? '' ), 0, 80 ) );
+				}
+			}
+			set_transient( $ck, $out, HOUR_IN_SECONDS );
+		}
+		return array( 'ok' => true, 'gifs' => $out );
+	}
+
+	public static function transcript( WP_REST_Request $r ) {
+		$m = self::message_row( (int) $r['id'] );
+		if ( ! $m || $m['deleted'] || '' === (string) $m['audio'] || ! Sawa_Tracker_Social::can_access( self::uid(), Sawa_Tracker_Social::room( (int) $m['room_id'] ) ) ) {
+			return self::fail( 'ملقيناش الرسالة.' );
+		}
+		$text = self::transcript_of( $m );
+		if ( is_wp_error( $text ) ) {
+			return self::fail( $text );
+		}
+		return array( 'ok' => true, 'transcript' => $text );
+	}
+
+	/** Private feedback on your own message (voice or text): corrections, linked to the skill tree. */
+	public static function feedback( WP_REST_Request $r ) {
+		$m = self::message_row( (int) $r['id'] );
+		if ( ! $m || $m['deleted'] || (int) $m['user_id'] !== self::uid() ) {
+			return self::fail( 'تقدر تطلب رأي في رسايلك إنت بس.' );
+		}
+		$voice = '' !== (string) $m['audio'];
+		$text  = $voice ? self::transcript_of( $m ) : (string) $m['body'];
+		if ( is_wp_error( $text ) ) {
+			return self::fail( $text );
+		}
+		$res = apply_filters( 'sawa_tracker_feedback', new WP_Error( 'off', 'الرأي على الرسايل مش متفعّل لسه.' ), $text, self::uid(), $voice ? 'voice' : 'chat', (int) $m['id'] );
+		if ( is_wp_error( $res ) ) {
+			return self::fail( $res );
+		}
+		return array( 'ok' => true, 'transcript' => $voice ? $text : '', 'feedback' => $res );
 	}
 
 	public static function report( WP_REST_Request $r ) {

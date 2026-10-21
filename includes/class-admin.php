@@ -187,6 +187,8 @@ final class Sawa_Tracker_Admin {
 		$out['blocked_words'] = sanitize_textarea_field( $in['blocked_words'] ?? '' );
 		$out['skool_url']     = esc_url_raw( $in['skool_url'] ?? $d['skool_url'] );
 		$out['clan_size']     = max( 3, min( 20, (int) ( $in['clan_size'] ?? $d['clan_size'] ) ) );
+		$out['chat_max_row']  = max( 2, min( 30, (int) ( $in['chat_max_row'] ?? $d['chat_max_row'] ) ) );
+		$out['giphy_key']     = preg_replace( '/[^A-Za-z0-9]/', '', (string) ( $in['giphy_key'] ?? '' ) );
 		update_option( 'sawa_tr_settings', $out );
 		// Apply a new boss HP to the current week too.
 		$b = get_option( 'sawa_tr_boss', array() );
@@ -470,6 +472,8 @@ final class Sawa_Tracker_Admin {
 		echo '<tr><th scope="row">Emails</th><td><label><input type="checkbox" name="s[notify_admin]" value="1" ' . checked( $s['notify_admin'], 1, false ) . '> Email me when someone asks to join or reports a chat message</label></td></tr>';
 		$f( 'clan_size', 'Clan size for auto-assign', 'How many students go in each clan when you click Auto-assign. 6 to 8 works well.', 'students' );
 		echo '<tr><th scope="row">Chat</th><td><label><input type="checkbox" name="s[chat_enabled]" value="1" ' . checked( $s['chat_enabled'], 1, false ) . '> Students can send chat messages</label><p class="description">Turn this off to pause all chats. You can still post.</p></td></tr>';
+		echo '<tr><th scope="row"><label for="s-row">Messages in a row</label></th><td><input id="s-row" type="number" min="2" max="30" name="s[chat_max_row]" value="' . esc_attr( (int) ( $s['chat_max_row'] ?? 5 ) ) . '" class="small-text"><p class="description">Spam protection: a student can send at most this many messages in a row in one chat, until someone else writes (or 15 minutes pass).</p></td></tr>';
+		echo '<tr><th scope="row"><label for="s-giphy">GIPHY API key</label></th><td><input id="s-giphy" class="regular-text" name="s[giphy_key]" value="' . esc_attr( (string) ( $s['giphy_key'] ?? '' ) ) . '" autocomplete="off"><p class="description">Optional. Turns on GIF search in the chat (family-friendly GIFs only). Free key: developers.giphy.com → Create an App → API. Without it, students still have the Sawa English sticker pack.</p></td></tr>';
 		echo '<tr><th scope="row"><label for="s-words">Blocked words</label></th><td><textarea id="s-words" class="large-text" rows="3" name="s[blocked_words]" placeholder="word one, word two">' . esc_textarea( $s['blocked_words'] ) . '</textarea><p class="description">Comma-separated. These are replaced with *** in chat messages and group names. Works for English and Arabic.</p></td></tr>';
 		echo '<tr><th scope="row"><label for="s-skool">Skool community link</label></th><td><input id="s-skool" type="url" class="regular-text" name="s[skool_url]" value="' . esc_attr( $s['skool_url'] ) . '"><p class="description">Used by the students\' "Share to Skool" button.</p></td></tr>';
 		echo '</table>';

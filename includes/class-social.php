@@ -72,6 +72,11 @@ final class Sawa_Tracker_Social {
 			user_id bigint(20) unsigned NOT NULL,
 			body text,
 			audio varchar(255) NOT NULL DEFAULT '',
+			duration smallint(5) unsigned NOT NULL DEFAULT 0,
+			reply_to bigint(20) unsigned NOT NULL DEFAULT 0,
+			transcript text,
+			kind varchar(10) NOT NULL DEFAULT '',
+			media varchar(300) NOT NULL DEFAULT '',
 			deleted tinyint(1) NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -88,6 +93,15 @@ final class Sawa_Tracker_Social {
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY open (resolved,id)
+			) $c;"
+		);
+		dbDelta(
+			'CREATE TABLE ' . self::t( 'msg_reacts' ) . " (
+			message_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			emoji varchar(16) NOT NULL,
+			PRIMARY KEY  (message_id,user_id,emoji),
+			KEY msg (message_id)
 			) $c;"
 		);
 		if ( ! self::public_room() ) {
@@ -359,7 +373,7 @@ final class Sawa_Tracker_Social {
 				'unread' => min( 99, $unread ),
 				'last'   => $last ? array(
 					'who'  => Sawa_Tracker_Game::person( (int) $last['user_id'] )['name'],
-					'text' => $last['audio'] ? '🎤 Voice message' : wp_trim_words( (string) $last['body'], 10, '…' ),
+					'text' => $last['audio'] ? '🎤 Voice message' : ( '' !== (string) $last['body'] ? wp_trim_words( (string) $last['body'], 10, '…' ) : 'Sticker' ),
 					'at'   => mysql2date( 'c', $last['created_at'] ),
 				) : null,
 			);
@@ -376,14 +390,51 @@ final class Sawa_Tracker_Social {
 	}
 
 	public static function message_out( $m ) {
-		return array(
-			'id'    => (int) $m['id'],
-			'who'   => Sawa_Tracker_Game::person( (int) $m['user_id'] ),
-			'body'  => $m['deleted'] ? '' : (string) $m['body'],
-			'audio' => $m['deleted'] ? '' : (string) $m['audio'],
-			'gone'  => (bool) $m['deleted'],
-			'at'    => mysql2date( 'c', $m['created_at'] ),
+		$out = array(
+			'id'         => (int) $m['id'],
+			'who'        => Sawa_Tracker_Game::person( (int) $m['user_id'] ),
+			'body'       => $m['deleted'] ? '' : (string) $m['body'],
+			'audio'      => $m['deleted'] ? '' : (string) $m['audio'],
+			'dur'        => (int) ( $m['duration'] ?? 0 ),
+			'transcript' => $m['deleted'] ? '' : (string) ( $m['transcript'] ?? '' ),
+			'kind'       => $m['deleted'] ? '' : (string) ( $m['kind'] ?? '' ),
+			'media'      => $m['deleted'] ? '' : (string) ( $m['media'] ?? '' ),
+			'gone'       => (bool) $m['deleted'],
+			'at'         => mysql2date( 'c', $m['created_at'] ),
 		);
+		if ( ! empty( $m['reply_to'] ) ) {
+			$p = self::message_row( (int) $m['reply_to'] );
+			if ( $p ) {
+				$out['reply'] = array(
+					'id'   => (int) $p['id'],
+					'who'  => Sawa_Tracker_Game::person( (int) $p['user_id'] )['name'],
+					'text' => $p['deleted'] ? '' : ( '' !== (string) $p['body'] ? wp_trim_words( (string) $p['body'], 14, '…' ) : ( 'sticker' === ( $p['kind'] ?? '' ) ? self::sticker_label( $p['media'] ) : ( 'gif' === ( $p['kind'] ?? '' ) ? 'GIF' : '' ) ) ),
+					'voice' => '' !== (string) $p['audio'],
+					'gone' => (bool) $p['deleted'],
+				);
+			}
+		}
+		return $out;
+	}
+
+	public static function message_row( $id ) {
+		global $wpdb;
+		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::t( 'messages' ) . ' WHERE id = %d', $id ), ARRAY_A ); // phpcs:ignore
+	}
+
+	/** Spam protection: how many of the latest messages in this room are this student's, in a row (last 15 minutes). */
+	private static function in_a_row( $uid, $room_id ) {
+		global $wpdb;
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT user_id, created_at FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND deleted = 0 ORDER BY id DESC LIMIT 40', $room_id ), ARRAY_A ); // phpcs:ignore
+		$n    = 0;
+		$from = strtotime( Sawa_Tracker_Game::now_mysql() ) - 15 * MINUTE_IN_SECONDS;
+		foreach ( (array) $rows as $r ) {
+			if ( (int) $r['user_id'] !== $uid || strtotime( $r['created_at'] ) < $from ) {
+				break;
+			}
+			$n++;
+		}
+		return $n;
 	}
 
 	public static function messages( $room_id, $after = 0, $before = 0 ) {
@@ -398,6 +449,67 @@ final class Sawa_Tracker_Social {
 		return array_map( array( __CLASS__, 'message_out' ), $rows );
 	}
 
+	const REACTS = array( '👍', '❤️', '😂', '😮', '👏', '🔥' );
+
+	/** Built-in sticker pack: big emoji + a useful English phrase, so every sticker teaches something. */
+	const STICKERS = array(
+		'welldone' => array( '👏', 'Well done!' ),
+		'fire'     => array( '🔥', 'You\'re on fire!' ),
+		'keepgoing' => array( '💪', 'Keep going!' ),
+		'lol'      => array( '😂', 'LOL, that\'s hilarious!' ),
+		'same'     => array( '🤝', 'Same here!' ),
+		'thanks'   => array( '🙏', 'Thanks a lot!' ),
+		'morning'  => array( '☀️', 'Good morning!' ),
+		'night'    => array( '🌙', 'Good night!' ),
+		'study'    => array( '📚', 'Study time!' ),
+		'what'     => array( '🤔', 'What do you mean?' ),
+		'noway'    => array( '😮', 'No way!' ),
+		'love'     => array( '❤️', 'Love it!' ),
+		'congrats' => array( '🎉', 'Congrats!' ),
+		'tired'    => array( '😴', 'I\'m so tired…' ),
+		'coffee'   => array( '☕', 'Coffee first.' ),
+		'done'     => array( '✅', 'Done!' ),
+		'gotit'    => array( '👌', 'Got it!' ),
+		'sorry'    => array( '😅', 'Oops, my bad!' ),
+		'agree'    => array( '💯', 'I totally agree.' ),
+		'brb'      => array( '⏳', 'Be right back!' ),
+	);
+
+	public static function sticker_label( $id ) {
+		return isset( self::STICKERS[ $id ] ) ? self::STICKERS[ $id ][0] . ' ' . self::STICKERS[ $id ][1] : '';
+	}
+
+	/** GIFs only from GIPHY's media servers. */
+	public static function gif_ok( $url ) {
+		return (bool) preg_match( '~^https://(media\d?|i)\.giphy\.com/[\w./-]+\.(gif|webp)(\?[\w=&.-]*)?$~', $url );
+	}
+
+	/** Reactions for the latest messages in a room: { msgId: [ {e, n, mine} ] }. */
+	public static function reactions( $room_id, $uid, $since_id = 0 ) {
+		global $wpdb;
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT r.message_id, r.emoji, COUNT(*) n, SUM(r.user_id = %d) mine FROM ' . self::t( 'msg_reacts' ) . ' r JOIN ' . self::t( 'messages' ) . ' m ON m.id = r.message_id WHERE m.room_id = %d AND m.id >= %d GROUP BY r.message_id, r.emoji', $uid, $room_id, $since_id ), ARRAY_A ); // phpcs:ignore
+		$out  = array();
+		foreach ( (array) $rows as $r ) {
+			$out[ (int) $r['message_id'] ][] = array( 'e' => $r['emoji'], 'n' => (int) $r['n'], 'mine' => (bool) $r['mine'] );
+		}
+		return (object) $out;
+	}
+
+	public static function toggle_react( $uid, $msg_id, $emoji ) {
+		global $wpdb;
+		if ( ! in_array( $emoji, self::REACTS, true ) ) {
+			return new WP_Error( 'emoji', 'الريأكشن ده مش موجود.' );
+		}
+		$t   = self::t( 'msg_reacts' );
+		$has = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t WHERE message_id = %d AND user_id = %d AND emoji = %s", $msg_id, $uid, $emoji ) ); // phpcs:ignore
+		if ( $has ) {
+			$wpdb->delete( $t, array( 'message_id' => $msg_id, 'user_id' => $uid, 'emoji' => $emoji ) ); // phpcs:ignore
+		} else {
+			$wpdb->insert( $t, array( 'message_id' => $msg_id, 'user_id' => $uid, 'emoji' => $emoji ) ); // phpcs:ignore
+		}
+		return true;
+	}
+
 	public static function filter_words( $text ) {
 		$words = array_filter( array_map( 'trim', explode( ',', (string) Sawa_Tracker_Game::settings()['blocked_words'] ) ) );
 		foreach ( $words as $w ) {
@@ -406,7 +518,7 @@ final class Sawa_Tracker_Social {
 		return $text;
 	}
 
-	public static function send( $uid, $room_id, $body, $audio_url = '' ) {
+	public static function send( $uid, $room_id, $body, $audio_url = '', $reply_to = 0, $duration = 0, $kind = '', $media = '' ) {
 		global $wpdb;
 		$room = self::room( $room_id );
 		if ( ! self::can_access( $uid, $room ) ) {
@@ -420,8 +532,37 @@ final class Sawa_Tracker_Social {
 			return new WP_Error( 'muted', sprintf( 'تقدر تقرا الشات بس مش هتقدر تبعت لحد %s.', wp_date( 'M j', strtotime( $muted . ' 12:00' ) ) ) );
 		}
 		$body = trim( mb_substr( sanitize_textarea_field( $body ), 0, 1000 ) );
-		if ( '' === $body && '' === $audio_url ) {
+		if ( 'sticker' === $kind ) {
+			if ( ! isset( self::STICKERS[ $media ] ) ) {
+				return new WP_Error( 'sticker', 'الستيكر ده مش موجود.' );
+			}
+			$body = '';
+		} elseif ( 'gif' === $kind ) {
+			if ( ! self::gif_ok( $media ) ) {
+				return new WP_Error( 'gif', 'الـ GIF ده مش راضي يتبعت.' );
+			}
+			$body = '';
+		} else {
+			$kind  = '';
+			$media = '';
+		}
+		if ( '' === $body && '' === $audio_url && '' === $kind ) {
 			return new WP_Error( 'empty', 'اكتب رسالة الأول.' );
+		}
+		$is_admin = user_can( $uid, 'manage_options' );
+		if ( ! $is_admin && '' === (string) Sawa_Tracker_Game::m( $uid, 'avatar', '' ) ) {
+			return new WP_Error( 'photo', 'ارفع صورتك الأول من الإعدادات عشان تقدر تكتب في الشات.' );
+		}
+		$max_row = (int) ( Sawa_Tracker_Game::settings()['chat_max_row'] ?? 5 );
+		if ( ! $is_admin && self::in_a_row( $uid, $room_id ) >= $max_row ) {
+			return new WP_Error( 'row', sprintf( 'بعت %d رسايل ورا بعض. استنى حد يرد عليك الأول، أو جرب كمان شوية.', $max_row ) );
+		}
+		$parent = null;
+		if ( $reply_to ) {
+			$parent = self::message_row( (int) $reply_to );
+			if ( ! $parent || (int) $parent['room_id'] !== (int) $room_id || $parent['deleted'] ) {
+				$parent = null;
+			}
 		}
 		$rl = (array) get_transient( 'sawa_tr_chat_' . $uid );
 		$now = microtime( true );
@@ -438,10 +579,30 @@ final class Sawa_Tracker_Social {
 				'user_id'    => $uid,
 				'body'       => self::filter_words( $body ),
 				'audio'      => $audio_url,
+				'duration'   => max( 0, min( 120, (int) $duration ) ),
+				'reply_to'   => $parent ? (int) $parent['id'] : 0,
+				'kind'       => $kind,
+				'media'      => $media,
 				'created_at' => Sawa_Tracker_Game::now_mysql(),
 			)
 		);
 		$id = (int) $wpdb->insert_id;
+		if ( $parent && (int) $parent['user_id'] !== $uid ) {
+			// Notification for the author of the message being replied to (shows in their bell).
+			Sawa_Tracker_Game::event(
+				$uid,
+				'reply',
+				(int) $parent['user_id'],
+				array(
+					'room' => (int) $room_id,
+					'msg'  => $id,
+					'text' => '' !== $body ? wp_trim_words( self::filter_words( $body ), 12, '…' ) : '',
+					'voice' => '' !== $audio_url,
+					'sticker' => 'sticker' === $kind ? self::sticker_label( $media ) : ( 'gif' === $kind ? 'GIF' : '' ),
+				)
+			);
+		}
+		do_action( 'sawa_tracker_message_sent', $uid, (int) $room_id, $id, $body, $audio_url );
 		self::mark_read( $uid, $room_id, $id );
 		return $id;
 	}
