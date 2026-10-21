@@ -31,14 +31,13 @@ final class Sawa_Tracker_World {
 		3 => array( 'use', 10, 'Write or speak English 10 times (chat, Write or Speak)' ),
 		4 => array( 'perfect', 2, 'Have 2 perfect days' ),
 		5 => array( 'mastered', 2, 'Master 2 skill points' ),
-		6 => array( 'quiz', 15, 'Answer 15 video-quiz questions' ),
+		6 => array( 'use', 15, 'Write or speak English 15 times' ),
 	);
 	/** Daily quests: one learning, one battle, one more — picked per student per day. [kind, n, text] */
 	const DAILY_LEARN  = array(
 		'card'     => array( 'card', 20, 'Review 20 word cards' ),
 		'practice' => array( 'practice', 1, 'Finish a skill-tree practice set' ),
 		'use'      => array( 'use', 3, 'Write or speak English 3 times' ),
-		'quiz'     => array( 'quiz', 3, 'Answer 3 video-quiz questions' ),
 		'plan'     => array( 'plan', 3, 'Finish 3 steps of today\'s plan' ),
 	);
 	const DAILY_FIGHT  = array(
@@ -54,7 +53,7 @@ final class Sawa_Tracker_World {
 		'mastered' => array( 'mastered', 1, 'Master a skill point' ),
 	);
 	/** Where the app takes the student to do a quest step. */
-	const GO           = array( 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'perfect' => 'today', 'mastered' => 'skills', 'quiz' => 'watch' );
+	const GO           = array( 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'perfect' => 'today', 'mastered' => 'skills' );
 	const STAMINA      = 5;
 	const BOSS_TRIES   = 3;
 	const DAILY_COINS  = 15;

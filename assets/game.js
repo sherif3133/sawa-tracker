@@ -970,9 +970,9 @@
     H.lens.api('today').then(function (d) {
       var inGame = { review: 1, use: 1, log: 1 };
       b.innerHTML = '<p class="small">Every step gives you one more fight today' + (d.perfect ? ' — and you had a perfect day! 🌟' : '.') + '</p><ul class="sg-plan">' + d.items.map(function (it) {
-        return '<li class="' + (it.done ? 'done' : '') + '"><span>' + (it.done ? '✓' : '○') + '</span><div><b>' + esc(it.t) + '</b><small>' + esc(it.sub || '') + '</small></div>' + (it.done ? '' : '<button data-go="' + esc(it.k) + '"' + (inGame[it.k] ? ' class="pri"' : '') + '>' + (inGame[it.k] ? 'Do it here' : 'Go') + '</button>') + '</li>';
+        return '<li class="' + (it.done ? 'done' : '') + '"><span>' + (it.done ? '✓' : '○') + '</span><div><b>' + esc(it.t) + '</b><small>' + esc(it.sub || '') + '</small></div>' + (it.done ? '' : '<button data-go="' + esc(it.k) + '" data-to="' + esc(it.go || '') + '"' + (inGame[it.k] ? ' class="pri"' : '') + '>' + (inGame[it.k] ? 'Do it here' : 'Go') + '</button>') + '</li>';
       }).join('') + '</ul>';
-      b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(k === 'collect' ? 'scan' : k); }; });
+      b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(x.dataset.to || (k === 'collect' ? 'scan' : k)); }; });
     }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
 
