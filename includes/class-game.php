@@ -887,7 +887,7 @@ final class Sawa_Tracker_Game {
 	}
 
 	public static function board( $tab ) {
-		$tab    = in_array( $tab, array( 'consistency', 'week', 'all' ), true ) ? $tab : 'consistency';
+		$tab    = in_array( $tab, array( 'consistency', 'week', 'all', 'xp' ), true ) ? $tab : 'consistency';
 		$cached = get_transient( 'sawa_tr_board_' . $tab );
 		if ( is_array( $cached ) ) {
 			return $cached;
@@ -923,11 +923,16 @@ final class Sawa_Tracker_Game {
 				'days'    => $l['studyDays'],
 				'today'   => $l['studiedToday'],
 				'minutes' => $minutes[ $uid ] ?? 0,
+				'xp'      => 'xp' === $tab ? Sawa_Tracker_XP::week( $uid ) : 0,
+				'xpLevel' => 'xp' === $tab ? Sawa_Tracker_XP::level( Sawa_Tracker_XP::total( $uid ) )['level'] : 0,
 			);
 		}
 		usort(
 			$rows,
 			function ( $a, $b ) use ( $tab ) {
+				if ( 'xp' === $tab ) {
+					return array( $b['xp'], $b['streak'] ) <=> array( $a['xp'], $a['streak'] );
+				}
 				if ( 'consistency' === $tab ) {
 					return array( $b['health'], $b['streak'], $b['days'] ) <=> array( $a['health'], $a['streak'], $a['days'] );
 				}

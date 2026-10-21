@@ -256,7 +256,7 @@
       + '<button class="btn ghost sm-btn" data-act="share">' + ico('mega') + ' شارك على Skool</button></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="النهارده ' + s.todayMinutes + ' من ' + s.goal + ' دقيقة"><span><b>' + s.todayMinutes + '</b>من ' + s.goal + ' د</span></div></section>'
       + statCards(s)
-      + '<div class="grid"><div class="col main">' + questCard() + lensCard() + characterCard() + bossCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'
+      + '<div class="grid"><div class="col main">' + questCard() + xpCard() + lensCard() + characterCard() + bossCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'
       + '<div class="col side">' + boardCard() + feedCard() + '</div></div>';
     paintBoard(); paintFeed(); loadLens();
   }
@@ -424,15 +424,29 @@
   }
 
   /* ------------------------------------------------------------ leaderboard */
+  /** English XP: points for using English in chat and writing, plus bonuses for fixing your mistakes. */
+  function xpCard() {
+    var x = S.data.xp; if (!x) return '';
+    var pct = Math.min(100, Math.round((x.total - x.from) / Math.max(1, x.to - x.from) * 100));
+    var why = { chat: 'الشات', voice: 'رسايل صوتية', write: 'الكتابة', improve: 'تحسين أخطاءك', mastered: 'إتقان مهارة' };
+    var max = Math.max.apply(null, x.days.concat([1]));
+    return '<section class="card xp-card"><div class="card-h"><h3>' + ico('bolt') + ' نقاط الإنجليزي (XP)</h3><span class="xp-lv" dir="ltr">Lv ' + x.level + '</span></div>'
+      + '<div class="xp-row"><b class="xp-big" dir="ltr">' + x.total.toLocaleString('en-US') + ' XP</b><span class="muted small" dir="ltr">' + (x.to - x.total) + ' XP to Lv ' + (x.level + 1) + '</span></div>'
+      + '<div class="bar"><i style="width:' + pct + '%;background:var(--fg)"></i></div>'
+      + '<div class="xp-today"><span>النهارده: <b dir="ltr">+' + x.today + '</b></span><span class="muted small">' + (x.base >= x.cap ? 'وصلت للحد اليومي للشات والكتابة 👏' : 'باقي ' + (x.cap - x.base) + ' XP من الشات والكتابة النهارده') + '</span></div>'
+      + (Object.keys(x.why || {}).length ? '<p class="small muted">' + Object.keys(x.why).map(function (k) { return (why[k] || k) + ' +' + x.why[k]; }).join(' · ') + '</p>' : '')
+      + '<div class="lens-bars" title="آخر ١٤ يوم">' + x.days.map(function (d, i) { return '<i' + (i === x.days.length - 1 ? ' class="now"' : '') + '><b style="height:' + Math.round(d / max * 100) + '%"></b></i>'; }).join('') + '</div>'
+      + '<p class="small muted">اكتب بالإنجليزي في الشات أو ابعت رسايل صوتية عشان تجمع XP. لو اتحسنت في غلطة كانت بتتكرر منك، بتاخد XP زيادة.</p></section>';
+  }
   function boardCard() {
     return '<section class="card board"><div class="card-h"><h3>' + ico('trophy') + ' الترتيب</h3><span class="muted small" id="b-total"></span></div>'
       + '<div class="seg small-seg" role="tablist" aria-label="الترتيب">'
-      + [['consistency', 'الاستمرارية'], ['week', 'الأسبوع ده'], ['all', 'من الأول']].map(function (t) { return '<button data-act="board-tab" data-tab="' + t[0] + '" aria-pressed="' + (S.board.tab === t[0]) + '">' + t[1] + '</button>'; }).join('')
+      + [['consistency', 'الاستمرارية'], ['week', 'الأسبوع ده'], ['all', 'من الأول'], ['xp', 'XP الأسبوع']].map(function (t) { return '<button data-act="board-tab" data-tab="' + t[0] + '" aria-pressed="' + (S.board.tab === t[0]) + '">' + t[1] + '</button>'; }).join('')
       + '</div><ol class="rows" id="b-rows"><li class="muted small pad">بيحمّل…</li></ol><div id="b-me"></div></section>';
   }
   function canHelp() { return S.data.skills.some(function (k) { return k.target === 'other' && !k.locked; }); }
   function boardRow(r) {
-    var me = r.id === S.data.me.id, metric = S.board.tab === 'consistency'
+    var me = r.id === S.data.me.id, metric = S.board.tab === 'xp' ? '<span class="pc wide" dir="ltr">' + r.xp + ' XP</span>' : S.board.tab === 'consistency'
       ? '<div class="bar mini"><i style="width:' + r.health + '%;background:' + hpFill(r.health) + '"></i></div><span class="pc">' + r.health + '%</span>'
       : '<span class="pc wide">' + hm(r.minutes) + '</span>';
     return '<li class="row' + (me ? ' me' : '') + '"><span class="rank r' + Math.min(r.rank, 4) + '">' + r.rank + '</span>' + avatar(r, 36)
@@ -880,6 +894,7 @@
       j.messages.forEach(function (m) { if (!have[m.id]) C.msgs.push(m); });
       C.replyTo = null; paintReplyBar();
       paintMessages(); loadRooms();
+      if (j.xp > 0) { toast('+' + j.xp + ' XP' + (extra && extra.orig ? ' · اكتب بالإنجليزي على طول عشان تاخد XP أكتر' : ''), 'good'); if (S.data && S.data.xp) { S.data.xp.total += j.xp; S.data.xp.today += j.xp; S.data.xp.base += j.xp; } }
     }, function (x) { if (ta && !form && !extra) ta.value = body; toast(x.message, 'bad'); });
   }
   function openRoom(id) {

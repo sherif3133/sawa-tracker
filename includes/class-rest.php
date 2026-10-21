@@ -108,6 +108,7 @@ final class Sawa_Tracker_Rest {
 				'totalCards'   => (int) $tot->c,
 			),
 			'skills'     => $G::skills_for( $uid ),
+			'xp'         => Sawa_Tracker_XP::summary( $uid ),
 			'breakdown'  => array_map(
 				function ( $r ) {
 					return array(

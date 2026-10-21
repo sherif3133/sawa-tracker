@@ -148,6 +148,7 @@ final class Sawa_Tracker_Rest_Social {
 		}
 		return array(
 			'ok'       => true,
+			'xp'       => Sawa_Tracker_XP::$last,
 			'messages' => Sawa_Tracker_Social::messages( (int) $room['id'], (int) $r->get_param( 'after' ) ),
 		);
 	}

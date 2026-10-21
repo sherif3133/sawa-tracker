@@ -462,6 +462,13 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 
 .clan-grid .side { order: 0; }
 
+/* English XP card */
+.xp-card { display: grid; gap: 10px; }
+.xp-lv { font-family: var(--display); font-weight: 800; background: var(--fg); color: var(--on-fg); border-radius: 99px; padding: 2px 10px; font-size: 13px; }
+.xp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.xp-big { font-family: var(--display); font-weight: 800; font-size: 26px; color: var(--fg); }
+.xp-today { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+
 /* Language Lens card */
 .lens-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .lens-stats div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; display: grid; }
