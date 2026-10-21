@@ -886,3 +886,29 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .sg-event { position: absolute; left: 50%; top: calc(118px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: #b04ad2; color: #fff; font-weight: 700; font-size: 12px; padding: 3px 10px; border-radius: 99px; display: none; }
 .sg-event.on { display: block; }
 .sg-skills-soon { text-align: center; color: #c9bfe8; margin: 0; }
+/* the caravan board */
+.sg-dotn { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #e2513a; color: #fff; font: 700 10px/16px var(--body); font-style: normal; text-align: center; }
+.sg-ask { background: rgba(255, 255, 255, .06); border: 1px solid rgba(231, 200, 115, .35); border-radius: 10px; padding: 10px; display: grid; gap: 6px; }
+.sg-ask.tome { border-color: #e7c873; box-shadow: 0 0 0 1px #e7c873 inset; }
+.sg-ask.closed { opacity: .6; }
+.sg-ask p { margin: 0; }
+.sg-ask .sg-cw { font: 700 18px Georgia, serif; color: #ffe39a; }
+.sg-ask .sg-cs { font-style: italic; color: #d8cfb8; }
+.sg-ask small, .sg-mat small { color: #d8cfb8; font-size: 12px; }
+.sg-askh { display: flex; align-items: center; gap: 8px; }
+.sg-askh img { width: 26px; height: 26px; border-radius: 50%; }
+.sg-askh small { margin-left: auto; text-align: right; }
+.sg-ans { display: flex; gap: 6px; align-items: flex-end; }
+.sg-ans textarea { flex: 1; }
+.sg-reply { background: rgba(0, 0, 0, .2); border-radius: 8px; padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sg-reply .ok, .sg-ask .ok { color: #7fe08f; font-weight: 700; }
+.sg-build { display: grid; gap: 10px; }
+.sg-buildbar { position: relative; height: 16px; border-radius: 8px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.sg-buildbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ffe39a, #c99a2e); transition: width .4s; }
+.sg-buildbar span { position: relative; padding-left: 6px; font: 700 11px/16px var(--body); color: #fff; text-shadow: 0 1px 1px #000; }
+.sg-mat { display: grid; gap: 4px; }
+/* the open "More" menu: two columns, so it doesn't cover the whole right side of a phone */
+.sg-menu.more { grid-template-columns: repeat(2, auto); background: rgba(20, 25, 58, .55); padding: 6px; border-radius: 12px; }
+.sg-hpb span, .sg-mpb span, .sg-xpb span { display: block; overflow: hidden; text-overflow: ellipsis; } /* inline text sat 4px low and was cut off */
+.sg-miss { text-align: left; display: grid; gap: 4px; max-height: 32vh; overflow: auto; background: rgba(0, 0, 0, .2); border-radius: 8px; padding: 8px; }
+.sg-miss p { margin: 0; font-size: 14px; }

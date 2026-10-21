@@ -384,7 +384,7 @@ final class Sawa_Tracker_Party {
 		if ( (int) $d['hits'] >= self::HITS_PER_DAY ) {
 			return new WP_Error( 'party', 'You used your 3 hits today. Your party can still hit it!', array( 'status' => 400 ) );
 		}
-		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, 6, array( 'weak' => true, 'own' => true ) );
+		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, 6, array( 'weak' => true, 'own' => $p['members'] ) ); // words the whole party is learning
 		if ( count( $qs ) < 5 ) {
 			return new WP_Error( 'battle', 'Battles are not ready yet.', array( 'status' => 503 ) );
 		}

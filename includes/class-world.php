@@ -39,6 +39,7 @@ final class Sawa_Tracker_World {
 		'practice' => array( 'practice', 1, 'Finish a skill-tree practice set' ),
 		'use'      => array( 'use', 3, 'Write or speak English 3 times' ),
 		'plan'     => array( 'plan', 3, 'Finish 3 steps of today\'s plan' ),
+		'answer'   => array( 'answer', 1, 'Answer a traveller\'s question on the caravan board' ),
 	);
 	const DAILY_FIGHT  = array(
 		'monster' => array( 'monster', 3, 'Defeat 3 monsters' ),
@@ -52,9 +53,10 @@ final class Sawa_Tracker_World {
 		'perfect'  => array( 'perfect', 3, 'Have 3 perfect days' ),
 		'mastered' => array( 'mastered', 1, 'Master a skill point' ),
 		'share'    => array( 'share', 1, 'Share your Silk Road card in the Skool community' ),
+		'helped'   => array( 'helped', 2, 'Help 2 travellers (they tap “This helped”)' ),
 	);
 	/** Where the app takes the student to do a quest step. */
-	const GO           = array( 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'perfect' => 'today', 'mastered' => 'skills' );
+	const GO           = array( 'answer' => 'caravan', 'helped' => 'caravan', 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'perfect' => 'today', 'mastered' => 'skills' );
 	/** The community is A2–B1: the six towns are small steps from early A2 to late B1 (question difficulty). */
 	const LEVELS       = array( 1 => 1.7, 2 => 2.0, 3 => 2.35, 4 => 2.7, 5 => 3.0, 6 => 3.35 );
 	const STAMINA      = 5;
@@ -144,6 +146,7 @@ final class Sawa_Tracker_World {
 			$w['story'][ $t ]  = $st;
 		}
 		self::save( $uid, $w );
+		do_action( 'sawa_tracker_progress', $uid, $kind, $n ); // the caravan's materials and guide pairs
 	}
 
 	/** Fights left today: 5 + one for every step of today's plan (+1 for a perfect day). */
@@ -221,7 +224,7 @@ final class Sawa_Tracker_World {
 				'icon'     => $town[1],
 				'level'    => $town[2],
 				'monsters' => array_map( function ( $m ) use ( $t ) { return array( 'name' => $m[0], 'icon' => $m[1], 'hp' => self::monster_hp( $t ) ); }, $town[3] ),
-				'boss'     => array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => self::boss_hp( $t ), 'ready' => 2 === $st['step'], 'beaten' => in_array( $t, $w['beaten'], true ), 'tries' => max( 0, self::BOSS_TRIES - (int) $w['f']['boss'] ) ),
+				'boss'     => array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => self::boss_hp( $t ), 'ready' => 2 === $st['step'], 'beaten' => in_array( $t, $w['beaten'], true ), 'tries' => max( 0, self::BOSS_TRIES - (int) $w['f']['boss'] ), 'questions' => self::QUESTIONS['boss'] ),
 				'people'   => self::people_at( $t, $uid ),
 				'room'     => self::town_room( $t ),
 			),
@@ -648,6 +651,7 @@ final class Sawa_Tracker_World {
 				$out['next']    = self::TOWNS[ $t + 1 ][0] ?? '';
 				$out['xp']      = Sawa_Tracker_XP::award( $uid, ( 30 + 5 * $t ) * self::xp_mult(), 'boss', false );
 				Sawa_Tracker_Hero::count( $uid, 'bosses' );
+				self::progress( $uid, 'boss' );
 				Sawa_Tracker_Game::event( $uid, 'town', null, array( 'boss' => $foe['name'], 'town' => self::TOWNS[ $t ][0], 'next' => $out['next'] ) );
 			}
 		} elseif ( 'monster' === $b['kind'] ) {

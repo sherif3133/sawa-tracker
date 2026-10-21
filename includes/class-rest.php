@@ -301,7 +301,7 @@ final class Sawa_Tracker_Rest {
 		$t      = Sawa_Tracker_Game::table( 'events' );
 		$after  = (int) $r->get_param( 'after' );
 		$before = (int) $r->get_param( 'before' );
-		$types  = "'log','day_done','skill','level_up','badge','boss_down','streak_lost','freeze_used','joined','quest_done','mastered','town','party_down','hero_level'";
+		$types  = "'log','day_done','skill','level_up','badge','boss_down','streak_lost','freeze_used','joined','quest_done','mastered','town','party_down','hero_level','coop_built'";
 		if ( $after ) {
 			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE id > %d AND type IN ($types) ORDER BY id DESC LIMIT 50", $after ), ARRAY_A ); // phpcs:ignore
 		} elseif ( $before ) {

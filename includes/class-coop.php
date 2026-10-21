@@ -1,0 +1,571 @@
+<?php
+/**
+ * The Caravan: co-op on the Silk Road that works when students study at different times of day.
+ *
+ * - Help requests ("Ask the caravan"): tap a word, sentence or grammar point you don't understand and ask. Any
+ *   other traveller can answer in English later (6+ words). The asker taps "This helped": the helper gets XP and
+ *   coins, the asker gets a little too. Asks can go to the whole caravan or to one student (from their echo).
+ * - The caravanserai: one weekly project for the whole community. It needs three materials that come from
+ *   different people: bricks (right battle answers), lanterns (review cards) and lessons (explanations marked
+ *   helpful). Lessons only come from helping each other, so the project can't be finished alone.
+ * - Guides: students further along the road volunteer; every newcomer gets one guide for their first two weeks.
+ *   Three pair steps reward both: the newcomer's first question answered, three days both studied, and the
+ *   newcomer's first town boss.
+ *
+ * Every student writes their own counters (user meta); the shared lists (asks, pairs) change only on rare actions.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+final class Sawa_Tracker_Coop {
+
+	const ASKS_OPT     = 'sawa_tr_coop_asks';
+	const MAX_ASKS     = 200;
+	const ASKS_DAY     = 3;
+	const OPEN_MAX     = 5;
+	const ANSWERS_DAY  = 10;
+	const ANSWER_WORDS = 6;
+	const HELP_XP      = 20; // when the asker says it helped
+	const HELP_COINS   = 10;
+	const HELPED_DAY   = 5;  // rewarded "helped" per helper per day
+	const GUIDE_DAYS   = 14;
+	const GUIDE_MAX    = 3;  // newcomers per guide
+	/** The caravanserai: [key, icon, name, what makes it, goal per active student, minimum goal]. */
+	const MATERIALS = array(
+		array( 'bricks', '🧱', 'Bricks', 'right battle answers', 12, 150 ),
+		array( 'lanterns', '🏮', 'Lanterns', 'review cards', 15, 200 ),
+		array( 'lessons', '📜', 'Lessons', 'explanations marked helpful', 1, 6 ),
+	);
+	/** Guide and newcomer steps: [key, text, reward coins]. */
+	const PAIR_STEPS = array(
+		array( 'ask', 'The newcomer asks the guide a question and it helps', 15 ),
+		array( 'days', 'Study on the same day 3 times', 20 ),
+		array( 'boss', 'The newcomer defeats their first town boss', 40 ),
+	);
+
+	public static function init() {
+		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
+		add_action( 'sawa_tracker_progress', array( __CLASS__, 'on_progress' ), 10, 3 );
+	}
+
+	public static function routes() {
+		$routes = array(
+			array( '/coop', 'GET', 'state_rest' ),
+			array( '/coop/ask', 'POST', 'ask' ),
+			array( '/coop/answer', 'POST', 'answer' ),
+			array( '/coop/helped', 'POST', 'helped' ),
+			array( '/coop/close', 'POST', 'close' ),
+			array( '/coop/guide', 'POST', 'guide' ),
+		);
+		foreach ( $routes as $r ) {
+			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
+		}
+	}
+
+	private static function uid() {
+		return get_current_user_id();
+	}
+
+	private static function first( $uid ) {
+		$n = Sawa_Tracker_Game::person( $uid )['name'];
+		return strtok( (string) $n, ' ' );
+	}
+
+	/** English only: no Arabic letters, no Franco-Arabic. */
+	private static function english( $text ) {
+		return ! preg_match( '/[\x{0600}-\x{06FF}]/u', $text ) && ! Sawa_Tracker_Social::franco( $text ) && preg_match( '/[a-z]{2}/i', $text );
+	}
+
+	private static function clean( $text, $max ) {
+		return mb_substr( trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( (string) $text ) ) ), 0, $max );
+	}
+
+	private static function words( $text ) {
+		return count( preg_split( '/\s+/', trim( $text ), -1, PREG_SPLIT_NO_EMPTY ) );
+	}
+
+	/** A per-day counter in user meta: returns today's value; $add > 0 adds to it. */
+	private static function daily( $uid, $key, $add = 0 ) {
+		$d = Sawa_Tracker_Game::m( $uid, 'coop_' . $key, array() );
+		$n = is_array( $d ) && ( $d['day'] ?? '' ) === Sawa_Tracker_Game::today() ? (int) $d['n'] : 0;
+		if ( $add ) {
+			$n += $add;
+			Sawa_Tracker_Game::set( $uid, 'coop_' . $key, array( 'day' => Sawa_Tracker_Game::today(), 'n' => $n ) );
+		}
+		return $n;
+	}
+
+	/* ------------------------------------------------------------------ asks */
+
+	private static function asks() {
+		$a = get_option( self::ASKS_OPT, array() );
+		return is_array( $a ) ? $a : array();
+	}
+
+	private static function save_asks( $list ) {
+		update_option( self::ASKS_OPT, array_slice( array_values( $list ), -self::MAX_ASKS ), false );
+	}
+
+	private static function ask_out( $a, $uid ) {
+		$answers = array();
+		foreach ( $a['answers'] as $x ) {
+			$answers[] = array( 'id' => $x['id'], 'by' => self::first( $x['uid'] ), 'byId' => (int) $x['uid'], 'text' => $x['text'], 'helped' => ! empty( $x['helped'] ), 'mine' => (int) $x['uid'] === $uid, 'at' => (int) $x['at'] );
+		}
+		$p = Sawa_Tracker_Game::person( (int) $a['uid'] );
+		return array(
+			'id'       => $a['id'],
+			'kind'     => $a['kind'],
+			'lemma'    => $a['lemma'],
+			'q'        => $a['q'],
+			'ctx'      => $a['ctx'],
+			'src'      => $a['src'],
+			'by'       => self::first( $a['uid'] ),
+			'byId'     => (int) $a['uid'],
+			'avatar'   => $p['avatar'] ?? '',
+			'to'       => $a['to'] ? self::first( $a['to'] ) : '',
+			'toMe'     => (int) $a['to'] === $uid,
+			'mine'     => (int) $a['uid'] === $uid,
+			'answered' => (bool) array_filter( $a['answers'], function ( $x ) use ( $uid ) { return (int) $x['uid'] === $uid; } ),
+			'answers'  => $answers,
+			'closed'   => ! empty( $a['closed'] ),
+			'at'       => (int) $a['at'],
+		);
+	}
+
+	/** The question an A2 learner doesn't have to write: made from what they tapped. */
+	private static function auto_q( $kind, $lemma ) {
+		if ( 'word' === $kind ) {
+			return 'What does "' . $lemma . '" mean here? Can you give me an easy example?';
+		}
+		if ( 'sentence' === $kind ) {
+			return 'Can you explain this sentence in easy English?';
+		}
+		return 'Can you help me with this?';
+	}
+
+	public static function ask( WP_REST_Request $r ) {
+		$uid   = self::uid();
+		$kind  = in_array( $r->get_param( 'kind' ), array( 'word', 'sentence', 'grammar', 'other' ), true ) ? $r->get_param( 'kind' ) : 'other';
+		$lemma = mb_substr( strtolower( trim( sanitize_text_field( (string) $r->get_param( 'lemma' ) ) ) ), 0, 64 );
+		$ctx   = self::clean( $r->get_param( 'ctx' ), 240 );
+		$q     = self::clean( $r->get_param( 'q' ), 200 );
+		$to    = (int) $r->get_param( 'to' );
+		if ( '' === $q ) {
+			$q = self::auto_q( $kind, $lemma );
+		}
+		if ( ! self::english( $q ) || ( '' !== $ctx && preg_match( '/[\x{0600}-\x{06FF}]/u', $ctx ) ) ) {
+			return new WP_Error( 'coop', 'Ask in English. Short and simple is fine — or tap a word and use the ready question.', array( 'status' => 400 ) );
+		}
+		if ( 'word' === $kind && '' === $lemma ) {
+			return new WP_Error( 'coop', 'Which word?', array( 'status' => 400 ) );
+		}
+		if ( $to && ( $to === $uid || ! Sawa_Tracker_Game::is_member( $to ) ) ) {
+			$to = 0;
+		}
+		$list = self::asks();
+		$open = count( array_filter( $list, function ( $a ) use ( $uid ) { return (int) $a['uid'] === $uid && empty( $a['closed'] ); } ) );
+		if ( $open >= self::OPEN_MAX ) {
+			return new WP_Error( 'coop', 'You have 5 open questions. Close one first (tap “This helped” or “Close”).', array( 'status' => 400 ) );
+		}
+		if ( self::daily( $uid, 'asks' ) >= self::ASKS_DAY ) {
+			return new WP_Error( 'coop', 'You can ask 3 questions a day. Come back tomorrow!', array( 'status' => 400 ) );
+		}
+		self::daily( $uid, 'asks', 1 );
+		$a      = array( 'id' => wp_generate_password( 10, false ), 'uid' => $uid, 'to' => $to, 'kind' => $kind, 'lemma' => $lemma, 'q' => Sawa_Tracker_Social::filter_words( $q ), 'ctx' => Sawa_Tracker_Social::filter_words( $ctx ), 'src' => self::clean( $r->get_param( 'src' ), 80 ), 'town' => Sawa_Tracker_World::at( $uid ), 'answers' => array(), 'at' => time() );
+		$list[] = $a;
+		self::save_asks( $list );
+		if ( $to ) {
+			Sawa_Tracker_Game::event( $uid, 'coop_ask', $to, array( 'q' => mb_substr( $a['q'], 0, 80 ), 'lemma' => $lemma ) );
+		}
+		return self::state( $uid ) + array( 'asked' => $a['id'] );
+	}
+
+	public static function answer( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$id   = (string) $r->get_param( 'id' );
+		$text = self::clean( $r->get_param( 'text' ), 300 );
+		if ( ! self::english( $text ) ) {
+			return new WP_Error( 'coop', 'Answer in English — simple words are perfect. (Use the Chat tab if you need a translation first.)', array( 'status' => 400 ) );
+		}
+		if ( self::words( $text ) < self::ANSWER_WORDS ) {
+			return new WP_Error( 'coop', 'Write a little more: 6 words or more. Try an example sentence!', array( 'status' => 400 ) );
+		}
+		if ( self::daily( $uid, 'answers' ) >= self::ANSWERS_DAY ) {
+			return new WP_Error( 'coop', 'You answered 10 questions today — thank you! Come back tomorrow.', array( 'status' => 400 ) );
+		}
+		$list = self::asks();
+		foreach ( $list as $i => $a ) {
+			if ( $a['id'] !== $id ) {
+				continue;
+			}
+			if ( (int) $a['uid'] === $uid || ! empty( $a['closed'] ) ) {
+				return new WP_Error( 'coop', 'This question is closed.', array( 'status' => 400 ) );
+			}
+			foreach ( $a['answers'] as $x ) {
+				if ( (int) $x['uid'] === $uid ) {
+					return new WP_Error( 'coop', 'You already answered this one.', array( 'status' => 400 ) );
+				}
+			}
+			$list[ $i ]['answers'][] = array( 'id' => wp_generate_password( 8, false ), 'uid' => $uid, 'text' => Sawa_Tracker_Social::filter_words( $text ), 'at' => time() );
+			self::save_asks( $list );
+			self::daily( $uid, 'answers', 1 );
+			$xp = Sawa_Tracker_XP::award( $uid, min( 15, self::words( $text ) ), 'help' ); // writing English counts like chat
+			Sawa_Tracker_World::progress( $uid, 'answer' );
+			Sawa_Tracker_World::progress( $uid, 'use' );
+			Sawa_Tracker_Game::event( $uid, 'coop_answer', (int) $a['uid'], array( 'q' => mb_substr( $a['q'], 0, 80 ), 'lemma' => $a['lemma'] ) );
+			return self::state( $uid ) + array( 'xp' => $xp );
+		}
+		return new WP_Error( 'coop', 'This question is gone.', array( 'status' => 404 ) );
+	}
+
+	/** The asker says an answer helped: rewards for the helper (and a lesson for the caravanserai). */
+	public static function helped( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$id   = (string) $r->get_param( 'id' );
+		$aid  = (string) $r->get_param( 'answer' );
+		$list = self::asks();
+		foreach ( $list as $i => $a ) {
+			if ( $a['id'] !== $id || (int) $a['uid'] !== $uid ) {
+				continue;
+			}
+			foreach ( $a['answers'] as $k => $x ) {
+				if ( $x['id'] !== $aid || ! empty( $x['helped'] ) ) {
+					continue;
+				}
+				$helper                              = (int) $x['uid'];
+				$list[ $i ]['answers'][ $k ]['helped'] = time();
+				self::save_asks( $list );
+				$got = array( 'xp' => 0, 'coins' => 0 );
+				if ( self::daily( $helper, 'helped' ) < self::HELPED_DAY ) {
+					self::daily( $helper, 'helped', 1 );
+					$got['xp']    = Sawa_Tracker_XP::award( $helper, self::HELP_XP, 'helped', false );
+					$got['coins'] = Sawa_Tracker_Raids::add_coins( $helper, self::HELP_COINS );
+				}
+				self::bump( $helper, 'lessons', 1 );
+				self::bump( $helper, 'helpedAll', 1, false );
+				Sawa_Tracker_World::progress( $helper, 'helped' );
+				Sawa_Tracker_Raids::add_coins( $uid, 3 ); // for closing the loop
+				Sawa_Tracker_Game::event( $uid, 'coop_helped', $helper, array( 'q' => mb_substr( $a['q'], 0, 80 ), 'lemma' => $a['lemma'], 'xp' => $got['xp'], 'coins' => $got['coins'] ) );
+				self::pair_ask( $uid, $helper );
+				return self::state( $uid ) + array( 'thanked' => self::first( $helper ) );
+			}
+		}
+		return new WP_Error( 'coop', 'Not found.', array( 'status' => 404 ) );
+	}
+
+	public static function close( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$list = self::asks();
+		foreach ( $list as $i => $a ) {
+			if ( $a['id'] === (string) $r->get_param( 'id' ) && ( (int) $a['uid'] === $uid || user_can( $uid, 'manage_options' ) ) ) {
+				$list[ $i ]['closed'] = 1;
+				self::save_asks( $list );
+			}
+		}
+		return self::state( $uid );
+	}
+
+	/* ------------------------------------------------------------------ the caravanserai (weekly) */
+
+	/** This student's materials this week. $weekly false: an all-time counter. */
+	private static function mine_wk( $uid ) {
+		$c = Sawa_Tracker_Game::m( $uid, 'coop_wk', array() );
+		return is_array( $c ) && ( $c['week'] ?? '' ) === Sawa_Tracker_Game::week_start() ? $c : array( 'week' => Sawa_Tracker_Game::week_start() );
+	}
+
+	private static function bump( $uid, $key, $n, $weekly = true ) {
+		if ( $weekly ) {
+			$c         = self::mine_wk( $uid );
+			$c[ $key ] = (int) ( $c[ $key ] ?? 0 ) + $n;
+			Sawa_Tracker_Game::set( $uid, 'coop_wk', $c );
+			return;
+		}
+		Sawa_Tracker_Game::set( $uid, 'coop_' . $key, (int) Sawa_Tracker_Game::m( $uid, 'coop_' . $key, 0 ) + $n );
+	}
+
+	/** Called from Sawa_Tracker_World::progress: materials, and "studied today" for guide pairs. */
+	public static function on_progress( $uid, $kind, $n ) {
+		if ( 'right' === $kind ) {
+			self::bump( $uid, 'bricks', $n );
+		} elseif ( 'card' === $kind ) {
+			self::bump( $uid, 'lanterns', $n );
+		}
+		if ( in_array( $kind, array( 'card', 'right', 'practice', 'use', 'plan' ), true ) ) {
+			self::pair_day( $uid );
+		}
+		if ( 'boss' === $kind ) {
+			self::pair_boss( $uid );
+		}
+	}
+
+	public static function project() {
+		$week   = Sawa_Tracker_Game::week_start();
+		$ids    = Sawa_Tracker_Game::member_ids();
+		$have   = array();
+		$people = array();
+		$active = 0;
+		foreach ( $ids as $m ) {
+			$c = Sawa_Tracker_Game::m( $m, 'coop_wk', array() );
+			if ( ! is_array( $c ) || ( $c['week'] ?? '' ) !== $week ) {
+				continue;
+			}
+			$any = false;
+			foreach ( self::MATERIALS as $mat ) {
+				$v = (int) ( $c[ $mat[0] ] ?? 0 );
+				if ( $v > 0 ) {
+					$have[ $mat[0] ]   = ( $have[ $mat[0] ] ?? 0 ) + $v;
+					$people[ $mat[0] ][] = array( 'name' => self::first( $m ), 'n' => $v );
+					$any               = true;
+				}
+			}
+			$active += $any ? 1 : 0;
+		}
+		// The goal is set from last week's active students, so it stays fixed during the week.
+		$size = get_option( 'sawa_tr_coop_size', array() );
+		if ( ! is_array( $size ) || ( $size['week'] ?? '' ) !== $week ) {
+			$size = array( 'week' => $week, 'n' => max( 3, (int) ( $size['last'] ?? 0 ) ), 'last' => 0 );
+		}
+		if ( $active > (int) $size['last'] ) {
+			$size['last'] = $active;
+			update_option( 'sawa_tr_coop_size', $size, false );
+		} elseif ( ! get_option( 'sawa_tr_coop_size' ) ) {
+			update_option( 'sawa_tr_coop_size', $size, false );
+		}
+		$mats = array();
+		$done = true;
+		foreach ( self::MATERIALS as $mat ) {
+			$goal = max( $mat[5], $mat[4] * (int) $size['n'] );
+			$v    = (int) ( $have[ $mat[0] ] ?? 0 );
+			$top  = $people[ $mat[0] ] ?? array();
+			usort( $top, function ( $a, $b ) { return $b['n'] <=> $a['n']; } );
+			$mats[] = array( 'key' => $mat[0], 'icon' => $mat[1], 'name' => $mat[2], 'from' => $mat[3], 'have' => min( $v, $goal ), 'goal' => $goal, 'top' => array_slice( $top, 0, 3 ), 'people' => count( $top ) );
+			$done   = $done && $v >= $goal;
+		}
+		$pct = (int) floor( 100 * array_sum( array_map( function ( $m ) { return min( 1, $m['have'] / max( 1, $m['goal'] ) ); }, $mats ) ) / count( $mats ) );
+		if ( $done ) {
+			self::project_payout( $week, $ids );
+		}
+		return array( 'name' => 'The caravanserai', 'week' => $week, 'ends' => Sawa_Tracker_Game::add_days( $week, 6 ), 'materials' => $mats, 'pct' => $pct, 'done' => $done, 'builders' => $active, 'reward' => '30 🪙 + 1 ⚗ + 20 XP' );
+	}
+
+	/** Everyone who brought anything this week gets the reward, once (the option is a lock). */
+	private static function project_payout( $week, $ids ) {
+		if ( ! add_option( 'sawa_tr_coop_paid_' . $week, time(), '', 'no' ) ) {
+			return;
+		}
+		$n = 0;
+		foreach ( $ids as $m ) {
+			$c = Sawa_Tracker_Game::m( $m, 'coop_wk', array() );
+			if ( is_array( $c ) && ( $c['week'] ?? '' ) === $week && ( (int) ( $c['bricks'] ?? 0 ) + (int) ( $c['lanterns'] ?? 0 ) + (int) ( $c['lessons'] ?? 0 ) ) > 0 ) {
+				Sawa_Tracker_Raids::add_coins( $m, 30 );
+				Sawa_Tracker_RPG::add_elixirs( $m, 1 );
+				Sawa_Tracker_XP::award( $m, 20, 'project', false );
+				++$n;
+			}
+		}
+		Sawa_Tracker_Game::event( 0, 'coop_built', null, array( 'builders' => $n ) );
+	}
+
+	/* ------------------------------------------------------------------ guides and newcomers */
+
+	/** Can volunteer as a guide: two town bosses beaten, or level 5. */
+	public static function can_guide( $uid ) {
+		return count( (array) Sawa_Tracker_World::get( $uid )['beaten'] ) >= 2 || Sawa_Tracker_Hero::level( $uid ) >= 5 || user_can( $uid, 'manage_options' );
+	}
+
+	private static function pair( $mentee ) {
+		$p = get_option( 'sawa_tr_coop_pair_' . (int) $mentee );
+		return is_array( $p ) ? $p : null;
+	}
+
+	private static function save_pair( $p ) {
+		update_option( 'sawa_tr_coop_pair_' . (int) $p['mentee'], $p, false );
+	}
+
+	/** The newcomer whose guide this student is (active pairs only). */
+	private static function mentees( $uid ) {
+		$ids = Sawa_Tracker_Game::m( $uid, 'coop_mentees', array() );
+		return array_values( array_filter( array_map( 'intval', is_array( $ids ) ? $ids : array() ), function ( $m ) use ( $uid ) { $p = self::pair( $m ); return $p && (int) $p['guide'] === $uid && time() < (int) $p['ends']; } ) );
+	}
+
+	/** A newcomer (joined less than 2 weeks ago, no town boss yet) gets a guide the first time they open the caravan. */
+	private static function match( $uid ) {
+		$p = self::pair( $uid );
+		if ( $p ) {
+			return $p;
+		}
+		$u     = get_userdata( $uid );
+		$start = $u ? (int) strtotime( $u->user_registered . ' UTC' ) : 0; // new members only, not everyone on the day this ships
+		if ( time() - $start > self::GUIDE_DAYS * DAY_IN_SECONDS || Sawa_Tracker_World::get( $uid )['beaten'] || self::can_guide( $uid ) ) {
+			return null;
+		}
+		$best = 0;
+		$load = 99;
+		foreach ( Sawa_Tracker_Game::member_ids() as $g ) {
+			if ( $g === $uid || ! Sawa_Tracker_Game::m( $g, 'coop_guide', 0 ) || ! self::can_guide( $g ) ) {
+				continue;
+			}
+			$pos = Sawa_Tracker_Game::m( $g, 'wpos', array() );
+			if ( ! is_array( $pos ) || time() - (int) ( $pos['at'] ?? 0 ) > 7 * DAY_IN_SECONDS ) {
+				continue; // guides must have played this week
+			}
+			$n = count( self::mentees( $g ) );
+			if ( $n < self::GUIDE_MAX && $n < $load ) {
+				$best = $g;
+				$load = $n;
+			}
+		}
+		if ( ! $best ) {
+			return null;
+		}
+		$p = array( 'mentee' => $uid, 'guide' => $best, 'start' => time(), 'ends' => time() + self::GUIDE_DAYS * DAY_IN_SECONDS, 'done' => array(), 'days' => array() );
+		self::save_pair( $p );
+		$list   = self::mentees( $best );
+		$list[] = $uid;
+		Sawa_Tracker_Game::set( $best, 'coop_mentees', $list );
+		Sawa_Tracker_Game::event( $uid, 'coop_guide', $best, array() );
+		return $p;
+	}
+
+	private static function pair_step( $p, $key ) {
+		if ( in_array( $key, $p['done'], true ) ) {
+			return $p;
+		}
+		$p['done'][] = $key;
+		foreach ( self::PAIR_STEPS as $s ) {
+			if ( $s[0] === $key ) {
+				Sawa_Tracker_Raids::add_coins( (int) $p['mentee'], $s[2] );
+				Sawa_Tracker_Raids::add_coins( (int) $p['guide'], $s[2] );
+				Sawa_Tracker_XP::award( (int) $p['guide'], 15, 'guide', false );
+				Sawa_Tracker_Game::event( (int) $p['mentee'], 'coop_pair', (int) $p['guide'], array( 'step' => $s[1], 'coins' => $s[2] ) );
+				Sawa_Tracker_Game::event( (int) $p['guide'], 'coop_pair', (int) $p['mentee'], array( 'step' => $s[1], 'coins' => $s[2] ) );
+			}
+		}
+		if ( count( $p['done'] ) === count( self::PAIR_STEPS ) ) {
+			$w = Sawa_Tracker_World::get( (int) $p['guide'] );
+			if ( ! in_array( 'Guide of the Road', $w['titles'], true ) ) {
+				$w['titles'][] = 'Guide of the Road';
+				Sawa_Tracker_World::save( (int) $p['guide'], $w );
+			}
+		}
+		return $p;
+	}
+
+	/** The newcomer marked their guide's answer as helpful. */
+	private static function pair_ask( $asker, $helper ) {
+		$p = self::pair( $asker );
+		if ( $p && (int) $p['guide'] === $helper && time() < (int) $p['ends'] ) {
+			self::save_pair( self::pair_step( $p, 'ask' ) );
+		}
+	}
+
+	/** Records that this student studied today; counts days both partners studied. */
+	private static function pair_day( $uid ) {
+		$today = Sawa_Tracker_Game::today();
+		if ( Sawa_Tracker_Game::m( $uid, 'coop_day', '' ) === $today ) {
+			return;
+		}
+		Sawa_Tracker_Game::set( $uid, 'coop_day', $today );
+		$pairs = array_filter( array_merge( array( self::pair( $uid ) ), array_map( array( __CLASS__, 'pair' ), self::mentees( $uid ) ) ) );
+		foreach ( $pairs as $p ) {
+			if ( time() > (int) $p['ends'] ) {
+				continue;
+			}
+			$other = (int) $p['mentee'] === $uid ? (int) $p['guide'] : (int) $p['mentee'];
+			if ( Sawa_Tracker_Game::m( $other, 'coop_day', '' ) === $today && ! in_array( $today, $p['days'], true ) ) {
+				$p['days'][] = $today;
+				if ( count( $p['days'] ) >= 3 ) {
+					$p = self::pair_step( $p, 'days' );
+				}
+				self::save_pair( $p );
+			}
+		}
+	}
+
+	private static function pair_boss( $uid ) {
+		$p = self::pair( $uid );
+		if ( $p && time() < (int) $p['ends'] + 7 * DAY_IN_SECONDS ) { // a little extra time for the boss
+			self::save_pair( self::pair_step( $p, 'boss' ) );
+		}
+	}
+
+	private static function pair_out( $p, $uid ) {
+		$other = (int) $p['mentee'] === $uid ? (int) $p['guide'] : (int) $p['mentee'];
+		$pos   = Sawa_Tracker_Game::m( $other, 'wpos', array() );
+		$o     = Sawa_Tracker_Game::person( $other );
+		return array(
+			'role'   => (int) $p['mentee'] === $uid ? 'newcomer' : 'guide',
+			'with'   => array( 'id' => $other, 'name' => $o['name'], 'avatar' => $o['avatar'] ?? '', 'town' => Sawa_Tracker_World::TOWNS[ Sawa_Tracker_World::at( $other ) ][0], 'level' => Sawa_Tracker_Hero::level( $other ), 'seen' => is_array( $pos ) ? time() - (int) ( $pos['at'] ?? 0 ) : null ),
+			'days'   => count( $p['days'] ),
+			'daysLeft' => max( 0, (int) ceil( ( (int) $p['ends'] - time() ) / DAY_IN_SECONDS ) ),
+			'steps'  => array_map( function ( $s ) use ( $p ) { return array( 'key' => $s[0], 'text' => $s[1], 'coins' => $s[2], 'done' => in_array( $s[0], $p['done'], true ) ); }, self::PAIR_STEPS ),
+		);
+	}
+
+	public static function guide( WP_REST_Request $r ) {
+		$uid = self::uid();
+		$on  = (bool) $r->get_param( 'on' );
+		if ( $on && ! self::can_guide( $uid ) ) {
+			return new WP_Error( 'coop', 'Guides have beaten two town bosses or reached level 5. Keep going — you will get there!', array( 'status' => 400 ) );
+		}
+		Sawa_Tracker_Game::set( $uid, 'coop_guide', $on ? 1 : 0 );
+		return self::state( $uid );
+	}
+
+	/* ------------------------------------------------------------------ state */
+
+	public static function state( $uid ) {
+		$help = array();
+		$mine = array();
+		$new  = 0;
+		foreach ( array_reverse( self::asks() ) as $a ) {
+			if ( (int) $a['uid'] === $uid ) {
+				if ( count( $mine ) < 10 && ( empty( $a['closed'] ) || time() - (int) $a['at'] < 3 * DAY_IN_SECONDS ) ) {
+					$o       = self::ask_out( $a, $uid );
+					$mine[]  = $o;
+					$new    += empty( $a['closed'] ) ? count( array_filter( $o['answers'], function ( $x ) { return ! $x['helped']; } ) ) : 0;
+				}
+			} elseif ( empty( $a['closed'] ) && ( ! $a['to'] || (int) $a['to'] === $uid ) && time() - (int) $a['at'] < 7 * DAY_IN_SECONDS && count( $help ) < 12 ) {
+				$help[] = self::ask_out( $a, $uid );
+			}
+		}
+		// questions sent to you and questions nobody answered yet come first
+		usort( $help, function ( $a, $b ) { return array( ! $a['toMe'], $a['answered'], count( $a['answers'] ) > 0, -$a['at'] ) <=> array( ! $b['toMe'], $b['answered'], count( $b['answers'] ) > 0, -$b['at'] ); } );
+		$pair    = self::match( $uid );
+		$guiding = array();
+		foreach ( self::mentees( $uid ) as $m ) {
+			$guiding[] = self::pair_out( self::pair( $m ), $uid );
+		}
+		$todo   = count( array_filter( $help, function ( $a ) { return ! $a['answered']; } ) );
+		$thanks = array(); // my answers that helped in the last 3 days (the game shows a thank-you once)
+		foreach ( self::asks() as $a ) {
+			foreach ( $a['answers'] as $x ) {
+				if ( (int) $x['uid'] === $uid && ! empty( $x['helped'] ) && time() - (int) $x['helped'] < 3 * DAY_IN_SECONDS ) {
+					$thanks[] = array( 'id' => $x['id'], 'by' => self::first( $a['uid'] ), 'lemma' => $a['lemma'] );
+				}
+			}
+		}
+		$c    = self::mine_wk( $uid );
+		return array(
+			'help'    => $help,
+			'mine'    => $mine,
+			'badge'   => $new + count( array_filter( $help, function ( $a ) { return $a['toMe'] && ! $a['answered']; } ) ),
+			'todo'    => $todo,
+			'newAnswers' => $new,
+			'project' => self::project(),
+			'myWeek'  => array( 'bricks' => (int) ( $c['bricks'] ?? 0 ), 'lanterns' => (int) ( $c['lanterns'] ?? 0 ), 'lessons' => (int) ( $c['lessons'] ?? 0 ) ),
+			'helpedAll' => (int) Sawa_Tracker_Game::m( $uid, 'coop_helpedAll', 0 ),
+			'thanks'  => array_slice( $thanks, -5 ),
+			'pair'    => $pair && time() < (int) $pair['ends'] + 7 * DAY_IN_SECONDS ? self::pair_out( $pair, $uid ) : null,
+			'guiding' => $guiding,
+			'guide'   => array( 'on' => (bool) Sawa_Tracker_Game::m( $uid, 'coop_guide', 0 ), 'can' => self::can_guide( $uid ) ),
+			'limits'  => array( 'asksLeft' => max( 0, self::ASKS_DAY - self::daily( $uid, 'asks' ) ), 'answersLeft' => max( 0, self::ANSWERS_DAY - self::daily( $uid, 'answers' ) ), 'words' => self::ANSWER_WORDS ),
+		);
+	}
+
+	public static function state_rest() {
+		return self::state( self::uid() );
+	}
+}

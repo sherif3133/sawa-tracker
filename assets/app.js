@@ -396,7 +396,7 @@
     var mons = '<div class="wd-mons">' + t.monsters.map(function (m, i) {
       return '<div class="wd-mon"><span class="wd-big">' + m.icon + '</span><b>' + esc(m.name) + '</b><span class="small muted">❤ ' + m.hp + ' HP</span><button class="btn sm-btn" data-act="w-fight" data-m="' + i + '"' + (w.stamina.left && w.ready ? '' : ' disabled') + '>Fight ⚡1</button></div>';
     }).join('') + '</div>';
-    var boss = '<div class="wd-boss' + (b.beaten ? ' beaten' : '') + '"><span class="wd-big">' + b.icon + '</span><div><b>Boss: ' + esc(b.name) + '</b><p class="small muted">❤ ' + b.hp + ' HP · 6 questions at ' + t.level + ' level · win with about 5 right' + (w.weapon ? ' (your weapon adds ' + w.weapon + '%)' : '') + '</p></div>'
+    var boss = '<div class="wd-boss' + (b.beaten ? ' beaten' : '') + '"><span class="wd-big">' + b.icon + '</span><div><b>Boss: ' + esc(b.name) + '</b><p class="small muted">❤ ' + b.hp + ' HP · up to ' + (b.questions || 10) + ' questions at ' + t.level + ' level · bring its health to 0 before they run out' + (w.weapon ? ' (your weapon adds ' + w.weapon + '%)' : '') + '</p></div>'
       + (b.beaten ? '<span class="pill">✓ Defeated</span>' : b.ready ? '<button class="btn primary sm-btn" data-act="w-boss"' + (b.tries && w.ready ? '' : ' disabled') + '>Fight · ' + b.tries + ' tries left</button>' : '<span class="small muted">🔒 Finish the story quests first</span>') + '</div>';
     return route
       + '<section class="card"><div class="row-between"><h3>' + t.icon + ' ' + esc(t.name) + ' <span class="small muted">' + t.level + '</span></h3><button class="btn ghost sm-btn" data-act="w-room" data-id="' + t.room + '">💬 Town chat</button></div>' + people + '</section>'
@@ -418,15 +418,16 @@
       + (q.done ? '<span class="pill">✓ Done</span>' : '<div class="row"><input id="w-qnote" maxlength="200" placeholder="How did you do it? (optional)" dir="auto"><button class="btn primary" data-act="w-squest">Done · +' + q.sp + ' 🪙</button></div>') + '</section>';
   }
   var HELP = [
-    ['🗺', 'The map', 'Six towns from Chang\'an to Constantinople, one for each English level (A1 → C2). You start in the town of your level test. Beat a town\'s boss to open the road to the next one — or retake the level test.'],
-    ['⚔', 'Monsters', 'Every fight is 5 English questions: words from <b>your</b> flashcards in the sentence where you found them, your own past mistakes, and the skill points you\'re weakest at. 20 attack per right answer (plus your weapon). Words you miss come back in today\'s review cards.'],
-    ['⭐', 'Level, health and mana', 'Your level goes up with XP — from cards, writing, chat and fights. Every level gives more health and mana, coins, new gear and titles (and a glowing aura from level 10). ❤ Health goes down when a monster hits you after a wrong answer; it comes back by itself, faster when you review cards at the inn. 💧 Mana comes only from studying today.'],
+    ['🗺', 'The map', 'Six towns from Chang\'an to Constantinople: small steps from early A2 to late B1. You start in the town of your level test. Beat a town\'s boss to open the road to the next one — or retake the level test.'],
+    ['⚔', 'Monsters', 'Every fight is up to 8 English questions (listen, choose, type or build a sentence): words from <b>your</b> flashcards in the sentence where you found them, your own past mistakes, and the skill points you\'re weakest at. Each right answer hits (fast answers and combos hit harder); a wrong answer lets the monster hit you. Words you miss come back in today\'s review cards.'],
+    ['⭐', 'Level, health and mana', 'Your level goes up with English XP — from writing and speaking English (chat, Write, Speak), helping other travellers and winning fights. Reviewing cards gives mana and health instead. Every level gives more health and mana, coins, new gear and titles (and a glowing aura from level 10). ❤ Health goes down when a monster hits you after a wrong answer; it comes back by itself, faster when you review cards at the inn. 💧 Mana comes only from studying today.'],
     ['✨', 'Battle skills', 'Focus removes a wrong answer, Insight gives a hint, Power strike doubles your next hit, Second breath heals you. They cost mana. Fast answers hit harder, and 3 right answers in a row start a combo.'],
     ['🏆', 'Rankings', 'See who has the highest level, who earned the most XP this week, and the best duel fighters (arena ranks from Bronze to Legend).'],
     ['⚡', 'Fights a day', '5 fights a day, plus one for every step of today\'s plan and one for a perfect day. Studying gives you more game.'],
     ['📜', 'Quests', 'Each town has a story: monsters → a learning task (cards, practice, chat, video quizzes…) → the boss. Daily and weekly quests pay coins and elixirs. Tap <b>Go</b> to jump to the right place in the app.'],
     ['🚶', 'Walking the world', 'Walk with the arrow keys (or drag your thumb on a phone). Press E or tap the red button to talk to people, read the notice board and leave notes. Monsters roam the road east of every town; the boss waits in its lair.'],
     ['👥', 'Other travellers', 'Students who are online walk around with you. Students who were here earlier today stay as echoes where they left — you can still tap them: wave, invite them, or duel their shadow, which fights as well as they really do. They get a notification later.'],
+    ['🐫', 'The caravan board', 'Tap any word in the game → <b>Ask the caravan</b>, or use the notice board in town. Other travellers answer in English when they play — later today or tomorrow. Tap <b>This helped</b> on a good answer: the helper gets XP and coins. Every week the whole community builds the caravanserai together: bricks from battles, lanterns from review cards and lessons from helping each other. New on the road? You get a guide for your first two weeks.'],
     ['✍', 'Notes', 'Leave a short English note on the map for the next traveller (3 a day). When someone finds it helpful, you get 2 coins.'],
     ['🌍', 'World boss', 'One boss for the whole community each week. Every minute anyone studies hits it.'],
     ['🪙', 'Coins and ⚗ elixirs', 'Coins come from learning (plan steps, quizzes, quests, fights). Spend them on gear, shields and helping classmates. Elixirs come from mastering skill points, perfect days and big wins; they upgrade your gear.'],
@@ -907,12 +908,18 @@
       case 'party_win': return '🏆 Your party <b dir="auto">' + esc(d.party) + '</b> defeated the ' + esc(d.boss) + '! +' + d.coins + ' 🪙 +' + d.elixirs + ' ⚗';
       case 'party_down': return '⚔ The party <b dir="auto">' + esc(d.party) + '</b> defeated the ' + esc(d.boss) + (d.live ? ' in a live battle' : '') + '!';
       case 'town': return name(e.who) + ' defeated the ' + esc(d.boss) + ' in ' + esc(d.town) + (d.next ? ' and set off for ' + esc(d.next) : '') + ' 🐫';
+      case 'coop_ask': return name(e.who) + ' asked you for help: <span dir="ltr">"' + esc(d.q) + '"</span> 🙋 Answer it on the caravan board.';
+      case 'coop_answer': return name(e.who) + ' answered your question <span dir="ltr">"' + esc(d.q) + '"</span>. Did it help? 🐫';
+      case 'coop_helped': return name(e.who) + ' says your explanation helped' + (d.lemma ? ' with <b dir="ltr">' + esc(d.lemma) + '</b>' : '') + '! ' + (d.xp ? '+' + d.xp + ' XP ' : '') + (d.coins ? '+' + d.coins + ' 🪙' : '') + ' 🤝';
+      case 'coop_guide': return name(e.who) + ' and you are a guide pair for the next 2 weeks on the Silk Road 🧭';
+      case 'coop_pair': return '🧭 You and ' + name(e.who) + ' finished: ' + esc(d.step) + ' · +' + d.coins + ' 🪙';
+      case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
       case 'reply': return name(e.who) + ' رد على رسالتك' + (d.voice ? ' برسالة صوتية' : d.sticker ? ' بـ ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];

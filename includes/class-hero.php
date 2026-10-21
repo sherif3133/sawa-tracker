@@ -220,12 +220,12 @@ final class Sawa_Tracker_Hero {
 		}
 		$top = function ( $key, $n ) use ( $rows ) { usort( $rows, function ( $a, $b ) use ( $key ) { return $b[ $key ] <=> $a[ $key ]; } ); return array_values( array_filter( array_slice( $rows, 0, $n ), function ( $r ) use ( $key ) { return $r[ $key ] > 0; } ) ); };
 		$t      = Sawa_Tracker_Game::table( 'events' );
-		$evs    = $wpdb->get_results( $wpdb->prepare( "SELECT user_id, type, data FROM $t WHERE type IN ('hero_level','town','party_down') AND created_at >= %s ORDER BY id DESC LIMIT 40", $from . ' 00:00:00' ), ARRAY_A ); // phpcs:ignore
+		$evs    = $wpdb->get_results( $wpdb->prepare( "SELECT user_id, type, data FROM $t WHERE type IN ('hero_level','town','party_down','coop_built') AND created_at >= %s ORDER BY id DESC LIMIT 40", $from . ' 00:00:00' ), ARRAY_A ); // phpcs:ignore
 		$moments = array();
 		foreach ( (array) $evs as $e ) {
 			$d = json_decode( $e['data'], true );
 			$n = Sawa_Tracker_Game::person( (int) $e['user_id'] )['name'];
-			$moments[] = 'hero_level' === $e['type'] ? $n . ' reached level ' . $d['level'] . ' (' . $d['title'] . ')' : ( 'town' === $e['type'] ? $n . ' defeated the ' . $d['boss'] . ' in ' . $d['town'] : 'The party ' . $d['party'] . ' defeated the ' . $d['boss'] );
+			$moments[] = 'coop_built' === $e['type'] ? 'The community built the caravanserai together (' . (int) $d['builders'] . ' builders)' : ( 'hero_level' === $e['type'] ? $n . ' reached level ' . $d['level'] . ' (' . $d['title'] . ')' : ( 'town' === $e['type'] ? $n . ' defeated the ' . $d['boss'] . ' in ' . $d['town'] : 'The party ' . $d['party'] . ' defeated the ' . $d['boss'] ) );
 		}
 		return array( 'xp' => $top( 'week', 5 ), 'words' => $top( 'words', 3 ), 'moments' => array_slice( $moments, 0, 8 ), 'from' => $from );
 	}

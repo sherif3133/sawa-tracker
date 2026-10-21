@@ -295,9 +295,9 @@
     $('.sg-top').innerHTML = '<div class="sg-who"><span class="sg-face">' + (me.avatar ? '<img src="' + esc(me.avatar) + '" alt="">' : '') + '<em class="sg-lv">' + hr.level + '</em></span><div><b>' + esc(me.name) + '</b><small>' + esc(w.town.icon + ' ' + w.town.name + ' · ' + w.town.level) + ' · ' + esc(hr.title) + '</small>' + bars + '</div></div>'
       + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span>' + (w.elixirs ? '<span title="Elixirs">⚗ ' + w.elixirs + '</span>' : '') + '<span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>';
     var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
-    var MAIN = { today: 1, cards: 1, quests: 1, chat: 1, ranks: 1, more: 1 };
+    var MAIN = { today: 1, cards: 1, quests: 1, caravan: 1, chat: 1, more: 1 }, cv = CARAVAN.s ? CARAVAN.s.badge : 0;
     var ev = $('.sg-event'); if (ev) { ev.textContent = w.event ? '🎉 ' + w.event : ''; ev.classList.toggle('on', !!w.event); }
-    $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['journal', '📖', 'Journal', 0], ['share', '📣', 'Share', 0], ['report', '📰', 'This week', 0], ['voices', SFX.on() ? '🗣' : '🔇', 'Voices', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
+    $('.sg-menu').classList.toggle('more', !!GAME.more); $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['caravan', '🐫', 'Caravan', cv], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['journal', '📖', 'Journal', 0], ['share', '📣', 'Share', 0], ['report', '📰', 'This week', 0], ['voices', SFX.on() ? '🗣' : '🔇', 'Voices', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
   }
@@ -427,6 +427,7 @@
         S.events.on('shutdown', function () { S.scale.off('resize', S.fitZoom, S); Object.keys(S.labels).forEach(function (k) { S.labels[k].remove(); }); });
         say(w.town.icon + ' ' + w.town.name + ' — ' + (t === 1 ? 'the start of the Silk Road' : 'level ' + w.town.level), 3000);
       },
+      now: function () { return this.game.loop.time; }, // the same clock update() gets, even right after a pause
       fitZoom: function () { var c = this.cameras.main, w = this.scale.width, h = this.scale.height; c.setZoom(Math.max(2, Math.min(4, Math.round(Math.min(w / (TS * 20), h / (TS * 12)) * 2) / 2))); },
       ambient: function () {
         var S = this, a = S.th.amb, cfg = { petals: ['petal', 0xffffff, 1], dust: ['dot', 0xf3d29a, 0.5], snow: ['dot', 0xffffff, 0.6], leaves: ['petal', 0xa3c95a, 0.9], fireflies: ['dot', 0xfff08a, 0.5], birds: ['dot', 0xffffff, 0.45] }[a] || ['dot', 0xffffff, 0.5];
@@ -465,7 +466,7 @@
         if (S.board && Phaser.Math.Distance.Between(pl.x, pl.y, S.board.x, S.board.y) < 28) near = { kind: 'board' };
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(pl.x, pl.y, n.spr.x, n.spr.y) < 20) near = { kind: 'note', obj: n }; });
         Object.keys(S.others).forEach(function (id) { var o = S.others[id]; if (Phaser.Math.Distance.Between(pl.x, pl.y, o.spr.x, o.spr.y) < 24) near = { kind: 'player', obj: o }; });
-        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Read' : near.kind === 'note' ? 'Read note' : 'Meet'); } }
+        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : 'Meet'); } }
         // others glide to their last position
         Object.keys(S.others).forEach(function (id) { var o = S.others[id], s = o.spr; var dx = o.tx - s.x, dy = o.ty - s.y, dd = Math.hypot(dx, dy); if (dd > 1) { var st = Math.min(dd, 1.4 * dt / 16); s.x += dx / dd * st; s.y += dy / dd * st; var dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); s.anims.play(s.texture.key + '_w' + dir, true); } else { s.anims.stop(); s.setFrame(o.d * 3); } s.setDepth(s.y); if (o.aura) o.aura.setPosition(s.x, s.y - 1).setDepth(s.y - 1); });
         // light and dark
@@ -475,6 +476,7 @@
         // labels over characters (HTML)
         S.paintLabels();
         // sync with the server: every 3 s with others around, every 8 s alone
+        if (time - (S.lastCar || 0) > 60000) { S.lastCar = time; CARAVAN.load().catch(function () {}); }
         if (time - S.lastSync > (Object.keys(S.others).some(function (id) { return S.others[id].live; }) ? 3000 : 8000)) { S.lastSync = time; S.sync(); }
       },
       paintDark: function (dl, v, z, time) {
@@ -500,7 +502,7 @@
       tap: function (hit) { this.near = hit; this.interact(); },
       interact: function () {
         var S = this, n = S.near; if (!n || S.frozen) return;
-        if (n.kind === 'board') return H.panel('quests');
+        if (n.kind === 'board') return CARAVAN.show();
         if (n.kind === 'note') return S.readNote(n.obj);
         if (n.kind === 'player') return S.meet(n.obj);
         var w = H.world(), id = n.obj.npc, L = NPC[id];
@@ -510,16 +512,16 @@
           if (!cur) return dialog(L[0], 'You defeated the beast of ' + w.town.name + '. The road is open — go on to the next town, brave one!', [], L[1]);
           var txt = cur.state === 'claim' ? 'Well done! You finished: "' + cur.text + '". Take your reward.' : 'Your task: ' + cur.text + '. (' + cur.count + ' of ' + cur.n + ')';
           var btns = cur.state === 'claim' ? [{ label: 'Take the reward', primary: true, run: function () { H.api('/world/claim', { method: 'POST', body: { quest: 'story' } }).then(function (j) { H.setWorld(j.world); hud(); SFX.quest(); say('+' + j.got.coins + ' 🪙' + (j.got.elixirs ? ' +' + j.got.elixirs + ' ⚗' : '')); S.interact(); }, function (x) { say(x.message); }); } }]
-            : cur.go === 'review' ? [{ label: 'Review cards now', primary: true, run: function () { REV.show(); } }] : cur.go === 'chat' ? [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }] : cur.go === 'today' ? [{ label: 'Today\'s plan', primary: true, run: function () { TODAY.show(); } }] : cur.go && cur.go !== 'map' ? [{ label: 'Show me where', primary: true, run: function () { H.go(cur.go); } }] : [];
+            : cur.go === 'caravan' ? [{ label: 'Open the caravan board', primary: true, run: function () { CARAVAN.show('help'); } }] : cur.go === 'review' ? [{ label: 'Review cards now', primary: true, run: function () { REV.show(); } }] : cur.go === 'chat' ? [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }] : cur.go === 'today' ? [{ label: 'Today\'s plan', primary: true, run: function () { TODAY.show(); } }] : cur.go && cur.go !== 'map' ? [{ label: 'Show me where', primary: true, run: function () { H.go(cur.go); } }] : [];
           return dialog(L[0], L[2] + ' ' + txt, btns.concat([{ label: 'All quests', run: function () { H.panel('quests'); } }]), L[1]);
         }
         if (id === 'inn') return dialog(L[0], L[2], [{ label: 'Review my cards', primary: true, run: function () { REV.show(); } }, { label: 'Today\'s plan', run: function () { TODAY.show(); } }], L[1]);
         if (id === 'smith') return H.stage() >= 4 ? dialog(L[0], L[2], [{ label: 'Open the forge', primary: true, run: function () { H.panel('forge'); } }], L[1]) : dialog(L[0], 'Come back when you are ready to carry a weapon. (Jobs and gear open at stage 4.)', [], L[1]);
-        if (id === 'crier') return dialog(L[0], L[2], [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }], L[1]);
+        if (id === 'crier') return dialog(L[0], L[2] + ' And if a word is hard, ask the caravan — someone will explain it.', [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }, { label: '🐫 Caravan board', run: function () { CARAVAN.show(); } }], L[1]);
         if (id === 'guard') return dialog(L[0], L[2] + ' Speak with Elder Wen to learn how.', [], L[1]);
       },
       encounter: function (mo) {
-        var S = this, now = S.time.now; if (S.frozen || S.cool > now || mo.flee > now) return;
+        var S = this, now = S.now(); if (S.frozen || S.cool > now || mo.flee > now) return;
         var w = H.world();
         if (w.stamina.left < 1) { S.cool = now + 4000; S.pl.setVelocity(0); say('You are too tired to fight. Every step of today\'s plan gives you one more fight.'); return; }
         if (!w.ready) { S.cool = now + 4000; say('Battles open soon.'); return; }
@@ -528,15 +530,15 @@
         S.time.delayedCall(260, function () { G.battle('/world/fight', { kind: 'monster', m: mo.m }, mo); });
       },
       bossTouch: function () {
-        var S = this, w = H.world(), b = w.town.boss; if (S.frozen || S.cool > S.time.now) return; S.cool = S.time.now + 2500;
+        var S = this, w = H.world(), b = w.town.boss; if (S.frozen || S.cool > S.now()) return; S.cool = S.now() + 2500;
         dialog.who = 'boss';
         if (!b.ready) return dialog(b.name, 'The ' + b.name + ' looks down at you. You are not ready. (Finish Elder Wen\'s tasks first.)', [], b.icon);
         if (!b.tries) return dialog(b.name, 'The ' + b.name + ' is resting. Come back tomorrow.', [], b.icon);
-        dialog(b.name, 'The ' + b.name + ' rises! 6 questions at ' + w.town.level + ' level. You need about 5 right. ' + b.tries + ' tries left today.', [{ label: 'Fight!', primary: true, run: function () { S.frozen = true; G.battle('/world/fight', { kind: 'boss' }, S.boss); } }], b.icon);
+        dialog(b.name, 'The ' + b.name + ' rises! Up to ' + (b.questions || 10) + ' questions at ' + w.town.level + ' level: bring its health to 0 before they run out. It gets angry at half health. ' + b.tries + (b.tries === 1 ? ' try' : ' tries') + ' left today.', [{ label: 'Fight!', primary: true, run: function () { S.frozen = true; G.battle('/world/fight', { kind: 'boss' }, S.boss); } }], b.icon);
       },
       afterBattle: function (r) {
-        var S = this; S.frozen = false; S.cool = S.time.now + 6000;
-        S.monsters.forEach(function (mm) { if (mm.active && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, mm.x, mm.y) < 90) mm.flee = S.time.now + 15000; });
+        var S = this, now = S.now(); S.frozen = false; S.cool = now + 6000; // the scene clock stood still during the battle: use the game's clock
+        S.monsters.forEach(function (mm) { if (mm.active && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, mm.x, mm.y) < 90) mm.flee = now + 15000; });
         if (r && r.won && S.fighting) { var m = S.fighting; S.tweens.add({ targets: m, alpha: 0, scale: 1.6, duration: 300, onComplete: function () { m.disableBody(true, true); S.time.delayedCall(25000, function () { if (m.scene) m.enableBody(true, m.home.x, m.home.y, true, true).setAlpha(1).setScale(1); }); } }); }
         S.fighting = null; hud();
         if (r && r.ko) { S.cameras.main.fadeOut(250); S.time.delayedCall(300, function () { S.pl.setPosition(11.5 * TS, 17.6 * TS); S.cameras.main.fadeIn(400); say('You wake up at the inn. Review cards here to heal faster.', 5000); }); }
@@ -576,6 +578,7 @@
         if (S.bubble && S.bubble.until > now) tag('bme', S.pl.x, S.pl.y - 40, '<span class="bub">' + esc(S.bubble.text) + '</span>', 'bubble');
         if (S.emote && S.emote.until > now) tag('eme', S.pl.x, S.pl.y - 34, '<span class="emo">' + EMO[S.emote.e] + '</span>', 'bubble');
         S.npcs.forEach(function (n) { tag('n' + n.npc, n.x, n.y - 27, '<span class="nm npc">' + esc(NPC[n.npc][0]) + '</span>'); });
+        if (S.board) { var cs = CARAVAN.s; tag('board', S.board.x, S.board.y - 30, '<span class="nm npc">🐫 Caravan board' + (cs && cs.badge ? ' <i class="sg-dotn">' + cs.badge + '</i>' : cs && cs.todo ? ' · ' + cs.todo + ' ?' : '') + '</span>'); }
         if (S.boss) tag('boss', S.boss.x, S.boss.y - 52, '<span class="nm boss">' + esc(H.world().town.boss.name) + '</span>');
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(S.pl.x, S.pl.y, n.spr.x, n.spr.y) < 80) tag('t' + n.id, n.spr.x, n.spr.y - 18, '<span class="nt">✍ ' + esc(n.by.split(' ')[0]) + '</span>'); });
         Object.keys(S.labels).forEach(function (id) { if (!keep[id]) { S.labels[id].remove(); delete S.labels[id]; } });
@@ -585,6 +588,7 @@
         H.api('/play/profile', { query: { user: p.id } }).then(function (pr) {
           var job = { thief: '🗡 Thief', hunter: '🏹 Hunter', trader: '🐪 Trader' }[pr.job] || 'Traveller', btns = [];
           btns.push({ label: '👋 Wave', run: function () { G.emote('wave'); } });
+          btns.push({ label: '🙋 Ask ' + pr.name.split(' ')[0] + ' for help', run: function () { CARAVAN.askTo(p.id, pr.name.split(' ')[0]); } });
           if (pr.duelsLeft > 0) btns.push({ label: '⚔ Duel their shadow', primary: true, run: function () { S.frozen = true; G.battle('/play/duel', { user: p.id }, null); } });
           if (H.stage() >= 5 && !pr.party) btns.push({ label: '+ Invite to party', run: function () { H.api('/party/invite', { method: 'POST', body: { user: p.id } }).then(function () { say('Invitation sent to ' + pr.name.split(' ')[0]); }, function (x) { say(x.message); }); } });
           var my = H.world().job;
@@ -697,7 +701,7 @@
         if (b.foe.boss || b.kind === 'pboss') setTimeout(function () { VOICE.act('boss', pickOne(BOSS_LINES.intro)); }, 500);
         else if (b.foe.shadow) setTimeout(function () { VOICE.act('shadow', 'I fight just like you. Show me your English!'); }, 500);
         else if ((SHAPES[b.foe.name] || [])[0] === 'bandit') setTimeout(function () { VOICE.act('bandit', pickOne(['Give me your coins!', 'Stop right there!', 'This road is mine!'])); }, 500);
-      }, function (x) { world.frozen = false; world.cool = world.time.now + 2500; say(x.message, 4500); });
+      }, function (x) { world.frozen = false; world.cool = world.now() + 2500; say(x.message, 4500); });
     },
     battleUI: function (b, scene) {
       var box = $('.sg-battle'), n = b.questions.length, i = 0, timer = null, t0 = 0, busy = false;
@@ -723,7 +727,7 @@
         if (i >= n) return end();
         var it = b.questions[i], secs = b.seconds + (it.type === 'type' || it.type === 'order' ? 10 : 0), left = secs;
         var label = { listen: '🎧 Listen', type: '⌨ Type the missing word', order: '🧩 Build the sentence', mc: '' }[it.type] || '';
-        var qtext = it.type === 'listen' ? '<p class="sg-listen"><button class="sg-bigsay" data-say="' + esc(it.say) + '">🔊</button> ' + esc(it.q) + '</p>' : '<p>' + wrapWords(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + ' ' + VOICE.btn(it.q) + '</p>';
+        var qtext = it.type === 'listen' ? '<p class="sg-listen"><button class="sg-bigsay" data-say="' + esc(it.say) + '">🔊</button> ' + esc(it.q) + '</p>' : '<p>' + wrapWords(it.q, null, true) + ' ' + VOICE.btn(it.q) + '</p>';
         box.innerHTML = '<div class="sg-bp">' + bars() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (label ? ' · ' + label : '') + (it.point ? ' · ' + esc(it.point) : '') + '</small>' + qtext + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '<p class="sg-hint" hidden></p></div>' + body(it) + skillBar() + '</div>';
         if (it.type === 'listen') setTimeout(function () { VOICE.say(it.say); }, 350);
         var bar = box.querySelector('.sg-tm i');
@@ -793,6 +797,7 @@
             + (duel && r.rating != null ? '<p>Arena: ' + (r.rating >= 0 ? '+' : '') + r.rating + ' · rank <b>' + esc(r.rank) + '</b></p>' : '')
             + (hero.level ? '<div class="sg-xpbar"><span>Lv ' + hero.level + '</span><div><i style="width:' + Math.min(100, (hero.xp - hero.xpFrom) / Math.max(1, hero.xpNext - hero.xpFrom) * 100) + '%"></i></div><span>' + (hero.xpNext - hero.xp) + ' XP to Lv ' + (hero.level + 1) + '</span></div>' : '')
             + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
+            + (function () { var miss = (r.review || []).filter(function (x) { return !x.ok; }).slice(0, 4); return miss.length ? '<div class="sg-miss"><small>Learn from it:</small>' + miss.map(function (x) { return '<p>✗ ' + wrapWords(x.q, null, true) + ' → <b>' + wrapWords(x.right) + '</b>' + (x.why ? '<br><small>' + esc(x.why) + '</small>' : '') + '</p>'; }).join('') + '</div>' : ''; })()
             + (r.missedWords ? '<p class="small">📇 ' + r.missedWords + ' word' + (r.missedWords > 1 ? 's' : '') + ' you missed will come back in your review cards today.</p>' : '')
             + ((r.title || leveled) ? '<button data-share="1">📣 Share it</button> ' : '') + '<button class="pri" data-x="1">Continue</button></div>';
           box.querySelector('[data-x]').onclick = function () { close(r); };
@@ -839,10 +844,12 @@
     },
     menu: function (k) {
       var w = G.phaser.scene.getScene('World');
+      if (k !== 'more' && GAME.more) { GAME.more = false; hud(); } // fold the long menu away after a choice
       if (k === 'exit') return window.SawaGame.stop(true);
       if (k === 'list') return window.SawaGame.stop(true, 'list');
       if (k === 'quests' || k === 'party' || k === 'help') return H.panel(k);
       if (k === 'chat') return CHAT.show();
+      if (k === 'caravan') return CARAVAN.show();
       if (k === 'today') return TODAY.show();
       if (k === 'ranks') return RANKS.show();
       if (k === 'more') { GAME.more = !GAME.more; return hud(); }
@@ -1009,7 +1016,7 @@
   };
   SHARE.show = function (why) {
     var c = SHARE.make(why), url = c.toDataURL('image/png'), w = H.world(), hr = w.hero || {};
-    var text = (why ? why + '! ' : '') + 'I am level ' + (hr.level || 1) + ' (' + (hr.title || 'Traveller') + ') on the Sawa English Silk Road, in ' + w.town.name + '. I am learning ' + (w.words || 0) + ' words right now. Who wants to join my party? ⚔';
+    var text = (why ? why + '! ' : '') + 'I am level ' + (hr.level || 1) + ' (' + (hr.title || 'Traveller') + ') on the Sawa English Silk Road, in ' + w.town.name + '. I am learning ' + (w.words || 0) + ' words right now. ' + (H.stage() >= 5 ? 'Who wants to join my party? ⚔' : 'Who else is on the road? 🐫');
     var b = panel('sg-sharep', '📣 Share your journey', '<img class="sg-card-img" src="' + url + '" alt="Your Silk Road card"><textarea rows="3" dir="ltr">' + esc(text) + '</textarea><div class="sg-opts"><button class="pri" data-s="skool">Post on Skool</button><a class="sg-dl" href="' + url + '" download="sawa-silk-road.png">⬇ Save picture</a>' + (navigator.share ? '<button data-s="native">Share…</button>' : '') + '</div><p class="small">Copy the text, save the picture, then post both in the community. Sharing counts for this week\'s quest.</p>');
     var ta = b.querySelector('textarea'); ta.onkeydown = function (e) { e.stopPropagation(); };
     b.querySelector('[data-s="skool"]').onclick = function () {
@@ -1054,12 +1061,15 @@
   var BAR_HELP = {
     hp: ['❤ Health', 'A monster hits you when you answer wrong. When health is 0, you wake up at the inn. Health comes back by itself — faster when you review cards.'],
     mp: ['💧 Mana', 'You get mana when you study: review cards, do your plan, write or speak. Use it in fights for skills like Focus (it removes a wrong answer).'],
-    xp: ['⭐ Level', 'You get XP from everything you learn and write in English. More XP = a higher level, more health, new gear and titles.']
+    xp: ['⭐ Level', 'You get XP when you use English: chat messages, writing, speaking, helping other travellers and winning fights. (Review cards give mana and health.) More XP = a higher level, more health, new gear and titles.']
   };
 
   /* ================================================================ Language Lens inside the game: tap any English word */
-  function wrapWords(text, sentence) {
-    return '<span class="lws" data-s="' + esc(sentence || text) + '">' + esc(text).replace(/[A-Za-z]+(?:['’][A-Za-z]+)?/g, function (w) { return '<span class="lw">' + w + '</span>'; }) + '</span>';
+  function wrapWords(text, sentence, gap) {
+    // words are found in the raw text and escaped piece by piece (escaping first turned &quot; into a tappable “quot”)
+    var t = String(text == null ? '' : text), re = /[A-Za-z]+(?:['’][A-Za-z]+)?/g, out = '', last = 0, m, P = function (x) { return gap ? esc(x).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') : esc(x); };
+    while ((m = re.exec(t))) { out += P(t.slice(last, m.index)) + '<span class="lw">' + esc(m[0]) + '</span>'; last = re.lastIndex; }
+    return '<span class="lws" data-s="' + esc(sentence || t) + '">' + out + P(t.slice(last)) + '</span>';
   }
   var LENS = {
     word: function (span) {
@@ -1072,9 +1082,10 @@
         box.innerHTML = '<div class="sg-wbox"><div class="sg-wh"><b>' + esc(lemma) + '</b><button class="sg-x" data-w="x" aria-label="Close">✕</button></div>'
           + (ms.length ? ms.slice(0, 2).map(function (m) { return '<div class="sg-wm"><small>' + esc(m.pos) + (m.level ? ' · ' + esc(m.level) : '') + '</small><p class="ar" dir="rtl">' + esc(m.ar) + '</p>' + (m.en ? '<p class="en">' + esc(m.en) + '</p>' : '') + '</div>'; }).join('') : '<p class="en">Not in the dictionary yet.</p>')
           + '<div class="sg-wai"></div><p class="sg-wctx">“' + esc(sentence.slice(0, 160)) + '”</p>'
-          + '<div class="sg-opts"><button class="pri" data-w="learn">+ Learning</button><button data-w="ai">' + (ms.length ? 'Meaning here (AI)' : 'Explain (AI)') + '</button></div></div>';
+          + '<div class="sg-opts"><button class="pri" data-w="learn">+ Learning</button><button data-w="ai">' + (ms.length ? 'Meaning here (AI)' : 'Explain (AI)') + '</button><button data-w="ask">🙋 Ask the caravan</button></div></div>';
         box.querySelector('[data-w="x"]').onclick = LENS.close;
         box.querySelector('[data-w="learn"]').onclick = function () { var b = this; b.disabled = true; L.api('library/word', { body: { lemma: lemma, status: 'learning', sentence: sentence, title: 'Silk Road · ' + town.name } }).then(function () { b.textContent = '✓ In your review cards'; say('“' + lemma + '” is now a review card — it may attack you later!'); }, function (x) { b.disabled = false; say(x.message); }); };
+        box.querySelector('[data-w="ask"]').onclick = function () { this.disabled = true; CARAVAN.askWord(lemma, sentence); };
         box.querySelector('[data-w="ai"]').onclick = function () { var b = this, out = box.querySelector('.sg-wai'); b.disabled = true; b.textContent = 'Explaining…'; L.api('library/explain', { body: { word: word, sentence: sentence } }).then(function (x) { b.remove(); out.innerHTML = '<p class="ar" dir="rtl">' + esc(x.meaning) + '</p>' + (x.note ? '<p class="ar small" dir="rtl">' + esc(x.note) + '</p>' : ''); }, function (x) { b.disabled = false; b.textContent = 'Try again'; say(x.message); }); };
       });
     },
@@ -1092,7 +1103,7 @@
   function closePanel() {
     var p = $('.sg-panel'); if (p) { p.className = 'sg-panel'; p.innerHTML = ''; }
     clearTimeout(CHAT.t); CHAT.open = false; LENS.close();
-    var w = G.phaser && G.phaser.scene.getScene('World'); if (w) { w.frozen = false; w.cool = w.time.now + 800; }
+    var w = G.phaser && G.phaser.scene.getScene('World'); if (w) { w.frozen = false; w.cool = w.now() + 800; }
     if (H) H.refreshWorld().then(function () { hud(); }, function () {});
   }
 
@@ -1217,6 +1228,80 @@
     }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
 
+  /* -------- the caravan: help each other (at any time of day), build the caravanserai, guides for newcomers */
+  var CARAVAN = { s: null, tab: 'help' };
+  CARAVAN.load = function () { return H.api('/coop').then(function (j) { CARAVAN.s = j; if (ROOT) { hud(); CARAVAN.thanks(j.thanks || []); } return j; }); };
+  CARAVAN.thanks = function (list) {
+    var seen; try { seen = JSON.parse(localStorage.getItem('sawaThanks') || '{}'); } catch (e) { seen = {}; }
+    var fresh = list.filter(function (t) { return !seen[t.id]; }); if (!fresh.length) return;
+    fresh.forEach(function (t) { seen[t.id] = 1; }); try { localStorage.setItem('sawaThanks', JSON.stringify(seen)); } catch (e) { /* shown again next time */ }
+    var t = fresh[0]; SFX.quest(); say('🤝 ' + t.by + ' says your explanation' + (t.lemma ? ' of “' + t.lemma + '”' : '') + ' helped!' + (fresh.length > 1 ? ' (and ' + (fresh.length - 1) + ' more)' : '') + ' +XP +🪙', 6000);
+  };
+  CARAVAN.ago = function (t) { var s = Math.max(1, Math.round(Date.now() / 1000 - t)); return s < 3600 ? Math.max(1, Math.round(s / 60)) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
+  CARAVAN.show = function (tab) {
+    CARAVAN.tab = tab || CARAVAN.tab;
+    var b = panel('sg-carp', '🐫 The caravan board', '<p class="sg-wait">…</p>');
+    CARAVAN.load().then(function () { CARAVAN.paint(); }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+  CARAVAN.paint = function () {
+    var b = $('.sg-carp .sg-pb'), s = CARAVAN.s; if (!b || !s) return;
+    var tabs = [['help', '🙋 Help others', s.todo], ['mine', '❓ My questions', s.newAnswers], ['build', '🏗 Caravanserai', 0], ['guide', '🧭 Guide', 0]];
+    var html = '<div class="sg-tabs">' + tabs.map(function (t) { return '<button data-ct="' + t[0] + '"' + (t[0] === CARAVAN.tab ? ' class="on"' : '') + '>' + t[1] + (t[2] ? ' <i class="sg-dotn">' + t[2] + '</i>' : '') + '</button>'; }).join('') + '</div>';
+    var ctx = function (a) { return (a.lemma ? '<p class="sg-cw">' + esc(a.lemma) + '</p>' : '') + '<p>' + wrapWords(a.q) + '</p>' + (a.ctx ? '<p class="sg-cs">“' + wrapWords(a.ctx, null, true) + '”</p>' : '') + (a.src ? '<small>from ' + esc(a.src) + '</small>' : ''); };
+    if (CARAVAN.tab === 'help') {
+      html += '<p class="small">Travellers ask when they study; you answer when you play. Explain in easy English and give an example. When it helps, you get <b>+20 XP and 10 🪙</b>.</p>'
+        + (s.help.length ? s.help.map(function (a) {
+          return '<div class="sg-ask' + (a.toMe ? ' tome' : '') + '"><div class="sg-askh">' + (a.avatar ? '<img src="' + esc(a.avatar) + '" alt="">' : '') + '<b>' + esc(a.by) + '</b><small>' + (a.toMe ? 'asked <b>you</b> · ' : '') + CARAVAN.ago(a.at) + (a.answers.length ? ' · ' + a.answers.length + ' answer' + (a.answers.length > 1 ? 's' : '') : ' · no answer yet') + '</small></div>' + ctx(a)
+            + (a.answered ? '<p class="small ok">✓ You answered. ' + esc(a.by) + ' will see it next time.</p>' : '<div class="sg-ans"><textarea rows="2" maxlength="300" dir="ltr" placeholder="' + esc(a.kind === 'word' ? 'It means… For example: …' : 'Explain in easy English…') + '"></textarea><button class="pri" data-ans="' + esc(a.id) + '">Send</button></div>') + '</div>';
+        }).join('') : '<p class="sg-empty">No questions right now. Check again later — or ask one yourself: tap any English word in the game.</p>')
+        + '<p class="small">' + s.limits.answersLeft + (s.limits.answersLeft === 1 ? ' answer' : ' answers') + ' left today.</p>';
+    } else if (CARAVAN.tab === 'mine') {
+      html += '<p class="small">Tap any English word in the game (in a battle, a card or the chat) and choose <b>🙋 Ask the caravan</b>. Or ask about anything here:</p><div class="sg-ans"><textarea rows="2" maxlength="200" dir="ltr" placeholder="When do I use did in a question?"></textarea><button class="pri" data-ask="1">Ask</button></div><p class="small">' + s.limits.asksLeft + (s.limits.asksLeft === 1 ? ' question' : ' questions') + ' left today.</p>'
+        + (s.mine.length ? s.mine.map(function (a) {
+          return '<div class="sg-ask' + (a.closed ? ' closed' : '') + '">' + ctx(a) + (a.to ? '<small>to ' + esc(a.to) + '</small>' : '')
+            + (a.answers.length ? a.answers.map(function (x) { return '<div class="sg-reply"><b>' + esc(x.by) + '</b> ' + wrapWords(x.text) + ' ' + VOICE.btn(x.text) + (x.helped ? '<span class="ok">✓ helped</span>' : a.closed ? '' : '<button class="pri" data-helped="' + esc(a.id) + '" data-a="' + esc(x.id) + '">This helped</button>'); }).join('</div>') + '</div>' : '<p class="small">Waiting for an answer. Travellers play at different times — you will get a notification.</p>')
+            + (a.closed ? '' : '<button data-close="' + esc(a.id) + '">Close</button>') + '</div>';
+        }).join('') : '');
+    } else if (CARAVAN.tab === 'build') {
+      var p = s.project;
+      html += '<div class="sg-build"><div class="sg-buildbar"><i style="width:' + p.pct + '%"></i><span>' + p.pct + '%</span></div><p class="small">The whole community builds <b>' + esc(p.name) + '</b> this week. It needs all three materials — and lessons only come from helping each other. Everyone who brings something gets <b>' + esc(p.reward) + '</b>' + (p.done ? '. <b>Built! 🎉</b>' : ' when it is finished.') + ' ' + p.builders + ' builder' + (p.builders === 1 ? '' : 's') + ' so far.</p>'
+        + p.materials.map(function (m) { return '<div class="sg-mat"><b>' + m.icon + ' ' + esc(m.name) + '</b><small>from ' + esc(m.from) + '</small><div class="sg-buildbar"><i style="width:' + Math.round(m.have / m.goal * 100) + '%"></i><span>' + m.have + ' / ' + m.goal + '</span></div><small>' + (m.top.length ? m.top.map(function (t) { return esc(t.name) + ' ' + t.n; }).join(' · ') : 'Nobody yet — be the first!') + '</small></div>'; }).join('')
+        + '<p class="small">You this week: 🧱 ' + s.myWeek.bricks + ' · 🏮 ' + s.myWeek.lanterns + ' · 📜 ' + s.myWeek.lessons + '</p></div>';
+    } else {
+      var pr = s.pair, row = function (q) { var w = q.with, seen = w.seen == null ? '' : w.seen < 120 ? ' · playing now' : ' · played ' + CARAVAN.ago(Date.now() / 1000 - w.seen); return '<div class="sg-ask"><div class="sg-askh">' + (w.avatar ? '<img src="' + esc(w.avatar) + '" alt="">' : '') + '<b>' + esc(w.name) + '</b><small>' + (q.role === 'newcomer' ? 'your guide' : 'new on the road') + ' · Lv ' + w.level + ' · ' + esc(w.town) + seen + '</small></div><ul class="sg-plan">' + q.steps.map(function (st) { return '<li class="' + (st.done ? 'done' : '') + '"><span>' + (st.done ? '✓' : '○') + '</span><div><b>' + esc(st.text) + '</b><small>' + (st.key === 'days' ? q.days + ' / 3 · ' : '') + '+' + st.coins + ' 🪙 each</small></div></li>'; }).join('') + '</ul><small>' + q.daysLeft + ' days left together.</small>' + (q.role === 'newcomer' ? '<div class="sg-opts"><button class="pri" data-askto="' + w.id + '">Ask ' + esc(w.name.split(' ')[0]) + ' something</button></div>' : '') + '</div>'; };
+      html += pr ? row(pr) : '';
+      html += s.guiding.map(row).join('');
+      html += !pr && !s.guiding.length ? '<p class="small">Guides are travellers further down the road. Every newcomer gets one for their first two weeks: ask them anything, study on the same days, and celebrate the first boss together.</p>' : '';
+      html += s.guide.can ? '<div class="sg-opts"><button class="' + (s.guide.on ? '' : 'pri') + '" data-guide="' + (s.guide.on ? 0 : 1) + '">' + (s.guide.on ? 'Stop guiding new travellers' : '🧭 Become a guide') + '</button></div>' + (s.guide.on ? '<p class="small">You are a guide. New travellers are matched with you (up to 3 at a time). Finish all three steps with one and you get the title <b>Guide of the Road</b>.</p>' : '') : (!pr ? '<p class="small">You can become a guide after you beat two town bosses (or reach level 5).</p>' : '');
+    }
+    b.innerHTML = html;
+    b.querySelectorAll('[data-ct]').forEach(function (x) { x.onclick = function () { CARAVAN.tab = x.dataset.ct; CARAVAN.paint(); }; });
+    b.querySelectorAll('textarea').forEach(function (t) { t.onkeydown = function (e) { e.stopPropagation(); }; });
+    var post = function (path, body, btn, then) { if (btn) btn.disabled = true; H.api(path, { method: 'POST', body: body }).then(function (j) { CARAVAN.s = j; hud(); CARAVAN.paint(); if (then) then(j); }, function (x) { if (btn) btn.disabled = false; say(x.message, 4500); }); };
+    b.querySelectorAll('[data-ans]').forEach(function (x) { x.onclick = function () { var v = x.previousSibling.value.trim(); if (!v) return; if (H.needsTr(v)) return say('Answer in English — simple words are perfect.', 4000); post('/coop/answer', { id: x.dataset.ans, text: v }, x, function (j) { SFX.quest(); say('Sent! ' + (j.xp ? '+' + j.xp + ' XP for writing English. ' : '') + 'More when they say it helped.', 4500); }); }; });
+    b.querySelectorAll('[data-ask]').forEach(function (x) { x.onclick = function () { var v = x.previousSibling.value.trim(); if (!v) return; if (H.needsTr(v)) return say('Ask in English — short is fine. Or tap a word in the game and use the ready question.', 4500); post('/coop/ask', { kind: 'other', q: v }, x, function () { say('Your question is on the board. You will get a notification when someone answers.', 4500); }); }; });
+    b.querySelectorAll('[data-helped]').forEach(function (x) { x.onclick = function () { post('/coop/helped', { id: x.dataset.helped, answer: x.dataset.a }, x, function (j) { SFX.coin(); say('Thank you sent to ' + j.thanked + '! They get XP and coins.', 4000); }); }; });
+    b.querySelectorAll('[data-close]').forEach(function (x) { x.onclick = function () { post('/coop/close', { id: x.dataset.close }, x); }; });
+    b.querySelectorAll('[data-guide]').forEach(function (x) { x.onclick = function () { post('/coop/guide', { on: +x.dataset.guide }, x); }; });
+    b.querySelectorAll('[data-askto]').forEach(function (x) { x.onclick = function () { CARAVAN.askTo(+x.dataset.askto, x.textContent.replace(/^Ask | something$/g, '')); }; });
+  };
+  /** Ask the caravan about a word (from the word popup) or a question for one student (from their echo). */
+  CARAVAN.askWord = function (lemma, sentence, src) {
+    return H.api('/coop/ask', { method: 'POST', body: { kind: 'word', lemma: lemma, ctx: sentence && sentence !== lemma ? sentence.slice(0, 240) : '', src: src || 'Silk Road · ' + H.world().town.name } }).then(function (j) { CARAVAN.s = j; hud(); say('🙋 Asked! Travellers will explain “' + lemma + '” when they play. You get a notification.', 5000); }, function (x) { say(x.message, 4500); });
+  };
+  CARAVAN.askTo = function (uid, name) {
+    inputBox('Ask ' + name + ' (English, short is fine)', 'Can you help me with the past tense?', function (v, err, done) {
+      if (H.needsTr(v)) return err('Ask in English — short and simple is fine.');
+      H.api('/coop/ask', { method: 'POST', body: { kind: 'other', q: v, to: uid } }).then(function (j) { CARAVAN.s = j; done(); hud(); say(name + ' will see your question next time they play.', 4500); }, function (x) { err(x.message); });
+    });
+  };
+  /** One feature at a time: the caravan is introduced on a later day, not in the first-day welcome. */
+  CARAVAN.intro = function () {
+    var day = new Date().toISOString().slice(0, 10), first;
+    try { first = localStorage.getItem('sawaRoadDay1'); if (!first) localStorage.setItem('sawaRoadDay1', first = day); if (first === day || localStorage.getItem('sawaCaravanIntro')) return; localStorage.setItem('sawaCaravanIntro', '1'); } catch (e) { return; }
+    setTimeout(function () { if (!running || $('.sg-dlg.on') || $('.sg-panel.on')) return; dialog.who = 'crier'; dialog('Town crier', 'News, traveller! The caravan board is open. Tap any English word and ask the caravan — other travellers explain it when they play. Help them too: when your answer helps, you get XP and coins. And this week we all build the caravanserai together!', [{ label: 'Open the caravan board', primary: true, run: function () { CARAVAN.show('help'); } }], '📣'); }, 2500);
+  };
+
   /* ================================================================ start / stop */
   window.SawaGame = {
     running: function () { return running; },
@@ -1242,7 +1327,7 @@
         var restored = function () { clearTimeout(GAME.rt); GAME.rt = setTimeout(rebuild, 80); };
         GAME.phaser.events.on('contextrestored', restored);
         MUSIC.start();
-        GAME.phaser.events.once('ready', function () { if (GAME.phaser.renderer && GAME.phaser.renderer.on) GAME.phaser.renderer.on('restorewebgl', restored); var l = ROOT.querySelector('.sg-load'); if (l) l.remove(); hud(); if (!H.avatar().look.set) setTimeout(function () { GAME.look(true); }, 400); });
+        GAME.phaser.events.once('ready', function () { if (GAME.phaser.renderer && GAME.phaser.renderer.on) GAME.phaser.renderer.on('restorewebgl', restored); var l = ROOT.querySelector('.sg-load'); if (l) l.remove(); hud(); CARAVAN.load().then(function () { if (H.avatar().look.set) CARAVAN.intro(); }, function () {}); if (!H.avatar().look.set) setTimeout(function () { GAME.look(true); }, 400); });
       }, function (x) { ROOT.querySelector('.sg-load').innerHTML = '<p>' + esc(x.message) + '</p><button data-g="list">Use the list view</button>'; });
     },
     stop: function (back, mode) {
