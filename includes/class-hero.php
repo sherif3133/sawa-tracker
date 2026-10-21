@@ -73,7 +73,12 @@ final class Sawa_Tracker_Hero {
 
 	private static function raw( $uid ) {
 		$h = Sawa_Tracker_Game::m( $uid, 'hero', array() );
-		return ( is_array( $h ) ? $h : array() ) + array( 'hp' => null, 'hpAt' => time(), 'mana' => 20, 'manaDay' => array(), 'rating' => 1000, 'duels' => array( 'won' => 0, 'lost' => 0 ), 'lv' => 0, 'kills' => 0, 'bosses' => 0 );
+		$h = ( is_array( $h ) ? $h : array() ) + array( 'season' => '' );
+		if ( isset( $h['rating'] ) && $h['season'] !== wp_date( 'Y-m' ) ) {
+			$h['rating'] = (int) round( 1000 + ( $h['rating'] - 1000 ) / 2 ); // a new arena season
+		}
+		$h['season'] = wp_date( 'Y-m' );
+		return $h + array( 'hp' => null, 'hpAt' => time(), 'mana' => 20, 'manaDay' => array(), 'rating' => 1000, 'duels' => array( 'won' => 0, 'lost' => 0 ), 'lv' => 0, 'kills' => 0, 'bosses' => 0 );
 	}
 
 	private static function save( $uid, $h ) {
@@ -203,6 +208,26 @@ final class Sawa_Tracker_Hero {
 			'bosses'   => (int) $h['bosses'],
 			'aura'     => $lv >= 30 ? 'jade' : ( $lv >= 20 ? 'gold' : ( $lv >= 10 ? 'silver' : '' ) ),
 		);
+	}
+
+	/** The weekly Silk Road report: who learned and fought most this week (also as a Skool post). */
+	public static function report() {
+		global $wpdb;
+		$from = Sawa_Tracker_Game::week_start();
+		$rows = array();
+		foreach ( Sawa_Tracker_Game::member_ids() as $m ) {
+			$rows[] = Sawa_Tracker_Game::person( $m ) + array( 'week' => (int) Sawa_Tracker_XP::week( $m ), 'level' => self::level( $m ), 'words' => (int) apply_filters( 'sawa_tracker_words_since', 0, $m, $from ) );
+		}
+		$top = function ( $key, $n ) use ( $rows ) { usort( $rows, function ( $a, $b ) use ( $key ) { return $b[ $key ] <=> $a[ $key ]; } ); return array_values( array_filter( array_slice( $rows, 0, $n ), function ( $r ) use ( $key ) { return $r[ $key ] > 0; } ) ); };
+		$t      = Sawa_Tracker_Game::table( 'events' );
+		$evs    = $wpdb->get_results( $wpdb->prepare( "SELECT user_id, type, data FROM $t WHERE type IN ('hero_level','town','party_down') AND created_at >= %s ORDER BY id DESC LIMIT 40", $from . ' 00:00:00' ), ARRAY_A ); // phpcs:ignore
+		$moments = array();
+		foreach ( (array) $evs as $e ) {
+			$d = json_decode( $e['data'], true );
+			$n = Sawa_Tracker_Game::person( (int) $e['user_id'] )['name'];
+			$moments[] = 'hero_level' === $e['type'] ? $n . ' reached level ' . $d['level'] . ' (' . $d['title'] . ')' : ( 'town' === $e['type'] ? $n . ' defeated the ' . $d['boss'] . ' in ' . $d['town'] : 'The party ' . $d['party'] . ' defeated the ' . $d['boss'] );
+		}
+		return array( 'xp' => $top( 'week', 5 ), 'words' => $top( 'words', 3 ), 'moments' => array_slice( $moments, 0, 8 ), 'from' => $from );
 	}
 
 	/** The rankings: level, this week's XP, arena rating. */

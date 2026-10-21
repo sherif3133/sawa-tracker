@@ -532,6 +532,7 @@
           refreshWorld: function () { return api('/world').then(function (x) { W.data = x; return x; }); },
           lens: window.SawaLens || null, needsTr: needsTranslation, isAdmin: function () { return !!C.admin || !!S.data.isAdmin; },
           log: function () { openLogActivity(); },
+          skool: function () { return S.data.skoolUrl || ''; },
           exit: function (mode) { S.view = 'community'; if (mode === 'list') openWorld('map'); else renderView(); }
         });
       }, function (x) { toast(x.message, 'bad'); });

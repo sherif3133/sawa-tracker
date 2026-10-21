@@ -51,6 +51,7 @@ final class Sawa_Tracker_World {
 		'monster'  => array( 'monster', 15, 'Defeat 15 monsters' ),
 		'perfect'  => array( 'perfect', 3, 'Have 3 perfect days' ),
 		'mastered' => array( 'mastered', 1, 'Master a skill point' ),
+		'share'    => array( 'share', 1, 'Share your Silk Road card in the Skool community' ),
 	);
 	/** Where the app takes the student to do a quest step. */
 	const GO           = array( 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'perfect' => 'today', 'mastered' => 'skills' );
@@ -69,7 +70,7 @@ final class Sawa_Tracker_World {
 	}
 
 	public static function routes() {
-		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/ranks', 'GET', 'ranks' ) ) as $r ) {
+		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
 		}
 	}
@@ -239,6 +240,7 @@ final class Sawa_Tracker_World {
 			'pos'      => self::last_pos( $uid, $t ),
 			'words'    => (int) apply_filters( 'sawa_tracker_word_count', 0, $uid ),
 			'party'    => Sawa_Tracker_Party::of( $uid ),
+			'event'    => 2 === self::xp_mult() ? 'Double XP weekend: fights give twice the XP!' : '',
 			'ready'    => (bool) apply_filters( 'sawa_tracker_battle_ready', false ),
 		);
 	}
@@ -255,6 +257,15 @@ final class Sawa_Tracker_World {
 
 	public static function boss_hp( $t ) {
 		return (int) round( 150 * ( 1 + 0.12 * ( $t - 1 ) ) );
+	}
+
+	/** Weekend event: double XP from fights on Fridays and Saturdays. */
+	public static function xp_mult() {
+		return in_array( (int) wp_date( 'w' ), array( 5, 6 ), true ) ? 2 : 1;
+	}
+
+	public static function report() {
+		return Sawa_Tracker_Hero::report();
 	}
 
 	public static function ranks() {
@@ -368,6 +379,8 @@ final class Sawa_Tracker_World {
 		);
 		$secs  = 20 + ( Sawa_Tracker_RPG::skill_on( $uid, 'eagle_eye' ) ? 5 : 0 );
 		$id    = wp_generate_password( 20, false );
+		$me['soft'] = 1 === $t || $lv <= 3; // gentle for beginners
+		$me['noKo'] = 1 === $t;
 		$state = array( 'picks' => array(), 'combo' => 0, 'best' => 0, 'dealt' => 0, 'taken' => 0, 'right' => 0, 'power' => false, 'used' => array(), 'sw' => false, 'phase' => 1, 'done' => false );
 		set_transient( 'sawa_tr_wb_' . $id, array( 'uid' => $uid, 'kind' => $kind, 'qs' => $qs, 'foe' => $foe, 'me' => $me, 'st' => $state, 'meta' => $meta, 'secs' => $secs, 't' => time() ), 20 * MINUTE_IN_SECONDS );
 		$skills = array();
@@ -509,8 +522,8 @@ final class Sawa_Tracker_World {
 				$st['sw']       = true;
 				$out['blocked'] = true;
 			} else {
-				$hit            = (int) round( $b['foe']['atk'] * ( 2 === $st['phase'] ? 1.5 : 1 ) * ( 1 - $b['me']['armor'] ) );
-				$b['me']['hp']  = max( 0, $b['me']['hp'] - $hit );
+				$hit            = (int) round( $b['foe']['atk'] * ( 2 === $st['phase'] ? 1.5 : 1 ) * ( 1 - $b['me']['armor'] ) * ( empty( $b['me']['soft'] ) ? 1 : 0.6 ) );
+				$b['me']['hp']  = max( empty( $b['me']['noKo'] ) ? 0 : 1, $b['me']['hp'] - $hit );
 				$st['taken']   += $hit;
 				$out['taken']   = $hit;
 			}
@@ -633,7 +646,7 @@ final class Sawa_Tracker_World {
 				Sawa_Tracker_RPG::add_elixirs( $uid, 2 );
 				$out['title']   = 'Hero of ' . self::TOWNS[ $t ][0];
 				$out['next']    = self::TOWNS[ $t + 1 ][0] ?? '';
-				$out['xp']      = Sawa_Tracker_XP::award( $uid, 30 + 5 * $t, 'boss', false );
+				$out['xp']      = Sawa_Tracker_XP::award( $uid, ( 30 + 5 * $t ) * self::xp_mult(), 'boss', false );
 				Sawa_Tracker_Hero::count( $uid, 'bosses' );
 				Sawa_Tracker_Game::event( $uid, 'town', null, array( 'boss' => $foe['name'], 'town' => self::TOWNS[ $t ][0], 'next' => $out['next'] ) );
 			}
@@ -644,7 +657,7 @@ final class Sawa_Tracker_World {
 					$out['elixirs'] = 1;
 					Sawa_Tracker_RPG::add_elixirs( $uid, 1 );
 				}
-				$out['xp'] = Sawa_Tracker_XP::award( $uid, (int) round( ( 5 + $t ) * $bonus ), 'battle' );
+				$out['xp'] = Sawa_Tracker_XP::award( $uid, (int) round( ( 5 + $t ) * $bonus * self::xp_mult() ), 'battle', 1 === self::xp_mult() );
 				Sawa_Tracker_Hero::count( $uid, 'kills' );
 				self::progress( $uid, 'monster' );
 			} else {
@@ -656,6 +669,16 @@ final class Sawa_Tracker_World {
 		return $out;
 	}
 
+
+	/** The student shared their card on Skool (counted when they open Skool from the share screen). */
+	public static function shared() {
+		$uid = get_current_user_id();
+		$w   = self::get( $uid );
+		if ( (int) ( $w['wk']['c']['share'] ?? 0 ) < 1 ) {
+			self::progress( $uid, 'share' );
+		}
+		return self::state( $uid );
+	}
 
 	public static function claim( WP_REST_Request $r ) {
 		$uid = self::uid();

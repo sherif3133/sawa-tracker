@@ -290,13 +290,14 @@
     if (!ROOT) return;
     var w = H.world(), me = H.me();
     var hr = w.hero || { level: 1, hp: 100, hpMax: 100, mana: 0, manaMax: 50, xp: 0, xpFrom: 0, xpNext: 100, title: '' };
-    var bars = '<div class="sg-hbars"><div class="sg-hpb me"><i style="width:' + (hr.hp / hr.hpMax * 100) + '%"></i><span>❤ ' + hr.hp + '/' + hr.hpMax + '</span></div><div class="sg-mpb"><i style="width:' + (hr.mana / hr.manaMax * 100) + '%"></i><span>💧 ' + hr.mana + '/' + hr.manaMax + '</span></div><div class="sg-xpb"><i style="width:' + Math.min(100, (hr.xp - hr.xpFrom) / Math.max(1, hr.xpNext - hr.xpFrom) * 100) + '%"></i><span>Lv ' + hr.level + ' · ' + (hr.xpNext - hr.xp) + ' XP to next</span></div></div>';
+    var bars = '<div class="sg-hbars"><div class="sg-hpb me" data-bar="hp"><i style="width:' + (hr.hp / hr.hpMax * 100) + '%"></i><span>❤ ' + hr.hp + '/' + hr.hpMax + '</span></div>' + (hr.level >= 2 ? '<div class="sg-mpb" data-bar="mp"><i style="width:' + (hr.mana / hr.manaMax * 100) + '%"></i><span>💧 ' + hr.mana + '/' + hr.manaMax + '</span></div>' : '') + '<div class="sg-xpb" data-bar="xp"><i style="width:' + Math.min(100, (hr.xp - hr.xpFrom) / Math.max(1, hr.xpNext - hr.xpFrom) * 100) + '%"></i><span>Lv ' + hr.level + ' · ' + (hr.xpNext - hr.xp) + ' XP to next</span></div></div>';
     if (GAME.lastLv && hr.level > GAME.lastLv) GAME.levelUp(hr); GAME.lastLv = hr.level;
     $('.sg-top').innerHTML = '<div class="sg-who"><span class="sg-face">' + (me.avatar ? '<img src="' + esc(me.avatar) + '" alt="">' : '') + '<em class="sg-lv">' + hr.level + '</em></span><div><b>' + esc(me.name) + '</b><small>' + esc(w.town.icon + ' ' + w.town.name + ' · ' + w.town.level) + ' · ' + esc(hr.title) + '</small>' + bars + '</div></div>'
-      + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span><span title="Elixirs">⚗ ' + w.elixirs + '</span><span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>';
+      + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span>' + (w.elixirs ? '<span title="Elixirs">⚗ ' + w.elixirs + '</span>' : '') + '<span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>';
     var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
     var MAIN = { today: 1, cards: 1, quests: 1, chat: 1, ranks: 1, more: 1 };
-    $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
+    var ev = $('.sg-event'); if (ev) { ev.textContent = w.event ? '🎉 ' + w.event : ''; ev.classList.toggle('on', !!w.event); }
+    $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['journal', '📖', 'Journal', 0], ['share', '📣', 'Share', 0], ['report', '📰', 'This week', 0], ['voices', SFX.on() ? '🗣' : '🔇', 'Voices', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
   }
@@ -305,6 +306,7 @@
     var d = $('.sg-dlg'); if (!d) return; d.innerHTML = '<div class="sg-box">' + (portrait ? '<span class="sg-por">' + portrait + '</span>' : '') + '<div class="sg-txt"><b>' + esc(name) + '</b><p></p><div class="sg-opts">' + (buttons || []).map(function (b, i) { return '<button data-o="' + i + '"' + (b.primary ? ' class="pri"' : '') + '>' + esc(b.label) + '</button>'; }).join('') + '<button data-o="x">Bye</button></div></div></div>';
     d.classList.add('on');
     var p = d.querySelector('p'), i = 0, full = text;
+    if (dialog.who) { VOICE.act(dialog.who, text); dialog.who = null; }
     clearInterval(dialog.t); dialog.t = setInterval(function () { i += 2; p.textContent = full.slice(0, i); if (i >= full.length) { clearInterval(dialog.t); p.innerHTML = wrapWords(full) + ' ' + VOICE.btn(full); } }, 18);
     d.querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { clearInterval(dialog.t); var o = b.dataset.o; d.classList.remove('on'); d.innerHTML = ''; if (o !== 'x' && buttons[+o]) buttons[+o].run(); }; });
   }
@@ -334,6 +336,7 @@
       init: function (d) { this.spawn = d && d.spawn; this.pos = d && d.pos; },
       create: function () {
         var S = this, w = H.world(), t = w.at, th = THEMES[t] || THEMES[1];
+        S.frozen = false; S.fighting = null; S.leaving = false; S.cool = 0; // the scene object is reused on restart
         S.t = t; S.th = th; S.lights = []; S.others = {}; S.labels = {}; S.notes = []; S.near = null; S.cool = 0; S.monsters = [];
         lightTex(S);
         // ground
@@ -501,11 +504,12 @@
         if (n.kind === 'note') return S.readNote(n.obj);
         if (n.kind === 'player') return S.meet(n.obj);
         var w = H.world(), id = n.obj.npc, L = NPC[id];
+        dialog.who = id;
         if (id === 'elder') {
           var st = w.story, cur = st.filter(function (s) { return s.state !== 'done'; })[0];
           if (!cur) return dialog(L[0], 'You defeated the beast of ' + w.town.name + '. The road is open — go on to the next town, brave one!', [], L[1]);
           var txt = cur.state === 'claim' ? 'Well done! You finished: "' + cur.text + '". Take your reward.' : 'Your task: ' + cur.text + '. (' + cur.count + ' of ' + cur.n + ')';
-          var btns = cur.state === 'claim' ? [{ label: 'Take the reward', primary: true, run: function () { H.api('/world/claim', { method: 'POST', body: { quest: 'story' } }).then(function (j) { H.setWorld(j.world); hud(); say('+' + j.got.coins + ' 🪙' + (j.got.elixirs ? ' +' + j.got.elixirs + ' ⚗' : '')); S.interact(); }, function (x) { say(x.message); }); } }]
+          var btns = cur.state === 'claim' ? [{ label: 'Take the reward', primary: true, run: function () { H.api('/world/claim', { method: 'POST', body: { quest: 'story' } }).then(function (j) { H.setWorld(j.world); hud(); SFX.quest(); say('+' + j.got.coins + ' 🪙' + (j.got.elixirs ? ' +' + j.got.elixirs + ' ⚗' : '')); S.interact(); }, function (x) { say(x.message); }); } }]
             : cur.go === 'review' ? [{ label: 'Review cards now', primary: true, run: function () { REV.show(); } }] : cur.go === 'chat' ? [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }] : cur.go === 'today' ? [{ label: 'Today\'s plan', primary: true, run: function () { TODAY.show(); } }] : cur.go && cur.go !== 'map' ? [{ label: 'Show me where', primary: true, run: function () { H.go(cur.go); } }] : [];
           return dialog(L[0], L[2] + ' ' + txt, btns.concat([{ label: 'All quests', run: function () { H.panel('quests'); } }]), L[1]);
         }
@@ -525,6 +529,7 @@
       },
       bossTouch: function () {
         var S = this, w = H.world(), b = w.town.boss; if (S.frozen || S.cool > S.time.now) return; S.cool = S.time.now + 2500;
+        dialog.who = 'boss';
         if (!b.ready) return dialog(b.name, 'The ' + b.name + ' looks down at you. You are not ready. (Finish Elder Wen\'s tasks first.)', [], b.icon);
         if (!b.tries) return dialog(b.name, 'The ' + b.name + ' is resting. Come back tomorrow.', [], b.icon);
         dialog(b.name, 'The ' + b.name + ' rises! 6 questions at ' + w.town.level + ' level. You need about 5 right. ' + b.tries + ' tries left today.', [{ label: 'Fight!', primary: true, run: function () { S.frozen = true; G.battle('/world/fight', { kind: 'boss' }, S.boss); } }], b.icon);
@@ -688,6 +693,10 @@
       var world = G.phaser.scene.getScene('World');
       H.api(path, { method: 'POST', body: body || {} }).then(function (b) {
         world.scene.pause(); $('.sg-labels').style.visibility = 'hidden'; MUSIC.battle(true); GAME.battleUI(b, new Arena(b));
+        SFX.growl(b.foe.name);
+        if (b.foe.boss || b.kind === 'pboss') setTimeout(function () { VOICE.act('boss', pickOne(BOSS_LINES.intro)); }, 500);
+        else if (b.foe.shadow) setTimeout(function () { VOICE.act('shadow', 'I fight just like you. Show me your English!'); }, 500);
+        else if ((SHAPES[b.foe.name] || [])[0] === 'bandit') setTimeout(function () { VOICE.act('bandit', pickOne(['Give me your coins!', 'Stop right there!', 'This road is mine!'])); }, 500);
       }, function (x) { world.frozen = false; world.cool = world.time.now + 2500; say(x.message, 4500); });
     },
     battleUI: function (b, scene) {
@@ -700,6 +709,7 @@
           + '<div class="sg-side foe"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + (phase === 2 ? ' <small class="rage">ENRAGED</small>' : '') + '</b><div class="sg-hpb"><i style="width:' + Math.max(0, foe.hp / foe.max * 100) + '%"></i><span>❤ ' + foe.hp + '/' + foe.max + '</span></div></div></div>';
       }
       function skillBar() {
+        if (me.level < 2) return '<p class="small sg-skills-soon">✨ Battle skills open at level 2.</p>';
         return '<div class="sg-skills">' + b.skills.map(function (s) { var off = mana < s.cost || used[s.id]; return '<button data-sk="' + s.id + '"' + (off ? ' disabled' : '') + ' title="' + esc(s.text) + '"><b>' + esc(s.name) + '</b><small>💧' + s.cost + '</small></button>'; }).join('') + '</div>';
       }
       function paintBars() { var x = box.querySelector('.sg-duo'); if (x) x.outerHTML = bars(); var y = box.querySelector('.sg-skills'); if (y) { y.outerHTML = skillBar(); bindSkills(); } }
@@ -740,8 +750,8 @@
               mana = r.mana; used[id] = 1;
               if (r.remove != null) { var x = box.querySelector('[data-k="' + r.remove + '"]'); if (x) { x.disabled = true; x.classList.add('gone'); } }
               if (r.hint || r.lemma) { var h = box.querySelector('.sg-hint'); h.hidden = false; var ar = r.lemma && H.lens ? H.lens.meanings(H.lens.lemmaOf(r.lemma)) : []; h.innerHTML = '💡 ' + esc(r.hint || '') + (ar.length ? ' <span dir="rtl">' + esc(ar[0].ar) + '</span>' : ''); }
-              if (r.hp != null) { me.hp = r.hp; scene.heal(); }
-              if (id === 'power') scene.charge();
+              if (r.hp != null) { me.hp = r.hp; scene.heal(); SFX.heal(); } else if (id === 'power') { scene.charge(); SFX.power(); } else SFX.sparkle();
+              VOICE.bark(id);
               paintBars();
             }, function (x) { s.disabled = false; say(x.message); });
           };
@@ -755,6 +765,10 @@
           if (!r.correct) box.querySelectorAll('[data-k]').forEach(function (x) { if (x.textContent.slice(1) === r.right) x.classList.add('ok'); });
           foe.hp = r.foeHp; me.hp = r.hp; combo = r.combo; phase = r.phase;
           scene.hit(r.correct, r.correct ? r.dmg : r.taken, { quick: r.quick, combo: r.combo, blocked: r.blocked, enrage: r.enrage });
+          if (r.correct) { setTimeout(SFX.slash, 170); VOICE.bark(r.combo >= 3 ? 'combo' : r.quick ? 'quick' : 'hit'); }
+          else if (r.blocked) SFX.blocked();
+          else { setTimeout(function () { SFX.growl(b.foe.name); SFX.hurt(); }, 190); VOICE.bark('hurt'); }
+          if (r.enrage) setTimeout(function () { SFX.growl(b.foe.name); VOICE.act('boss', pickOne(BOSS_LINES.rage)); }, 900);
           paintBars();
           if (!r.correct) { var fb = el('div', 'sg-fb', '✗ <b>' + wrapWords(r.right) + '</b>' + (r.why ? ' — ' + wrapWords(r.why) : '') + ' ' + VOICE.btn(r.right)); var bp = box.querySelector('.sg-bp'); if (bp) bp.appendChild(fb); }
           i++;
@@ -767,6 +781,8 @@
         H.api('/world/answer', { method: 'POST', body: { battle: b.battle } }).then(function (r) {
           if (r.world) H.setWorld(r.world);
           scene.finish(r.won && !r.ko);
+          if (r.ko) { SFX.sad(); VOICE.bark('lose'); } else if (r.won) { if (r.foe.boss) { SFX.fanfare(); VOICE.act('boss', pickOne(BOSS_LINES.fall)); } else { SFX.coin(); VOICE.bark('win'); } } else SFX.sad();
+          var leveled = r.hero && r.hero.level > me.level;
           var pb = r.kind === 'pboss', duel = r.kind === 'duel';
           var title = r.ko ? '💫 You were knocked out' : pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.attack + ' damage to the party boss') : duel ? (r.won ? '🏆 You beat the shadow!' : '💨 The shadow was stronger') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' got away';
           var gains = (r.coins ? '+' + r.coins + ' 🪙 ' : '') + (r.xp ? '+' + r.xp + ' XP ' : '') + (r.elixirs ? '+' + r.elixirs + ' ⚗' : '');
@@ -778,8 +794,9 @@
             + (hero.level ? '<div class="sg-xpbar"><span>Lv ' + hero.level + '</span><div><i style="width:' + Math.min(100, (hero.xp - hero.xpFrom) / Math.max(1, hero.xpNext - hero.xpFrom) * 100) + '%"></i></div><span>' + (hero.xpNext - hero.xp) + ' XP to Lv ' + (hero.level + 1) + '</span></div>' : '')
             + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
             + (r.missedWords ? '<p class="small">📇 ' + r.missedWords + ' word' + (r.missedWords > 1 ? 's' : '') + ' you missed will come back in your review cards today.</p>' : '')
-            + '<button class="pri" data-x="1">Continue</button></div>';
+            + ((r.title || leveled) ? '<button data-share="1">📣 Share it</button> ' : '') + '<button class="pri" data-x="1">Continue</button></div>';
           box.querySelector('[data-x]').onclick = function () { close(r); };
+          var sb = box.querySelector('[data-share]'); if (sb) sb.onclick = function () { close(r); SHARE.show(r.title ? 'I became ' + r.title : 'I reached level ' + r.hero.level); };
           G.keyPick = function () { close(r); };
         }, function (x) { say(x.message); close(null); });
       }
@@ -794,7 +811,8 @@
     },
     levelUp: function (hr) {
       var d = el('div', 'sg-levelup', '<div><small>LEVEL UP</small><b>' + hr.level + '</b><span>' + esc(hr.title) + '</span><p>❤ +10 · 💧 +5 · +' + (10 * hr.level) + ' 🪙</p></div>');
-      if (!ROOT) return; ROOT.appendChild(d); setTimeout(function () { d.classList.add('on'); }, 30); setTimeout(function () { d.classList.remove('on'); setTimeout(function () { d.remove(); }, 500); }, 3600);
+      if (!ROOT) return; ROOT.appendChild(d); setTimeout(function () { d.classList.add('on'); }, 30);
+      SFX.fanfare(); setTimeout(function () { VOICE.bark('level'); }, 600); setTimeout(function () { say('📣 Tap Share to show your new level in the community!', 5000); }, 3800); setTimeout(function () { d.classList.remove('on'); setTimeout(function () { d.remove(); }, 500); }, 3600);
     },
     emote: function (e) { var w = G.phaser.scene.getScene('World'); w.emote = { e: e, until: Date.now() + 5000 }; H.api('/play/emote', { method: 'POST', body: { e: e } }).catch(function () {}); },
     look: function (first) {
@@ -817,7 +835,7 @@
         'Other students walk here too. If they studied earlier today, you still see their echo — tap it to duel their shadow or invite them.',
         'Leave short English notes for the next traveller ✍, and talk to Elder Wen for your next task. Have a good journey!'
       ];
-      (function show(i) { if (i >= steps.length) return; dialog('Elder Wen', steps[i], [{ label: i + 1 < steps.length ? 'Next' : 'Let\'s go!', primary: true, run: function () { show(i + 1); } }], '👴'); })(0);
+      (function show(i) { if (i >= steps.length) return; dialog.who = 'elder'; dialog('Elder Wen', steps[i], [{ label: i + 1 < steps.length ? 'Next' : 'Let\'s go!', primary: true, run: function () { show(i + 1); } }], '👴'); })(0);
     },
     menu: function (k) {
       var w = G.phaser.scene.getScene('World');
@@ -828,6 +846,10 @@
       if (k === 'today') return TODAY.show();
       if (k === 'ranks') return RANKS.show();
       if (k === 'more') { GAME.more = !GAME.more; return hud(); }
+      if (k === 'journal') return JOURNAL.show();
+      if (k === 'share') return SHARE.show();
+      if (k === 'report') return REPORT.show();
+      if (k === 'voices') return SFX.toggle();
       if (k === 'cards') return REV.show();
       if (k === 'music') return MUSIC.toggle();
       if (k === 'note') return w.writeNote();
@@ -899,6 +921,140 @@
       say(MUSIC.on ? '🎵 Music on' : '🔇 Music off'); hud();
     },
     stop: function () { clearTimeout(MUSIC.t); if (MUSIC.ctx) { var c = MUSIC.ctx; MUSIC.ctx = null; try { c.close(); } catch (e) { /* closed */ } } }
+  };
+
+  /* ================================================================ voice acting and sound effects
+     Characters speak with the browser's own English voices (each one with its own pitch and speed: simple
+     English, so it is listening practice too). Monsters growl, swords hit, spells shimmer: all made live with
+     WebAudio, no audio files. "Voices" in the menu switches voices and effects off; music has its own switch. */
+  var CAST = {
+    me: { pitch: 1.05, rate: 1.05 }, elder: { pitch: 0.75, rate: 0.85 }, inn: { pitch: 1.3, rate: 0.98 }, smith: { pitch: 0.6, rate: 0.9 },
+    crier: { pitch: 1.1, rate: 1.08 }, guard: { pitch: 0.7, rate: 0.95 }, boss: { pitch: 0.45, rate: 0.82 }, bandit: { pitch: 0.65, rate: 1.05 }, shadow: { pitch: 0.55, rate: 0.9 }
+  };
+  var BARKS = {
+    hit: ['Take that!', 'Yes!', 'Got it!', 'Easy!', 'Here we go!'], quick: ['Too fast for you!', 'Lightning!'], combo: ['Combo!', 'I am on fire!', 'Keep going!'],
+    hurt: ['Ouch!', 'That hurt!', 'Oh no!'], win: ['Victory!', 'We did it!', 'Yes! I won!'], lose: ['I need to rest.', 'Next time!'], level: ['Level up!', 'I feel stronger!'],
+    focus: ['Focus!'], hint: ['Insight!'], power: ['Power strike!'], heal: ['I feel better.']
+  };
+  var BOSS_LINES = { intro: ['You dare to face me?', 'Turn back, traveller!', 'Your English is not ready!'], rage: ['Now you will see my real power!', 'Enough! I am angry now!'], fall: ['No! Impossible!', 'You are… strong.'] };
+  function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
+  var SFX = {
+    ctx: null,
+    on: function () { try { return localStorage.getItem('sawaVoices') !== '0'; } catch (e) { return true; } },
+    ac: function () {
+      if (!SFX.on()) return null;
+      if (!SFX.ctx) { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; SFX.ctx = new AC(); SFX.out = SFX.ctx.createGain(); SFX.out.gain.value = 0.35; SFX.out.connect(SFX.ctx.destination); var n = SFX.ctx.sampleRate; SFX.noiseBuf = SFX.ctx.createBuffer(1, n, n); var d = SFX.noiseBuf.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+      if (SFX.ctx.state === 'suspended') SFX.ctx.resume();
+      return SFX.ctx;
+    },
+    tone: function (type, f1, f2, dur, vol, when) {
+      var c = SFX.ac(); if (!c) return; var t = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
+      o.type = type; o.frequency.setValueAtTime(f1, t); if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + dur); o.connect(g); g.connect(SFX.out); o.start(t); o.stop(t + dur + 0.05);
+    },
+    noise: function (type, f1, f2, dur, vol, when) {
+      var c = SFX.ac(); if (!c) return; var t = c.currentTime + (when || 0), s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+      s.buffer = SFX.noiseBuf; fl.type = type; fl.frequency.setValueAtTime(f1, t); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + dur); s.connect(fl); fl.connect(g); g.connect(SFX.out); s.start(t); s.stop(t + dur + 0.05);
+    },
+    slash: function () { SFX.noise('highpass', 4000, 700, 0.18, 0.5); SFX.tone('sine', 140, 55, 0.18, 0.5, 0.05); },
+    hurt: function () { SFX.tone('square', 220, 90, 0.22, 0.18); SFX.noise('lowpass', 800, 200, 0.2, 0.4); },
+    blocked: function () { SFX.tone('triangle', 1200, 900, 0.15, 0.25); SFX.tone('triangle', 1800, 1500, 0.12, 0.15, 0.03); },
+    heal: function () { [523, 659, 784, 1047].forEach(function (f, i) { SFX.tone('sine', f, 0, 0.35, 0.18, i * 0.07); }); },
+    power: function () { SFX.tone('sawtooth', 160, 900, 0.35, 0.12); SFX.noise('bandpass', 400, 3000, 0.35, 0.25); },
+    sparkle: function () { [1319, 1568, 1976].forEach(function (f, i) { SFX.tone('sine', f, 0, 0.18, 0.12, i * 0.05); }); },
+    coin: function () { SFX.tone('square', 988, 0, 0.08, 0.12); SFX.tone('square', 1319, 0, 0.18, 0.12, 0.08); },
+    fanfare: function () { [523, 659, 784, 1047, 784, 1047].forEach(function (f, i) { SFX.tone('triangle', f, 0, i === 5 ? 0.6 : 0.16, 0.22, i * 0.12); }); },
+    quest: function () { SFX.tone('sine', 784, 0, 0.3, 0.2); SFX.tone('sine', 1175, 0, 0.5, 0.2, 0.15); },
+    sad: function () { [392, 349, 311].forEach(function (f, i) { SFX.tone('triangle', f, 0, 0.35, 0.18, i * 0.22); }); },
+    growl: function (name) {
+      var k = (SHAPES[name] || ['spirit'])[0];
+      if (k === 'beast') { SFX.tone('sawtooth', 110, 70, 0.55, 0.16); SFX.noise('lowpass', 600, 200, 0.5, 0.35); }
+      else if (k === 'spirit') { SFX.tone('sine', 420, 260, 0.7, 0.15); SFX.tone('sine', 433, 270, 0.7, 0.1); }
+      else if (k === 'bug') { for (var i = 0; i < 5; i++) SFX.noise('highpass', 3000, 2500, 0.03, 0.4, i * 0.06); }
+      else if (k === 'flyer') { SFX.tone('square', 1400, 700, 0.3, 0.08); }
+      else if (k === 'golem') { SFX.tone('square', 70, 50, 0.6, 0.16); SFX.noise('lowpass', 300, 120, 0.6, 0.4); }
+      else if (k === 'dragon') { SFX.tone('sawtooth', 75, 45, 1.0, 0.2); SFX.noise('lowpass', 900, 150, 1.0, 0.4); }
+      else { SFX.tone('sawtooth', 160, 120, 0.25, 0.1); }
+    },
+    toggle: function () { var on = !SFX.on(); try { localStorage.setItem('sawaVoices', on ? '1' : '0'); } catch (e) { /* private mode */ } if (!on && window.speechSynthesis) speechSynthesis.cancel(); say(on ? '🗣 Voices and sounds on' : '🔇 Voices and sounds off'); hud(); }
+  };
+  /** A character says a line (voices on): its own pitch and speed. */
+  VOICE.act = function (who, text) {
+    if (!SFX.on() || !window.speechSynthesis || !text) return;
+    var c = CAST[who] || CAST.me; speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.pitch = c.pitch; u.rate = c.rate; var v = VOICE.pick(); if (v) u.voice = v;
+    MUSIC.duck(true); u.onend = u.onerror = function () { MUSIC.duck(false); }; speechSynthesis.speak(u);
+  };
+  VOICE.bark = function (kind, who) { if (Math.random() < (kind === 'hit' || kind === 'hurt' ? 0.45 : 1)) VOICE.act(who || 'me', pickOne(BARKS[kind] || BARKS.hit)); };
+
+  /* ================================================================ the share card: a picture to post on Skool */
+  var SHARE = {};
+  SHARE.make = function (why) {
+    var w = H.world(), hr = w.hero || {}, me = H.me(), a = H.avatar(), c = cnv(600, 600), g = c.getContext('2d'), th = THEMES[w.at] || THEMES[1];
+    var gr = g.createLinearGradient(0, 0, 0, 600); gr.addColorStop(0, '#14193a'); gr.addColorStop(1, '#2b3168'); g.fillStyle = gr; g.fillRect(0, 0, 600, 600);
+    g.fillStyle = th.sky[1]; g.globalAlpha = 0.18; g.fillRect(0, 380, 600, 220); g.globalAlpha = 1;
+    g.strokeStyle = '#e7c873'; g.lineWidth = 6; g.strokeRect(14, 14, 572, 572);
+    var ch = drawChar(a); g.imageSmoothingEnabled = false; g.drawImage(ch, 0, 0, 16, 24, 210, 150, 180, 270);
+    if (hr.aura) { g.globalAlpha = 0.35; g.fillStyle = { silver: '#c6ced6', gold: '#f2c94c', jade: '#56c596' }[hr.aura]; g.beginPath(); g.ellipse(300, 420, 110, 22, 0, 0, 7); g.fill(); g.globalAlpha = 1; }
+    g.textAlign = 'center'; g.fillStyle = '#ffe39a'; g.font = '700 26px Georgia, serif'; g.fillText(why || 'My journey on the Silk Road', 300, 70);
+    g.fillStyle = '#ffffff'; g.font = '700 40px Georgia, serif'; g.fillText(me.name, 300, 118);
+    g.fillStyle = '#e7c873'; g.beginPath(); g.arc(470, 190, 46, 0, 7); g.fill(); g.fillStyle = '#14193a'; g.font = '800 40px Georgia, serif'; g.fillText(hr.level || 1, 470, 204); g.font = '700 14px sans-serif'; g.fillText('LEVEL', 470, 160);
+    g.fillStyle = '#ffe39a'; g.font = '600 24px Georgia, serif'; g.fillText((hr.title || 'Traveller') + ' · ' + w.town.name + ' (' + w.town.level + ')', 300, 465);
+    g.fillStyle = '#d8cfb8'; g.font = '20px sans-serif';
+    g.fillText('📚 ' + (w.words || 0) + ' words learning   ⚔ ' + (hr.kills || 0) + ' monsters   🏰 ' + (hr.bosses || 0) + ' bosses', 300, 505);
+    g.fillText('🏆 Arena: ' + (hr.rank || 'Bronze') + '   ' + (w.titles.length ? '🏅 ' + w.titles[w.titles.length - 1] : ''), 300, 538);
+    g.fillStyle = '#ffffff'; g.font = '700 18px sans-serif'; g.fillText('Sawa English · learning English together', 300, 572);
+    return c;
+  };
+  SHARE.show = function (why) {
+    var c = SHARE.make(why), url = c.toDataURL('image/png'), w = H.world(), hr = w.hero || {};
+    var text = (why ? why + '! ' : '') + 'I am level ' + (hr.level || 1) + ' (' + (hr.title || 'Traveller') + ') on the Sawa English Silk Road, in ' + w.town.name + '. I am learning ' + (w.words || 0) + ' words right now. Who wants to join my party? ⚔';
+    var b = panel('sg-sharep', '📣 Share your journey', '<img class="sg-card-img" src="' + url + '" alt="Your Silk Road card"><textarea rows="3" dir="ltr">' + esc(text) + '</textarea><div class="sg-opts"><button class="pri" data-s="skool">Post on Skool</button><a class="sg-dl" href="' + url + '" download="sawa-silk-road.png">⬇ Save picture</a>' + (navigator.share ? '<button data-s="native">Share…</button>' : '') + '</div><p class="small">Copy the text, save the picture, then post both in the community. Sharing counts for this week\'s quest.</p>');
+    var ta = b.querySelector('textarea'); ta.onkeydown = function (e) { e.stopPropagation(); };
+    b.querySelector('[data-s="skool"]').onclick = function () {
+      try { navigator.clipboard.writeText(ta.value); } catch (e) { /* copy by hand */ }
+      H.api('/world/shared', { method: 'POST' }).then(function (j) { H.setWorld(j); }, function () {});
+      window.open(H.skool() || 'https://www.skool.com', '_blank', 'noopener'); say('Text copied. Paste it in your Skool post with the picture!', 5000);
+    };
+    var ns = b.querySelector('[data-s="native"]');
+    if (ns) ns.onclick = function () { c.toBlob(function (blob) { var f = new File([blob], 'sawa-silk-road.png', { type: 'image/png' }); var data = { text: ta.value }; if (navigator.canShare && navigator.canShare({ files: [f] })) data.files = [f]; navigator.share(data).then(function () { H.api('/world/shared', { method: 'POST' }).catch(function () {}); }, function () {}); }); };
+  };
+
+  /* ================================================================ the weekly report and the explorer's journal */
+  var REPORT = {};
+  REPORT.show = function () {
+    var b = panel('sg-reportp', '📰 This week on the Silk Road', '<p class="sg-wait">…</p>');
+    H.api('/world/report').then(function (d) {
+      var lines = [];
+      b.innerHTML = '<h4>⭐ Most XP this week</h4><ol class="sg-rank">' + d.xp.map(function (p, k) { lines.push((k + 1) + '. ' + p.name + ' — ' + p.week + ' XP'); return '<li><span>' + (k + 1) + '</span><div><b>' + esc(p.name) + '</b><small>Lv ' + p.level + '</small></div><em>' + p.week + ' XP</em></li>'; }).join('') + '</ol>'
+        + (d.words.length ? '<h4>📚 Most new words</h4><p>' + d.words.map(function (p) { return esc(p.name) + ' (' + p.words + ')'; }).join(' · ') + '</p>' : '')
+        + (d.moments.length ? '<h4>🏆 Big moments</h4><ul class="sg-moments">' + d.moments.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>' : '<p class="small">No big moments yet this week. Be the first!</p>')
+        + (H.isAdmin() ? '<div class="sg-opts"><button class="pri" data-r="copy">Copy as a Skool post</button></div>' : '<div class="sg-opts"><button class="pri" data-r="share">Share my card</button></div>');
+      var cp = b.querySelector('[data-r="copy"]');
+      if (cp) cp.onclick = function () { var t = '🐫 This week on the Silk Road!\n\n⭐ Most XP:\n' + lines.join('\n') + (d.words.length ? '\n\n📚 Most new words: ' + d.words.map(function (p) { return p.name + ' (' + p.words + ')'; }).join(', ') : '') + (d.moments.length ? '\n\n🏆 Big moments:\n' + d.moments.map(function (m) { return '• ' + m; }).join('\n') : '') + '\n\nWho will be on top next week? Comment with your level! ⚔'; try { navigator.clipboard.writeText(t); say('Copied. Paste it on Skool!'); } catch (e) { say('Copy did not work in this browser.'); } };
+      var sh = b.querySelector('[data-r="share"]'); if (sh) sh.onclick = function () { SHARE.show(); };
+    }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+  var JOURNAL = {};
+  JOURNAL.show = function () {
+    var b = panel('sg-journalp', '📖 Explorer\'s journal', '<p class="sg-wait">…</p>');
+    var w = H.world(), hr = w.hero || {};
+    (H.lens ? H.lens.api('journey') : Promise.resolve({})).then(function (j) {
+      var towns = w.towns.map(function (t) { return '<span class="' + (t.beaten ? 'done' : t.id === w.at ? 'here' : t.open ? 'open' : '') + '">' + (t.open ? t.icon : '🔒') + '<small>' + esc(t.level) + '</small></span>'; }).join('<i></i>');
+      b.innerHTML = '<div class="sg-road">' + towns + '</div><p class="small">From early A2 (Chang\'an) to late B1 (Constantinople). Beat each town\'s boss to move on.</p>'
+        + '<h4>Your English</h4><div class="sg-stats2"><div><b>' + (j.learning || 0) + '</b><small>words learning</small></div><div><b>' + (j.known || 0) + '</b><small>words known</small></div><div><b>' + (j.saved || 0) + '</b><small>sentences saved</small></div><div><b>' + (j.reviews || 0) + '</b><small>cards reviewed</small></div><div><b>' + (j.writings || 0) + '</b><small>texts written</small></div><div><b>' + (j.speaks || 0) + '</b><small>times you spoke</small></div></div>'
+        + '<h4>Your journey</h4><div class="sg-stats2"><div><b>' + (hr.level || 1) + '</b><small>level · ' + esc(hr.title || '') + '</small></div><div><b>' + (hr.kills || 0) + '</b><small>monsters beaten</small></div><div><b>' + (hr.bosses || 0) + '</b><small>bosses beaten</small></div><div><b>' + esc(hr.rank || 'Bronze') + '</b><small>arena rank</small></div><div><b>' + ((hr.duels || {}).won || 0) + '</b><small>duels won</small></div><div><b>' + w.titles.length + '</b><small>titles</small></div></div>'
+        + '<div class="sg-opts"><button class="pri" data-j="share">Share my card</button><button data-j="report">This week</button></div>';
+      b.querySelector('[data-j="share"]').onclick = function () { SHARE.show(); };
+      b.querySelector('[data-j="report"]').onclick = function () { REPORT.show(); };
+    }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+  /** Tap a bar in the HUD: what it means, in simple English. */
+  var BAR_HELP = {
+    hp: ['❤ Health', 'A monster hits you when you answer wrong. When health is 0, you wake up at the inn. Health comes back by itself — faster when you review cards.'],
+    mp: ['💧 Mana', 'You get mana when you study: review cards, do your plan, write or speak. Use it in fights for skills like Focus (it removes a wrong answer).'],
+    xp: ['⭐ Level', 'You get XP from everything you learn and write in English. More XP = a higher level, more health, new gear and titles.']
   };
 
   /* ================================================================ Language Lens inside the game: tap any English word */
@@ -1068,9 +1224,10 @@
       if (running) return Promise.resolve();
       H = hooks; running = true;
       ROOT = el('div', 'sg-root');
-      ROOT.innerHTML = '<div class="sg-cv"></div><canvas class="sg-dark"></canvas><div class="sg-labels"></div><div class="sg-top"></div><div class="sg-online"></div><div class="sg-menu"></div><div class="sg-hint"></div><div class="sg-joy"><i></i></div><button class="sg-act"></button><div class="sg-battle"></div><div class="sg-dlg"></div><div class="sg-panel"></div><div class="sg-word"></div><div class="sg-load"><p>Loading the Silk Road…</p></div>';
+      ROOT.innerHTML = '<div class="sg-cv"></div><canvas class="sg-dark"></canvas><div class="sg-labels"></div><div class="sg-top"></div><div class="sg-online"></div><div class="sg-event"></div><div class="sg-menu"></div><div class="sg-hint"></div><div class="sg-joy"><i></i></div><button class="sg-act"></button><div class="sg-battle"></div><div class="sg-dlg"></div><div class="sg-panel"></div><div class="sg-word"></div><div class="sg-load"><p>Loading the Silk Road…</p></div>';
       mount.appendChild(ROOT);
       ROOT.addEventListener('click', function (e) {
+        var bh = e.target.closest('[data-bar]'); if (bh) { e.stopPropagation(); var x = BAR_HELP[bh.dataset.bar]; return dialog(x[0], x[1], [], '💡'); }
         var w = e.target.closest('.lw'); if (w) { e.stopPropagation(); return LENS.word(w); }
         var sp = e.target.closest('[data-say]'); if (sp) { e.stopPropagation(); return VOICE.say(sp.dataset.say); }
         var b = e.target.closest('[data-g]'); if (b) GAME.menu(b.dataset.g);
