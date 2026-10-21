@@ -620,7 +620,7 @@
       var s = steps[st.i], n = steps.length, body = '';
       if (s.type === 'act') {
         var e = st.entries[s.a.name], m = act(s.a.name);
-        body = '<div class="q"><span class="q-ic">' + ico(m.ic) + '</span><h3>عملت ' + esc(m.ar) + ' ' + (st.day === S.data.today ? 'النهارده' : 'امبارح') + '؟</h3></div>'
+        body = '<div class="q"><span class="q-ic">' + ico(m.ic) + '</span><h3>عملت ' + esc(m.ar) + (st.day === S.data.today ? ' النهارده' : ' امبارح') + '؟</h3></div>'
           + (e ? '<div class="stack"><div class="f"><span>الدقايق</span>' + minuteInput('d-min', e.minutes) + '</div>'
             + (s.a.cards ? '<label class="f">عدد الكروت <small>اختياري</small><input type="number" id="d-cards" min="0" max="5000" value="' + (e.cards || '') + '" dir="ltr"></label>' : '')
             + '<label class="f">ملاحظات <small>اختياري</small><input id="d-notes" maxlength="300" value="' + esc(e.notes || '') + '" dir="auto"></label>'
