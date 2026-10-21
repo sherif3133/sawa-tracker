@@ -462,6 +462,25 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 
 .clan-grid .side { order: 0; }
 
+/* Raids */
+.raids { display: grid; gap: 10px; }
+.rd-coins { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--fg); }
+.rd-def { display: grid; gap: 6px; }
+.rd-acts, .rd-rev, .rd-shop { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rd-rev .btn { display: inline-flex; gap: 6px; align-items: center; }
+.rd-logs { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13.5px; }
+.rd-logs time { color: var(--muted); font-size: 12px; }
+.rd-war ol { margin: 4px 0 0; padding-inline-start: 20px; font-size: 13.5px; }
+.rd-peace { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.battle { display: grid; gap: 12px; }
+.bt-q { font-size: 18px; font-weight: 600; color: var(--fg); }
+.bt-opts { display: grid; gap: 8px; }
+.bt-opts .btn { justify-content: flex-start; text-align: left; min-height: 48px; }
+.bt-time i { transition: width .25s linear; background: var(--red) !important; }
+.bt-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13.5px; }
+.bt-review .ok { color: var(--ink); } .bt-review .no { color: var(--red); }
+.rd-big { font-family: var(--display); font-weight: 800; font-size: 30px; color: var(--fg); }
+
 /* Inside the one Sawa English app */
 .emb-bar { display: flex; gap: 8px; align-items: center; justify-content: flex-start; margin-bottom: 12px; flex-wrap: wrap; }
 .emb-bar .bell, .emb-bar .me-btn { margin-inline-start: 0; }

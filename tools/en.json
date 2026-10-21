@@ -469,7 +469,10 @@
   " امبارح": " yesterday",
   " نقاط الإنجليزي (XP)</h3></div>": " English points (XP)</h3></div>",
   "</b> الأسبوع ده</span></div>": "</b> this week</span></div>",
-  " أتقن <b dir=\"ltr\">": " mastered <b dir=\"ltr\">"
+  " أتقن <b dir=\"ltr\">": " mastered <b dir=\"ltr\">",
+  " هجم عليك وخد ": " raided you and took ",
+  " 🪙. اعمل خطة النهارده عشان دفاعك يعلى، وتقدر تنتقم!": " 🪙. Do today's plan to raise your defence — and take your revenge!",
+  " حاول يهجم عليك ودفاعك صدّه 🛡": " tried to raid you, but your defence held 🛡"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

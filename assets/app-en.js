@@ -254,7 +254,7 @@
     if (EMB) {
       emit({ view: S.view });
       if (S.view === 'today') return renderToday();
-      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + bossCard() + '</div><div class="col side">' + boardCard() + feedCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); return; }
+      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="raids"><div class="card"><p class="muted small">Loading raids…</p></div></div><div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + bossCard() + '</div><div class="col side">' + boardCard() + feedCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); loadRaids(); return; }
       if (S.view === 'me') { $('#app').innerHTML = header() + '<div class="grid one">' + xpCard() + characterCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'; return; }
       if (S.view === 'chat') { $('#app').innerHTML = '<div id="view"></div>'; paintChat(); return; }
     }
@@ -262,6 +262,70 @@
     if (S.view === 'chat') { $('#app').innerHTML = header() + '<div id="view"></div>'; paintChat(); return; }
     renderHome();
   }
+  /* ------------------------------------------------------------ raids (inside the one app) */
+  var RD = null;
+  function loadRaids() {
+    api('/raids').then(function (j) { RD = j; paintRaids(); }, function (x) { var el = $('#raids'); if (el) el.innerHTML = '<div class="card"><p class="err">' + esc(x.message) + '</p></div>'; });
+  }
+  function paintRaids() {
+    var el = $('#raids'); if (!el || !RD) return;
+    var r = RD, safeLeft = Math.max(0, r.coins - r.safe);
+    var shield = r.shield ? '<span class="pill">🛡 Raid-proof until ' + new Date(r.shield * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</span>' : '';
+    var log = r.log.slice(0, 5).map(function (e) {
+      var d = e.data || {}, mine = e.who && e.who.id === S.data.me.id;
+      return '<li class="rd-log">' + (mine ? '⚔ You raided ' + esc(e.target ? e.target.name : '') + (d.won ? ' and took <b>' + d.loot + ' 🪙</b>' : ' — their defence held') : '🛡 ' + esc(e.who ? e.who.name : '') + (d.won ? ' raided you and took <b>' + d.loot + ' 🪙</b>' : ' tried to raid you — your defence held')) + ' <time>' + ago(e.at) + '</time></li>';
+    }).join('');
+    el.innerHTML = '<section class="card raids"><div class="card-h"><h3>⚔ Raids</h3><span class="rd-coins">' + r.coins + ' 🪙</span></div>'
+      + '<p class="small muted">Win coins from students in other clans with English. Your first ' + r.safe + ' coins are always safe' + (safeLeft ? '; ' + safeLeft + ' can be raided.' : '.') + '</p>'
+      + '<div class="rd-def"><div class="row-between"><b>Your defence ' + r.defence + '</b>' + shield + '</div><div class="bar"><i style="width:' + r.defence + '%;background:var(--fg)"></i></div>'
+      + '<p class="small muted">Raise it with English today: every step of today\'s plan adds 10, your streak adds armour, and a perfect day makes you raid-proof until midnight.' + (r.class === 'healer' ? ' Healers get +10%.' : r.class === 'warrior' ? ' Warriors attack 10% harder.' : '') + '</p></div>'
+      + (r.peace ? '<p class="note">🕊 Peace mode is on: you can\'t raid or be raided.</p>'
+        : !r.canBattle ? '<p class="note">Raids open soon.</p>'
+        : '<div class="rd-acts"><button class="btn primary" data-act="rd-find"' + (r.raidsLeft ? '' : ' disabled') + '>⚔ Find an opponent</button><span class="small muted">' + r.raidsLeft + ' raid' + (r.raidsLeft === 1 ? '' : 's') + ' left today</span></div>'
+          + (r.revenge.length ? '<div class="rd-rev"><span class="small">Revenge (free):</span>' + r.revenge.map(function (p) { return '<button class="btn sm-btn" data-act="rd-start" data-id="' + p.id + '">' + avatar(p, 22) + ' ' + esc(p.name.split(' ')[0]) + '</button>'; }).join('') + '</div>' : ''))
+      + '<div class="rd-shop"><span class="small muted">Shop:</span>' + Object.keys(r.shop).map(function (k) { return '<button class="btn ghost sm-btn" data-act="rd-buy" data-item="' + k + '"' + (r.coins < r.shop[k][0] ? ' disabled' : '') + '>' + (k === 'shield' ? '🛡 ' : '❄ ') + esc(r.shop[k][1]) + ' · ' + r.shop[k][0] + ' 🪙</button>'; }).join('') + '</div>'
+      + (log ? '<ul class="rd-logs">' + log + '</ul>' : '')
+      + (r.clanWar.length ? '<div class="rd-war"><b class="small">Clan war this week</b><ol>' + r.clanWar.map(function (c) { return '<li>' + esc(c.emoji) + ' ' + esc(c.name) + ' <b>' + c.loot + ' 🪙</b></li>'; }).join('') + '</ol></div>' : '')
+      + '<label class="small rd-peace"><input type="checkbox" data-act="rd-peace"' + (r.peace ? ' checked' : '') + '> Peace mode (no raids for me)</label></section>';
+  }
+  function raidFind(btn) {
+    busy(btn, true, 'Looking…');
+    api('/raids/find', { method: 'POST' }).then(function (j) {
+      busy(btn, false);
+      openModal(mHead('Choose your opponent', 'Students from other clans, at about your level') + (j.opponents.length ? '<ul class="pick-list">' + j.opponents.map(function (p) {
+        return '<li><button class="pick" data-act="rd-start" data-id="' + p.id + '">' + avatar(p, 36) + '<span><b>' + esc(p.name) + '</b><br><small>' + esc(p.clan || '') + ' · defence ' + p.defence + ' · up to ' + p.loot + ' 🪙</small></span><em>⚔</em></button></li>';
+      }).join('') + '</ul><p class="small muted">To win, your attack (20 per right answer) must beat their defence.</p>' : '<p class="muted">Nobody can be raided right now — everyone is protected. Try later!</p>'), 'narrow');
+    }, function (x) { busy(btn, false); toast(x.message, 'bad'); });
+  }
+  /** The battle: 5 questions, 20 seconds each. */
+  function raidBattle(target) {
+    api('/raids/start', { method: 'POST', body: { target: target } }).then(function (b) {
+      var i = 0, ans = [], timer = null;
+      function q() {
+        clearInterval(timer);
+        if (i >= b.questions.length) return finish();
+        var it = b.questions[i], left = b.seconds;
+        openModal('<div class="battle" dir="ltr"><div class="row-between"><b>⚔ vs ' + esc(b.defender.name) + '</b><span class="small muted">' + (i + 1) + ' / ' + b.questions.length + '</span></div>'
+          + '<div class="bar bt-time"><i style="width:100%"></i></div><p class="bt-q">' + esc(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + '</p>'
+          + '<div class="bt-opts">' + it.options.map(function (o, k) { return '<button class="btn ghost" data-bt="' + k + '">' + esc(o) + '</button>'; }).join('') + '</div></div>', 'narrow');
+        $$('[data-bt]').forEach(function (x) { x.onclick = function () { ans.push(+x.dataset.bt); i++; q(); }; });
+        timer = setInterval(function () { left -= 0.25; var bar = $('.bt-time i'); if (bar) bar.style.width = Math.max(0, left / b.seconds * 100) + '%'; if (left <= 0) { ans.push(-1); i++; q(); } }, 250);
+      }
+      function finish() {
+        clearInterval(timer);
+        openModal('<div class="battle" dir="ltr"><p class="muted">Fighting…</p></div>', 'narrow');
+        api('/raids/answer', { method: 'POST', body: { battle: b.battle, answers: ans } }).then(function (r) {
+          RD = r; paintRaids();
+          openModal(mHead(r.won ? '🏆 You won!' : '🛡 Their defence held', r.right + ' of 5 right · attack ' + r.attack + ' vs defence ' + r.defence)
+            + '<div class="stack" dir="ltr">' + (r.won ? '<p class="rd-big">+' + r.loot + ' 🪙 loot</p>' : '<p class="muted">Get more answers right to beat higher defences.</p>') + '<p class="small muted">+' + r.bonus + ' 🪙 for fighting in English</p>'
+            + '<ul class="bt-review">' + r.review.map(function (x) { return '<li class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓ ' : '✗ ') + esc(x.q) + (x.ok ? '' : ' → <b>' + esc(x.right) + '</b>') + '</li>'; }).join('') + '</ul>'
+            + '<button class="btn primary wide" data-act="close">Done</button></div>', 'narrow');
+        }, function (x) { closeModal(); toast(x.message, 'bad'); });
+      }
+      q();
+    }, function (x) { toast(x.message, 'bad'); });
+  }
+
   /** The app's Today tab: how today is going, the quest, and the buttons to log it. */
   function renderToday() {
     var d = S.data, s = d.stats, me = d.me;
@@ -528,12 +592,13 @@
       case 'quest_done': return name(e.who) + ' completed today\'s quest' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
       case 'group_invite': return name(e.who) + ' added you to the group <b dir="auto">' + esc(d.name) + '</b>';
       case 'mastered': return name(e.who) + ' mastered <b dir="ltr">' + esc(d.name) + '</b> 🏆';
+      case 'raid': return name(e.who) + (d.won ? ' raided you and took ' + d.loot + ' 🪙. Do today\'s plan to raise your defence — and take your revenge!' : ' tried to raid you, but your defence held 🛡');
       case 'reply': return name(e.who) + ' replied to your message' + (d.voice ? ' with a voice note' : d.sticker ? ' with ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' did something';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -1222,6 +1287,9 @@
         api('/chat/messages/' + el.dataset.id + '/report', { method: 'POST', body: { reason: $('#rep-why').value.trim() } }).then(function () { closeModal(); toast('Thanks. Sherif will review it.', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); });
         break;
       case 'mic': startRec(); break;
+      case 'rd-find': raidFind(el); break;
+      case 'rd-start': closeModal(); raidBattle(+el.dataset.id); break;
+      case 'rd-buy': api('/raids/shop', { method: 'POST', body: { item: el.dataset.item } }).then(function (j) { RD = j; paintRaids(); toast('Bought!', 'good'); }, function (x) { toast(x.message, 'bad'); }); break;
       case 'tray': paintTray(C.tray ? '' : 'st'); break;
       case 'tray-tab': paintTray(el.dataset.tab); break;
       case 'tray-close': paintTray(''); break;
@@ -1269,6 +1337,7 @@
     if (e.target.id === 'gif-q') { clearTimeout(gifT); var q = e.target.value.trim(); gifT = setTimeout(function () { loadGifs(q); }, 350); }
   });
   root.addEventListener('change', function (e) {
+    if (e.target.dataset && e.target.dataset.act === 'rd-peace') { api('/raids/peace', { method: 'POST', body: { on: e.target.checked } }).then(function (j) { RD = j; paintRaids(); }, function (x) { toast(x.message, 'bad'); }); return; }
     if (e.target.id === 'av-file' && e.target.files[0]) uploadAvatar(e.target.files[0]);
     if (e.target.id === 'remind') {
       api('/reminder', { method: 'POST', body: { hour: e.target.value } }).then(function (j) { S.data = j.data; toast(e.target.value === '' ? 'Reminder turned off' : 'Reminder saved. We\'ll only send it on days you haven\'t studied yet.', 'good'); }, function (x) { toast(x.message, 'bad'); });
