@@ -382,7 +382,7 @@
   }
   function bar(v, max, color) { return '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, v / Math.max(1, max) * 100)) + '%;background:' + (color || 'var(--fg)') + '"></i></div>'; }
   function paintWorld() {
-    var el = $('#world'), w = W.data; if (!el || !w) return;
+    var el = $('#world'), w = W.data; if (!el || !w || gameRunning()) return;
     var tabs = [['map', '🗺 Map'], ['quests', '📜 Quests'], ['party', '⚔ Party']].map(function (t) { return '<button data-act="w-tab" data-tab="' + t[0] + '" aria-pressed="' + (W.tab === t[0]) + '">' + t[1] + '</button>'; }).join('');
     el.innerHTML = '<div class="wd-top"><button class="btn ghost sm-btn" data-act="w-back">← Community</button><span class="pill">🪙 ' + w.coins + '</span><span class="pill">⚗ ' + w.elixirs + '</span><span class="pill" title="Fights left today. Every step of today\'s plan gives one more.">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span><button class="icon-btn wd-help" data-act="w-help" aria-label="How the Silk Road works">?</button></div>'
       + '<div class="seg wd-tabs" role="tablist">' + tabs + '</div><div id="wd-body">' + (W.tab === 'quests' ? worldQuests() : W.tab === 'party' ? worldParty() : worldMap()) + '</div>';
@@ -422,6 +422,9 @@
     ['⚔', 'Monsters', 'Every fight is 5 English questions: words from <b>your</b> flashcards in the sentence where you found them, your own past mistakes, and the skill points you\'re weakest at. 20 attack per right answer (plus your weapon). Words you miss come back in today\'s review cards.'],
     ['⚡', 'Fights a day', '5 fights a day, plus one for every step of today\'s plan and one for a perfect day. Studying gives you more game.'],
     ['📜', 'Quests', 'Each town has a story: monsters → a learning task (cards, practice, chat, video quizzes…) → the boss. Daily and weekly quests pay coins and elixirs. Tap <b>Go</b> to jump to the right place in the app.'],
+    ['🚶', 'Walking the world', 'Walk with the arrow keys (or drag your thumb on a phone). Press E or tap the red button to talk to people, read the notice board and leave notes. Monsters roam the road east of every town; the boss waits in its lair.'],
+    ['👥', 'Other travellers', 'Students who are online walk around with you. Students who were here earlier today stay as echoes where they left — you can still tap them: wave, invite them, or duel their shadow, which fights as well as they really do. They get a notification later.'],
+    ['✍', 'Notes', 'Leave a short English note on the map for the next traveller (3 a day). When someone finds it helpful, you get 2 coins.'],
     ['🌍', 'World boss', 'One boss for the whole community each week. Every minute anyone studies hits it.'],
     ['🪙', 'Coins and ⚗ elixirs', 'Coins come from learning (plan steps, quizzes, quests, fights). Spend them on gear, shields and helping classmates. Elixirs come from mastering skill points, perfect days and big wins; they upgrade your gear.'],
     ['🗡', 'Jobs, gear and raids (stage 4)', 'Thief, Hunter or Trader. Gear grades follow your English level: Bronze = A1 … Jade = C2. Thieves raid, hunters catch thieves, traders earn more from learning. Your first 20 coins are always safe, and peace mode turns raids off.'],
@@ -492,7 +495,7 @@
     return api(path, { method: 'POST', body: body || {} }).then(function (j) {
       if (j.party !== undefined) W.party = j;
       if (j.world) W.data = j.world; else if (j.towns) W.data = j;
-      paintWorld(); if (then) then(j); return j;
+      paintWorld(); repaintPanel(); if (then) then(j); return j;
     }, function (x) { toast(x.message, 'bad'); });
   }
   function worldInvite() {
@@ -505,8 +508,44 @@
   function qHtml(it) {
     return (it.point ? '<span class="pill">' + esc(it.point) + '</span>' : '') + '<p class="bt-q">' + esc(it.q).replace(/_{2,}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>') + '</p>' + (it.src ? '<p class="small muted">From: ' + esc(it.src) + '</p>' : '');
   }
+  /* ------------------------------------------------------------ the walkable game (assets/game.js) */
+  function gameRunning() { return !!(window.SawaGame && window.SawaGame.running()); }
+  function startGame() {
+    var go = function () {
+      api('/world').then(function (w) {
+        W.data = w; S.view = 'world';
+        var mount = $('#modal').parentNode;
+        window.SawaGame.start(mount, {
+          api: api, me: function () { return S.data.me; }, stage: stage,
+          world: function () { return W.data; }, setWorld: function (x) { if (x && x.towns) W.data = x; },
+          avatar: function () { return W.data.avatar; }, setLook: function (l) { W.data.avatar.look = l; },
+          panel: worldPanel, go: function (v) { window.SawaGame.stop(false); S.view = 'community'; renderView(); emit({ go: v }); },
+          room: function (id) { window.SawaGame.stop(false); S.view = 'chat'; C.pending = +id; renderView(); loadRooms(); },
+          raid: function (id) { raidBattle(id); }, wanted: function () { srWanted(null); },
+          refreshParty: function () { api('/party').then(function (j) { W.party = j; }, function () {}); },
+          exit: function (mode) { S.view = 'community'; if (mode === 'list') openWorld('map'); else renderView(); }
+        });
+      }, function (x) { toast(x.message, 'bad'); });
+    };
+    if (window.SawaGame) return go();
+    var sc = document.createElement('script'); sc.src = cfg.game; sc.onload = go; sc.onerror = function () { toast('The game could not load. Opening the list view.', 'bad'); openWorld('map'); }; document.head.appendChild(sc);
+  }
+  /** Quests, party, forge and help as panels over the game. */
+  function worldPanel(kind) {
+    W.panel = kind;
+    if (kind === 'help') return worldHelp();
+    if (kind === 'quests') return openModal(mHead('📜 Quests', W.data.town.icon + ' ' + esc(W.data.town.name)) + '<div class="wd-panel" dir="ltr">' + worldQuests() + '</div>', 'narrow');
+    if (kind === 'party') return api('/party').then(function (j) { W.party = j; openModal(mHead('⚔ Party', '') + '<div class="wd-panel" dir="ltr">' + worldParty() + '</div>', 'narrow'); }, function (x) { toast(x.message, 'bad'); });
+    if (kind === 'forge') { openModal(mHead('🔨 Forge and job', 'Better English unlocks better gear') + '<div class="wd-panel" dir="ltr"><div id="raids"><p class="muted small">Loading…</p></div></div>', 'narrow'); loadRaids(); }
+  }
+  function repaintPanel() {
+    if (gameRunning()) window.SawaGame.hud();
+    if (W.panel && $('#modal .wd-panel') && W.panel !== 'forge' && W.panel !== 'help') worldPanel(W.panel);
+  }
+
   /** A solo battle (monster, boss) or a hit on the party boss: same quiz as raids, then the result. */
   function worldBattle(path, body) {
+    if (gameRunning() && window.SawaGame.battle(path, body)) { closeModal(); return; }
     api(path, { method: 'POST', body: body || {} }).then(function (b) {
       var i = 0, ans = [], timer = null, n = b.questions.length;
       function q() {
@@ -854,6 +893,7 @@
       case 'hunt': return name(e.who) + (d.won ? ' (صياد) مسكك ورجّع ' + d.amount + ' 🪙 لصاحبها.' : ' (صياد) حاول يمسكك وهربت!');
       case 'returned': return name(e.who) + ' (صياد) مسك ' + esc(d.thief) + ' ورجّعلك ' + d.amount + ' 🪙!';
       case 'raid': return name(e.who) + (d.won ? ' هجم عليك وخد ' + d.loot + ' 🪙. اعمل خطة النهارده عشان دفاعك يعلى، وتقدر تنتقم!' : ' حاول يهجم عليك ودفاعك صدّه 🛡');
+      case 'duel': return name(e.who) + (d.won ? ' beat your shadow in a duel ⚔ Fight more battles to make your shadow stronger!' : ' dueled your shadow and lost! Your shadow fights like you do 💪');
       case 'party_invite': return name(e.who) + ' invited you to the party <b dir="auto">' + esc(d.name) + '</b> ⚔';
       case 'party_live': return name(e.who) + ' started a live battle in <b dir="auto">' + esc(d.party) + '</b>. Join now! 🔴';
       case 'party_boss': return name(e.who) + ' summoned the ' + esc(d.boss) + '. Hit it with your party! ⚔';
@@ -1564,18 +1604,19 @@
       case 'sr-skill': srPost('/raids/skill', { skill: el.dataset.id }).catch(function () {}); break;
       case 'sr-wanted': srWanted(el); break;
       case 'sr-hunt': closeModal(); raidBattle(0, +el.dataset.ev); break;
-      case 'w-open': openWorld('map'); break;
+      case 'w-open': if (cfg.game) startGame(); else openWorld('map'); break;
+      case 'w-list': openWorld('map'); break;
       case 'w-help': worldHelp(); break;
       case 'w-tour': worldTour(+(el.dataset.i || 0)); break;
-      case 'w-squest': busy(el, true, 'Saving…'); api('/quest', { method: 'POST', body: { note: (($('#w-qnote') || {}).value || '').trim() } }).then(function (j) { if (j.data) S.data = j.data; return api('/world'); }).then(function (w) { W.data = w; paintWorld(); toast('Quest done, coins added', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); }); break;
-      case 'w-back': S.view = 'community'; renderView(); break;
+      case 'w-squest': busy(el, true, 'Saving…'); api('/quest', { method: 'POST', body: { note: (($('#w-qnote') || {}).value || '').trim() } }).then(function (j) { if (j.data) S.data = j.data; return api('/world'); }).then(function (w) { W.data = w; paintWorld(); repaintPanel(); toast('Quest done, coins added', 'good'); }, function (x) { busy(el, false); toast(x.message, 'bad'); }); break;
+      case 'w-back': if (gameRunning()) window.SawaGame.stop(false); S.view = 'community'; renderView(); break;
       case 'w-tab': W.tab = el.dataset.tab; paintWorld(); break;
       case 'w-travel': wPost('/world/travel', { town: +el.dataset.town }); break;
       case 'w-fight': worldBattle('/world/fight', { kind: 'monster', m: +el.dataset.m }); break;
       case 'w-boss': worldBattle('/world/fight', { kind: 'boss' }); break;
       case 'w-claim': wPost('/world/claim', { quest: el.dataset.q }, function (j) { toast('+' + j.got.coins + ' 🪙' + (j.got.elixirs ? ' +' + j.got.elixirs + ' ⚗' : ''), 'good'); }); break;
-      case 'w-go': if (el.dataset.go === 'map') { W.tab = 'map'; paintWorld(); } else { emit({ go: el.dataset.go }); } break;
-      case 'w-room': S.view = 'chat'; C.pending = +el.dataset.id; renderView(); loadRooms(); break;
+      case 'w-go': if (el.dataset.go === 'map') { if (gameRunning()) closeModal(); else { W.tab = 'map'; paintWorld(); } } else { if (gameRunning()) { closeModal(); window.SawaGame.stop(false); S.view = 'community'; renderView(); } emit({ go: el.dataset.go }); } break;
+      case 'w-room': if (gameRunning()) { closeModal(); window.SawaGame.stop(false); } S.view = 'chat'; C.pending = +el.dataset.id; renderView(); loadRooms(); break;
       case 'w-create': wPost('/party/create', { name: ($('#w-pname') || {}).value || '' }); break;
       case 'w-join': wPost('/party/join', { party: +el.dataset.id }); break;
       case 'w-decline': wPost('/party/decline', { party: +el.dataset.id }); break;
@@ -1679,6 +1720,7 @@
   if (EMB) {
     window.SawaTracker = {
       show: function (v) {
+        if (gameRunning()) window.SawaGame.stop(false); // switching tabs leaves the walkable world
         if (!S.data || S.photoGate || !S.data.me.class) { S.wantView = v; return; }
         if (S.view !== 'chat' && v !== 'chat' && C.rec) { C.rec.send = false; C.rec.rec.stop(); }
         S.view = v; renderView();

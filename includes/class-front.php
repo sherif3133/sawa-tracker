@@ -60,6 +60,7 @@ final class Sawa_Tracker_Front {
 			'status'     => $status,
 			'name'       => $uid ? wp_get_current_user()->display_name : '',
 			'css'        => SAWA_TR_URL . 'assets/app.css?v=' . SAWA_TR_VER,
+			'game'       => SAWA_TR_URL . 'assets/game.js?v=' . SAWA_TR_VER, // the walkable Silk Road, loaded when a student enters it
 			'loginUrl'   => site_url( 'wp-login.php', 'login_post' ),
 			'lostUrl'    => wp_lostpassword_url( $url ),
 			'logoutUrl'  => wp_logout_url( $url ),

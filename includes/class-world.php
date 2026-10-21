@@ -68,7 +68,7 @@ final class Sawa_Tracker_World {
 	}
 
 	public static function routes() {
-		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ) ) as $r ) {
+		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ) ) as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
 		}
 	}
@@ -231,6 +231,7 @@ final class Sawa_Tracker_World {
 			'weapon'   => (int) round( 100 * Sawa_Tracker_RPG::slot_bonus( $rpg, 'weapon' ) ),
 			'job'      => $rpg['job'],
 			'titles'   => array_values( (array) $w['titles'] ),
+			'avatar'   => Sawa_Tracker_Play::avatar( $uid ),
 			'words'    => (int) apply_filters( 'sawa_tracker_word_count', 0, $uid ),
 			'party'    => Sawa_Tracker_Party::of( $uid ),
 			'ready'    => (bool) apply_filters( 'sawa_tracker_battle_ready', false ),
@@ -349,6 +350,29 @@ final class Sawa_Tracker_World {
 		return self::battle_start( $uid, $kind, $qs, $foe, array( 'town' => $t ) );
 	}
 
+	/**
+	 * One answer at a time (the walkable game animates every hit): saves the pick for question i, in order,
+	 * and says whether it was right. The final /world/answer then uses the saved picks.
+	 */
+	public static function step( WP_REST_Request $r ) {
+		$uid = self::uid();
+		$key = 'sawa_tr_wb_' . sanitize_key( (string) $r->get_param( 'battle' ) );
+		$b   = get_transient( $key );
+		if ( ! is_array( $b ) || (int) $b['uid'] !== $uid ) {
+			return new WP_Error( 'battle', 'This battle has ended.', array( 'status' => 404 ) );
+		}
+		$i    = (int) $r->get_param( 'i' );
+		$picks = (array) ( $b['picks'] ?? array() );
+		if ( $i !== count( $picks ) || ! isset( $b['qs'][ $i ] ) ) {
+			return new WP_Error( 'battle', 'Answer the questions in order.', array( 'status' => 400 ) );
+		}
+		$q          = $b['qs'][ $i ];
+		$picks[]    = (int) $r->get_param( 'choice' );
+		$b['picks'] = $picks;
+		set_transient( $key, $b, 15 * MINUTE_IN_SECONDS );
+		return array( 'correct' => (int) $q['answer'] === end( $picks ), 'right' => $q['options'][ $q['answer'] ] ?? '', 'why' => $q['why'] ?? '', 'per' => (int) round( 20 * ( 1 + Sawa_Tracker_RPG::slot_bonus( Sawa_Tracker_RPG::get( $uid ), 'weapon' ) ) ) );
+	}
+
 	public static function answer( WP_REST_Request $r ) {
 		$uid = self::uid();
 		$key = 'sawa_tr_wb_' . sanitize_key( (string) $r->get_param( 'battle' ) );
@@ -357,7 +381,7 @@ final class Sawa_Tracker_World {
 			return new WP_Error( 'battle', 'This battle has ended.', array( 'status' => 404 ) );
 		}
 		delete_transient( $key );
-		$ans = array_values( (array) $r->get_param( 'answers' ) );
+		$ans = isset( $b['picks'] ) ? array_values( $b['picks'] ) : array_values( (array) $r->get_param( 'answers' ) );
 		$fb  = array();
 		foreach ( $b['qs'] as $i => $q ) {
 			$ok   = isset( $ans[ $i ] ) && (int) $ans[ $i ] === (int) $q['answer'];
@@ -373,7 +397,10 @@ final class Sawa_Tracker_World {
 		$foe    = $b['foe'];
 		$out    = array( 'kind' => $b['kind'], 'right' => $right, 'total' => count( $fb ), 'attack' => $attack, 'foe' => $foe, 'review' => $fb, 'coins' => 0, 'elixirs' => 0, 'won' => false, 'missedWords' => $missed ?? 0 );
 		self::progress( $uid, 'right', $right );
-		if ( 'pboss' === $b['kind'] ) {
+		Sawa_Tracker_Play::record_accuracy( $uid, $right, count( $fb ) );
+		if ( 'duel' === $b['kind'] ) {
+			$out = Sawa_Tracker_Play::after_duel( $uid, $b, $attack, $right ) + $out;
+		} elseif ( 'pboss' === $b['kind'] ) {
 			$out = Sawa_Tracker_Party::after_hit( $uid, $b, $attack, $right ) + $out;
 		} else {
 			$t          = (int) $b['meta']['town'];
