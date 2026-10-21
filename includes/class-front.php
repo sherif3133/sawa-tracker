@@ -24,6 +24,11 @@ final class Sawa_Tracker_Front {
 			function () {
 				global $post;
 				if ( $post && has_shortcode( (string) $post->post_content, 'sawa_tracker' ) ) {
+					// Everything now lives in the one Sawa English app at /app (Language Lens plugin).
+					if ( class_exists( 'Sawa_Lens_App' ) && ! isset( $_GET['classic'] ) ) { // phpcs:ignore
+						wp_safe_redirect( Sawa_Lens_App::url(), 302 );
+						exit;
+					}
 					nocache_headers();
 					if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 						define( 'DONOTCACHEPAGE', true );
@@ -33,10 +38,15 @@ final class Sawa_Tracker_Front {
 		);
 	}
 
-	public static function shortcode() {
-		$url = get_permalink();
+	public static function shortcode( $atts = array() ) {
+		$atts = shortcode_atts( array( 'embedded' => '', 'view' => '' ), (array) $atts );
+		$url = is_singular() ? get_permalink() : '';
 		if ( $url && get_option( 'sawa_tr_page' ) !== $url ) {
 			update_option( 'sawa_tr_page', $url, false );
+		}
+		if ( ! $url || class_exists( 'Sawa_Lens_App' ) ) {
+			// Inside the one app (/app): sign-in and sign-out come back there.
+			$url = class_exists( 'Sawa_Lens_App' ) ? Sawa_Lens_App::url() : home_url( '/' );
 		}
 		$uid    = get_current_user_id();
 		$status = $uid ? ( Sawa_Tracker_Game::is_member( $uid ) ? 'approved' : ( 'denied' === Sawa_Tracker_Game::m( $uid, 'status' ) ? 'denied' : 'pending' ) ) : 'guest';
@@ -58,11 +68,14 @@ final class Sawa_Tracker_Front {
 			'classes'    => Sawa_Tracker_Game::CLASSES,
 			'levels'     => Sawa_Tracker_Game::LEVELS,
 			'site'       => get_bloginfo( 'name' ),
+			// Inside the one Sawa English app (/app): no own header or menu; the app shows one part at a time.
+			'embedded'   => '' !== $atts['embedded'],
+			'view'       => sanitize_key( $atts['view'] ),
 		);
 		// Other Sawa plugins (Language Lens) add their own data here.
 		$cfg = apply_filters( 'sawa_tracker_front_cfg', $cfg, $uid );
 		wp_enqueue_script( 'sawa-tracker', SAWA_TR_URL . 'assets/app.js', array(), SAWA_TR_VER, true );
-		return '<div class="sawa-tracker-app" style="min-height:70vh"></div><script type="application/json" class="sawa-tracker-config">'
+		return '<div class="sawa-tracker-app" style="' . ( '' !== $atts['embedded'] ? '' : 'min-height:70vh' ) . '"></div><script type="application/json" class="sawa-tracker-config">'
 			. wp_json_encode( $cfg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>';
 	}
 }

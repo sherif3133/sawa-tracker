@@ -6,6 +6,10 @@
   if (!host || host.shadowRoot) return;
   var cfgEl = host.nextElementSibling;
   var cfg = JSON.parse(cfgEl.textContent);
+  /* Embedded in the one Sawa English app (/app): the app owns the menu; it shows one part at a time with
+     window.SawaTracker.show(view) and hears back through 'sawa-tracker' events on document. */
+  var EMB = !!cfg.embedded;
+  function emit(detail) { if (EMB) { try { document.dispatchEvent(new CustomEvent('sawa-tracker', { detail: detail })); } catch (e) { /* old browser */ } } }
 
   if (!document.getElementById('sawa-brand-fonts-tr')) {
     var lf = document.createElement('link');
@@ -15,6 +19,7 @@
   }
 
   var root = host.attachShadow({ mode: 'open' });
+  if (EMB) host.classList.add('emb');
   root.innerHTML = '<link rel="stylesheet" href="' + cfg.css + '"><div class="app" id="app" dir="rtl" lang="ar" aria-live="polite"><div class="loading"><span class="spin"></span>بنجهز التراكر…</div></div><div id="modal" dir="rtl" lang="ar"></div><div class="toast" id="toast" role="status" dir="rtl"></div>';
   var $ = function (s) { return root.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
@@ -220,6 +225,7 @@
 
   /* ------------------------------------------------------------ class choice */
   function renderClassPick(changing) {
+    if (!changing) emit({ gate: 'class' });
     var html = '<div class="center-card card wide-card"><h2>' + (changing ? 'غيّر الكلاس بتاعك' : 'اختار الكلاس بتاعك') + '</h2>'
       + '<p class="muted">الكلاس بيحدد المهارات اللي تقدر تساعد بيها نفسك وزمايلك. ' + (changing ? 'تقدر تغيّره مرة كل ٣٠ يوم.' : 'تقدر تغيّره بعدين.') + '</p><div class="classes">';
     Object.keys(cfg.classes).forEach(function (k) {
@@ -232,6 +238,7 @@
 
   /** Every student needs a real photo of themselves before using the tracker. */
   function renderPhotoGate() {
+    emit({ gate: 'photo' });
     $('#app').innerHTML = '<div class="center-card card"><div class="photo-gate">' + avatar(S.data.me, 96) + '</div><h2>ارفع صورتك</h2>'
       + '<p class="muted">كل الطلاب في التراكر بيحطوا صورة شخصية ليهم، عشان المجتمع يبقى حقيقي وتعرفوا بعض. لازم ترفع صورة عشان تكمل.</p>'
       + '<button class="btn primary wide" data-act="pick-avatar">' + ico('plus') + ' اختار صورة</button><input type="file" id="av-file" accept="image/*" hidden>'
@@ -241,10 +248,30 @@
   /* ------------------------------------------------------------ dashboard */
   function renderDash() { renderView(); }
   function renderView() {
+    if (EMB) {
+      emit({ view: S.view });
+      if (S.view === 'today') return renderToday();
+      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + bossCard() + '</div><div class="col side">' + boardCard() + feedCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); return; }
+      if (S.view === 'me') { $('#app').innerHTML = header() + '<div class="grid one">' + xpCard() + characterCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'; return; }
+      if (S.view === 'chat') { $('#app').innerHTML = '<div id="view"></div>'; paintChat(); return; }
+    }
     if (S.view === 'clan') { $('#app').innerHTML = header() + '<div id="view">' + clanView() + '</div>'; if (!S.clanLoading) loadClan(); return; }
     if (S.view === 'chat') { $('#app').innerHTML = header() + '<div id="view"></div>'; paintChat(); return; }
     renderHome();
   }
+  /** The app's Today tab: how today is going, the quest, and the buttons to log it. */
+  function renderToday() {
+    var d = S.data, s = d.stats, me = d.me;
+    var goalPct = Math.min(100, Math.round(s.todayMinutes / s.goal * 100));
+    var sub = s.todayMinutes >= s.goal ? 'وصلت لهدف النهارده. شغل عظيم.'
+      : s.studiedToday ? 'فاضلك ' + hm(s.goal - s.todayMinutes) + ' وتوصل لهدف النهارده (' + hm(s.goal) + ').'
+        : s.streak > 0 ? 'سجّل أي نشاط النهارده عشان الستريك بتاعك (' + s.streak + ' يوم) ميقعش.' : 'سجّل أول نشاط النهارده وابدأ الستريك.';
+    $('#app').innerHTML = header()
+      + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>أهلًا يا ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p></div></div>'
+      + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="النهارده ' + s.todayMinutes + ' من ' + s.goal + ' دقيقة"><span><b>' + s.todayMinutes + '</b>من ' + s.goal + ' د</span></div></section>'
+      + statCards(s) + questCard();
+  }
+
   function renderHome() {
     var d = S.data, s = d.stats, me = d.me;
     var goalPct = Math.min(100, Math.round(s.todayMinutes / s.goal * 100));
@@ -270,6 +297,14 @@
 
   function header() {
     var d = S.data, v = S.view || 'home', cu = S.chatUnread || 0;
+    if (EMB) {
+      if (v === 'chat') return '';
+      return '<div class="emb-bar">'
+        + '<button class="btn primary" data-act="log-day">' + ico('cal') + '<span>سجّل يومك</span></button>'
+        + '<button class="btn" data-act="log-activity">' + ico('plus') + '<span>نشاط</span></button>'
+        + '<button class="icon-btn bell" data-act="notifs" aria-label="الإشعارات' + (d.unread ? '، ' + d.unread + ' جديد' : '') + '">' + ico('bell') + (d.unread ? '<i>' + d.unread + '</i>' : '') + '</button>'
+        + '<button class="icon-btn me-btn" data-act="settings" aria-label="إعداداتك">' + avatar(d.me, 34) + '</button></div>';
+    }
     var nav = '<nav class="nav" aria-label="الأقسام">'
       + [['home', 'home', 'الرئيسية'], ['clan', 'shield', 'الكلان'], ['chat', 'chat', 'الشات']].map(function (t) {
         return '<button data-act="view" data-view="' + t[0] + '" aria-current="' + (v === t[0] ? 'page' : 'false') + '">' + ico(t[1]) + '<span>' + t[2] + '</span>' + (t[0] === 'chat' && cu ? '<i>' + cu + '</i>' : '') + '</button>';
@@ -399,7 +434,7 @@
   /* ------------------------------------------------------------ Language Lens (words learned and sentences saved) */
   function lensCard() {
     if (!cfg.lens) return '';
-    return '<section class="card lens" id="lens-card"><div class="card-h"><h3>' + ico('eye') + ' Language Lens</h3><span class="muted small">آخر ١٤ يوم</span></div><div id="lens-body"><p class="muted small">بيحمّل…</p></div><div class="lens-links"><a class="btn primary" href="/lens/">افتح التطبيق (مراجعة، فيديوهات، كتابة)</a><a class="btn ghost" href="/guide/">الدليل خطوة بخطوة</a></div></section>';
+    return '<section class="card lens" id="lens-card"><div class="card-h"><h3>' + ico('eye') + ' Language Lens</h3><span class="muted small">آخر ١٤ يوم</span></div><div id="lens-body"><p class="muted small">بيحمّل…</p></div><div class="lens-links"><a class="btn primary" href="/app/#learn">افتح التطبيق (مراجعة، فيديوهات، كتابة)</a><a class="btn ghost" href="/guide/">الدليل خطوة بخطوة</a></div></section>';
   }
   function loadLens() {
     if (!cfg.lens) return;
@@ -745,7 +780,7 @@
   function mono(nm) { var s = String(nm || '').replace(/^(the|al)\s+/i, '').replace(/^ال/, '').trim(); return esc(s.charAt(0) || '؟'); }
   function loadClan() {
     S.clanLoading = true;
-    return api('/clan').then(function (j) { S.clanData = j; S.clanLoading = false; if (S.view === 'clan') { var v = $('#view'); if (v) v.innerHTML = clanView(); } }, function (x) { S.clanLoading = false; toast(x.message, 'bad'); });
+    return api('/clan').then(function (j) { S.clanData = j; S.clanLoading = false; if (S.view === 'clan' || S.view === 'community') { var v = $('#view'); if (v) v.innerHTML = clanView(); } }, function (x) { S.clanLoading = false; toast(x.message, 'bad'); });
   }
   function weekDots(goalDays, weekStart) {
     var out = '', d0 = new Date(weekStart + 'T12:00:00'), today = S.data.today;
@@ -787,7 +822,7 @@
   var C = { rooms: null, room: null, msgs: [], loadingRoom: false, enabled: true, muted: '', admin: false, rec: null, ai: {}, maxRow: 5, replyTo: null, stickers: {}, reactList: [], gifsOn: false, reacts: {}, tray: '' };
   function loadRooms() {
     return api('/chat/rooms').then(function (j) {
-      C.rooms = j.rooms; C.enabled = j.enabled; C.muted = j.muted; C.admin = j.admin; C.ai = j.ai || {}; C.maxRow = j.maxRow || 5; C.stickers = j.stickers || {}; C.reactList = j.reacts || []; C.gifsOn = !!j.gifs;
+      C.rooms = j.rooms; C.enabled = j.enabled; C.muted = j.muted; C.admin = j.admin; emit({ unread: j.unread }); C.ai = j.ai || {}; C.maxRow = j.maxRow || 5; C.stickers = j.stickers || {}; C.reactList = j.reacts || []; C.gifsOn = !!j.gifs;
       S.chatUnread = j.unread;
       var badge = $('.nav [data-view=chat] i');
       if (S.view !== 'chat') { if (badge) badge.textContent = j.unread; else if (j.unread) { var b = $('.nav [data-view=chat]'); if (b) b.insertAdjacentHTML('beforeend', '<i>' + j.unread + '</i>'); } if (!j.unread && badge) badge.remove(); }
@@ -1262,7 +1297,22 @@
     var h = (location.hash || '').slice(1);
     S.view = ['home', 'clan', 'chat'].indexOf(h) >= 0 ? h : 'home';
     if (/^chat-\d+$/.test(h)) { S.view = 'chat'; C.pending = +h.slice(5); }
+    if (EMB) { S.view = S.wantView || cfg.view || 'today'; emit({ ready: true, data: S.data }); }
     renderDash(); loadBoard(); loadFeed(); loadRooms(); poll();
+  }
+  if (EMB) {
+    window.SawaTracker = {
+      show: function (v) {
+        if (!S.data || S.photoGate || !S.data.me.class) { S.wantView = v; return; }
+        if (S.view !== 'chat' && v !== 'chat' && C.rec) { C.rec.send = false; C.rec.rec.stop(); }
+        S.view = v; renderView();
+        if (v === 'chat') loadRooms();
+        if (v === 'community') { loadBoard(); paintFeed(); }
+      },
+      act: function (a) { var map = { log: openLogActivity, day: openLogDay, notifs: openNotifs, settings: openSettings }; if (S.data && map[a]) map[a](); },
+      data: function () { return S.data; },
+      refresh: function () { return api('/me').then(function (j) { S.data = j; if (['today', 'me'].indexOf(S.view) >= 0) renderView(); return j; }); }
+    };
   }
   if (cfg.status === 'guest') renderGuest();
   else if (cfg.status === 'pending') renderWaiting(false);

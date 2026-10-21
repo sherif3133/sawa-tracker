@@ -462,6 +462,11 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 
 .clan-grid .side { order: 0; }
 
+/* Inside the one Sawa English app */
+.emb-bar { display: flex; gap: 8px; align-items: center; justify-content: flex-start; margin-bottom: 12px; flex-wrap: wrap; }
+.emb-bar .bell, .emb-bar .me-btn { margin-inline-start: 0; }
+.grid.one { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+
 /* English XP card */
 .xp-card { display: grid; gap: 10px; }
 .xp-lv { font-family: var(--display); font-weight: 800; background: var(--fg); color: var(--on-fg); border-radius: 99px; padding: 2px 10px; font-size: 13px; }
@@ -547,3 +552,4 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .m-tr-b { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .m-orig { font-size: 13px; margin-top: 3px; opacity: .9; }
 .lens-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; } .lens-links .btn { text-decoration: none; }
+:host(.emb) .app { min-height: 0; border-radius: 0; padding-top: 4px; background: transparent; }
