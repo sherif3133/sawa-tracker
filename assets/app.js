@@ -38,6 +38,7 @@
     reply: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 5 5v5',
     smile: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14a4 4 0 0 0 7 0M9 9.5h.01M15 9.5h.01',
     text: 'M4 6h16M4 12h16M4 18h10',
+    globe2: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
     flag: 'M5 21V4M5 4h12l-2 4 2 4H5',
     mega: 'M3 10v4h4l9 5V5l-9 5zM19 9a4 4 0 0 1 0 6',
@@ -808,7 +809,8 @@
       + (m.transcript ? '<p class="v-text" dir="ltr">' + esc(m.transcript) + '</p>' : '') : '';
     var st = m.kind === 'sticker' && C.stickers[m.media] ? '<div class="sticker" dir="ltr"><span class="st-e">' + C.stickers[m.media][0] + '</span><span class="st-t">' + esc(C.stickers[m.media][1]) + '</span></div>' : '';
     var gif = m.kind === 'gif' && m.media ? '<img class="gif" src="' + esc(m.media) + '" alt="GIF" loading="lazy">' : '';
-    var body = m.gone ? '<em class="muted">الرسالة اتمسحت</em>' : quote + voice + st + gif + (m.body ? '<p dir="auto">' + linkify(m.body) + '</p>' : '');
+    var trl = m.translated && !m.gone ? '<div class="m-tr">' + (m.orig ? '<button class="m-tr-b" data-act="show-orig" data-id="' + m.id + '">' + ico('globe2', 'tiny') + ' مترجمة من العربي</button>' + (C.showOrig === m.id ? '<p class="m-orig" dir="auto">' + esc(m.orig) + '</p>' : '') : '<span>' + ico('globe2', 'tiny') + ' translated</span>') + '</div>' : '';
+    var body = m.gone ? '<em class="muted">الرسالة اتمسحت</em>' : quote + voice + st + gif + (m.body ? '<p dir="auto">' + linkify(m.body) + '</p>' : '') + trl;
     var rs = (C.reacts[m.id] || []).filter(function (r) { return r.n > 0; });
     var reacts = !m.gone && rs.length ? '<div class="reacts">' + rs.map(function (r) { return '<button class="rx' + (r.mine ? ' on' : '') + '" data-act="msg-react" data-id="' + m.id + '" data-e="' + r.e + '">' + r.e + ' <b>' + r.n + '</b></button>'; }).join('') + '</div>' : '';
     var menu = m.gone ? '' : '<span class="m-acts"><button class="icon-btn sm" data-act="react-pick" data-id="' + m.id + '" title="ريأكشن" aria-label="ريأكشن">' + ico('smile') + '</button><button class="icon-btn sm" data-act="msg-reply" data-id="' + m.id + '" title="رد" aria-label="رد على الرسالة">' + ico('reply') + '</button>'
@@ -832,7 +834,7 @@
       + (r.type === 'group' ? (r.owner === S.data.me.id && r.members.length < 5 ? '<button class="btn sm-btn" data-act="group-add">' + ico('plus') + ' ضيف</button>' : '') + '<button class="btn ghost sm-btn" data-act="group-leave">اخرج</button>' : '') + '</div>';
     var canSend = C.admin || (C.enabled && !(C.muted && C.muted >= S.data.today));
     var composer = canSend
-      ? '<div class="tray" id="tray" hidden></div><form class="composer" id="f-msg"><button type="button" class="icon-btn stk" data-act="tray" aria-label="ستيكرز و GIFs" title="ستيكرز و GIFs">' + ico('smile') + '</button><button type="button" class="icon-btn mic" data-act="mic" aria-label="سجّل رسالة صوتية" title="رسالة صوتية">' + ico('mic') + '</button><div class="rec-bar" hidden><span class="rec-dot"></span><span id="rec-t" dir="ltr">0:00 / 2:00</span><button type="button" class="btn ghost sm-btn" data-act="rec-cancel">إلغاء</button><button type="button" class="btn primary sm-btn" data-act="rec-send">ابعت الصوت</button></div>'
+      ? '<div class="tray" id="tray" hidden></div><div class="tr-panel" id="tr-panel" hidden></div><p class="ar-hint" id="ar-hint" hidden>' + ico('globe2', 'tiny') + ' الشات بالإنجليزي: اكتب بالعربي عادي ودوس إرسال، وهنترجمها لك وتشوفها قبل ما تتبعت.</p><form class="composer" id="f-msg"><button type="button" class="icon-btn stk" data-act="tray" aria-label="ستيكرز و GIFs" title="ستيكرز و GIFs">' + ico('smile') + '</button><button type="button" class="icon-btn mic" data-act="mic" aria-label="سجّل رسالة صوتية" title="رسالة صوتية">' + ico('mic') + '</button><div class="rec-bar" hidden><span class="rec-dot"></span><span id="rec-t" dir="ltr">0:00 / 2:00</span><button type="button" class="btn ghost sm-btn" data-act="rec-cancel">إلغاء</button><button type="button" class="btn primary sm-btn" data-act="rec-send">ابعت الصوت</button></div>'
         + '<textarea id="m-body" rows="1" maxlength="1000" placeholder="اكتب رسالة… (Enter للإرسال)" dir="auto" aria-label="الرسالة"></textarea><button class="btn primary send-btn" type="submit" aria-label="ابعت">' + ico('send') + '</button></form>'
       : '<p class="note">' + (C.enabled ? 'تقدر تقرا الشات بس مش هتقدر تبعت لحد ' + fmtDay(C.muted) + '.' : 'الشات متوقف دلوقتي.') + '</p>';
     el.innerHTML = head + '<ul class="msgs" id="msgs"><li class="loading"><span class="spin"></span></li></ul>' + (canSend ? '<div class="reply-bar" id="reply-bar" hidden></div>' : '') + composer;
@@ -840,7 +842,7 @@
     var ta = $('#m-body');
     if (ta) {
       ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMsg(); } });
-      ta.addEventListener('input', function () { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; });
+      ta.addEventListener('input', function () { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; var h = $('#ar-hint'); if (h) h.hidden = !(C.ai.translate && !C.admin && isArabic(ta.value)); });
       $('#f-msg').addEventListener('submit', function (e) { e.preventDefault(); sendMsg(); });
     }
     if (C.msgs.length && C.msgs.roomId === r.id) paintMessages(); else loadMsgs();
@@ -866,6 +868,7 @@
     var ta = $('#m-body'), r = C.room; if (!r) return;
     var body = extra ? '' : ta ? ta.value.trim() : '';
     if (!body && !form && !extra) return;
+    if (!form && !extra && !C.admin && isArabic(body)) { if (C.ai.translate) translateFlow(body); else toast('الشات بالإنجليزي بس.', 'bad'); return; }
     var last = C.msgs.length ? C.msgs[C.msgs.length - 1].id : 0;
     var rt = C.replyTo ? C.replyTo.id : 0;
     if (form && rt) form.append('reply_to', rt);
@@ -942,6 +945,28 @@
     $$('.react-pick').forEach(function (p) { p.remove(); });
     var li = $('#msgs li[data-id="' + id + '"] .m-col'); if (!li) return;
     li.insertAdjacentHTML('beforeend', '<div class="react-pick">' + C.reactList.map(function (e) { return '<button data-act="msg-react" data-id="' + id + '" data-e="' + e + '">' + e + '</button>'; }).join('') + '</div>');
+  }
+  /** More than 30% of the letters are Arabic script. */
+  function isArabic(t) {
+    var ar = (String(t).match(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
+    var all = (String(t).match(/\p{L}/gu) || []).length;
+    return all > 0 && ar / all > 0.3;
+  }
+  /** Arabic (any dialect) → English preview. The student can edit it, then sends the English. */
+  function translateFlow(text) {
+    var p = $('#tr-panel'); if (!p) return;
+    paintTray('');
+    p.hidden = false;
+    p.innerHTML = '<div class="tr-h"><b>' + ico('globe2', 'tiny') + ' بنترجم رسالتك…</b></div><span class="spin"></span>';
+    api('/chat/translate', { method: 'POST', body: { text: text } }).then(function (j) {
+      p.innerHTML = '<div class="tr-h"><b>' + ico('globe2', 'tiny') + ' رسالتك بالإنجليزي</b><button class="icon-btn sm" data-act="tr-cancel" aria-label="إلغاء">' + ico('x') + '</button></div>'
+        + '<p class="tr-orig" dir="auto">' + esc(text) + '</p>'
+        + '<textarea id="tr-en" rows="2" dir="ltr" maxlength="1000">' + esc(j.english) + '</textarea>'
+        + (j.phrases && j.phrases.length ? '<div class="tr-ph"><span class="small muted">اتعلم من رسالتك:</span>' + j.phrases.map(function (x) { return '<span class="tr-chip"><b dir="ltr">' + esc(x.en) + '</b> ' + esc(x.ar) + '</span>'; }).join('') + '</div>' : '')
+        + '<div class="tr-btns"><button class="btn ghost sm-btn" data-act="tr-cancel">ارجع عدّل</button><button class="btn primary sm-btn" data-act="tr-send">ابعتها بالإنجليزي</button></div>';
+      C.trOrig = text;
+      var en = $('#tr-en'); if (en) en.focus();
+    }, function (x) { p.hidden = true; toast(x.message, 'bad'); });
   }
   function fmtDur(s) { return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function msgById(id) { return C.msgs.filter(function (m) { return m.id === id; })[0]; }
@@ -1156,6 +1181,17 @@
           var id = +el.dataset.id; C.reacts[id] = (j.reacts && j.reacts[id]) || []; paintMessages(true);
         }, function (x) { toast(x.message, 'bad'); });
         break;
+      case 'tr-cancel': var tp = $('#tr-panel'); if (tp) { tp.hidden = true; tp.innerHTML = ''; } C.trOrig = ''; break;
+      case 'tr-send':
+        var en2 = $('#tr-en'), eng = en2 ? en2.value.trim() : '';
+        if (!eng) break;
+        if (isArabic(eng)) { toast('الرسالة لازم تتبعت بالإنجليزي.', 'bad'); break; }
+        var mb2 = $('#m-body'); if (mb2) { mb2.value = ''; mb2.style.height = 'auto'; }
+        var tp2 = $('#tr-panel'); if (tp2) { tp2.hidden = true; tp2.innerHTML = ''; }
+        var ah = $('#ar-hint'); if (ah) ah.hidden = true;
+        sendMsg(null, { body: eng, orig: C.trOrig || '' }); C.trOrig = '';
+        break;
+      case 'show-orig': C.showOrig = C.showOrig === +el.dataset.id ? 0 : +el.dataset.id; paintMessages(true); break;
       case 'msg-reply': C.replyTo = msgById(+el.dataset.id) || null; paintReplyBar(); var mb = $('#m-body'); if (mb) mb.focus(); break;
       case 'reply-cancel': C.replyTo = null; paintReplyBar(); break;
       case 'goto-msg': gotoMsg(+el.dataset.id); break;

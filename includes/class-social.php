@@ -77,6 +77,7 @@ final class Sawa_Tracker_Social {
 			transcript text,
 			kind varchar(10) NOT NULL DEFAULT '',
 			media varchar(300) NOT NULL DEFAULT '',
+			orig text,
 			deleted tinyint(1) NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -399,6 +400,9 @@ final class Sawa_Tracker_Social {
 			'transcript' => $m['deleted'] ? '' : (string) ( $m['transcript'] ?? '' ),
 			'kind'       => $m['deleted'] ? '' : (string) ( $m['kind'] ?? '' ),
 			'media'      => $m['deleted'] ? '' : (string) ( $m['media'] ?? '' ),
+			// Written in Arabic and sent after AI translation; only the writer sees the original.
+			'translated' => ! $m['deleted'] && '' !== (string) ( $m['orig'] ?? '' ),
+			'orig'       => ! $m['deleted'] && (int) $m['user_id'] === get_current_user_id() ? (string) ( $m['orig'] ?? '' ) : '',
 			'gone'       => (bool) $m['deleted'],
 			'at'         => mysql2date( 'c', $m['created_at'] ),
 		);
@@ -420,6 +424,13 @@ final class Sawa_Tracker_Social {
 	public static function message_row( $id ) {
 		global $wpdb;
 		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::t( 'messages' ) . ' WHERE id = %d', $id ), ARRAY_A ); // phpcs:ignore
+	}
+
+	/** Share of letters in Arabic script (0–1). */
+	public static function arabic_share( $text ) {
+		$ar  = preg_match_all( '/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{FB50}-\x{FDFF}\x{FE70}-\x{FEFF}]/u', (string) $text );
+		$all = preg_match_all( '/\p{L}/u', (string) $text );
+		return $all ? $ar / $all : 0;
 	}
 
 	/** Spam protection: how many of the latest messages in this room are this student's, in a row (last 15 minutes). */
@@ -518,7 +529,7 @@ final class Sawa_Tracker_Social {
 		return $text;
 	}
 
-	public static function send( $uid, $room_id, $body, $audio_url = '', $reply_to = 0, $duration = 0, $kind = '', $media = '' ) {
+	public static function send( $uid, $room_id, $body, $audio_url = '', $reply_to = 0, $duration = 0, $kind = '', $media = '', $orig = '' ) {
 		global $wpdb;
 		$room = self::room( $room_id );
 		if ( ! self::can_access( $uid, $room ) ) {
@@ -532,6 +543,11 @@ final class Sawa_Tracker_Social {
 			return new WP_Error( 'muted', sprintf( 'تقدر تقرا الشات بس مش هتقدر تبعت لحد %s.', wp_date( 'M j', strtotime( $muted . ' 12:00' ) ) ) );
 		}
 		$body = trim( mb_substr( sanitize_textarea_field( $body ), 0, 1000 ) );
+		// The chat is English only: Arabic is written in the translate box and sent as English.
+		if ( ! $is_admin && self::arabic_share( $body ) > 0.3 ) {
+			return new WP_Error( 'arabic', 'الشات بالإنجليزي بس. اكتب بالعربي ودوس إرسال، وهنترجمها لك بالإنجليزي قبل ما تتبعت.' );
+		}
+		$orig = '' !== $body ? trim( mb_substr( sanitize_textarea_field( (string) $orig ), 0, 1000 ) ) : '';
 		if ( 'sticker' === $kind ) {
 			if ( ! isset( self::STICKERS[ $media ] ) ) {
 				return new WP_Error( 'sticker', 'الستيكر ده مش موجود.' );
@@ -583,6 +599,7 @@ final class Sawa_Tracker_Social {
 				'reply_to'   => $parent ? (int) $parent['id'] : 0,
 				'kind'       => $kind,
 				'media'      => $media,
+				'orig'       => $orig,
 				'created_at' => Sawa_Tracker_Game::now_mysql(),
 			)
 		);

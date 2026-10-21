@@ -39,6 +39,7 @@ final class Sawa_Tracker_Rest_Social {
 		self::route( '/chat/messages/(?P<id>\d+)/feedback', 'POST', 'feedback' );
 		self::route( '/chat/messages/(?P<id>\d+)/react', 'POST', 'react' );
 		self::route( '/chat/gifs', 'GET', 'gifs' );
+		self::route( '/chat/translate', 'POST', 'translate' );
 		self::route( '/chat/messages/(?P<id>\d+)', 'DELETE', 'delete_message' );
 		self::route( '/members', 'GET', 'members' );
 		self::route( '/quest', 'POST', 'quest' );
@@ -83,7 +84,7 @@ final class Sawa_Tracker_Rest_Social {
 			'stickers' => Sawa_Tracker_Social::STICKERS,
 			'reacts'  => Sawa_Tracker_Social::REACTS,
 			// Transcripts and feedback come from the Sawa Lens plugin when it's set up.
-			'ai'      => (array) apply_filters( 'sawa_tracker_chat_ai', array( 'transcribe' => false, 'feedback' => false ), $uid ),
+			'ai'      => (array) apply_filters( 'sawa_tracker_chat_ai', array( 'transcribe' => false, 'feedback' => false, 'translate' => false ), $uid ),
 		);
 	}
 
@@ -141,7 +142,7 @@ final class Sawa_Tracker_Rest_Social {
 			}
 			$audio = esc_url_raw( $up['url'] );
 		}
-		$id = Sawa_Tracker_Social::send( $uid, (int) $room['id'], (string) $r->get_param( 'body' ), $audio, (int) $r->get_param( 'reply_to' ), (int) $r->get_param( 'duration' ), (string) $r->get_param( 'kind' ), (string) $r->get_param( 'media' ) );
+		$id = Sawa_Tracker_Social::send( $uid, (int) $room['id'], (string) $r->get_param( 'body' ), $audio, (int) $r->get_param( 'reply_to' ), (int) $r->get_param( 'duration' ), (string) $r->get_param( 'kind' ), (string) $r->get_param( 'media' ), (string) $r->get_param( 'orig' ) );
 		if ( is_wp_error( $id ) ) {
 			return self::fail( $id );
 		}
@@ -236,6 +237,19 @@ final class Sawa_Tracker_Rest_Social {
 		global $wpdb;
 		$wpdb->update( Sawa_Tracker_Game::table( 'messages' ), array( 'transcript' => $text ), array( 'id' => (int) $m['id'] ) ); // phpcs:ignore
 		return $text;
+	}
+
+	/** Arabic (any dialect) → natural English for the chat. The student checks it before it's sent. */
+	public static function translate( WP_REST_Request $r ) {
+		$text = trim( mb_substr( sanitize_textarea_field( (string) $r->get_param( 'text' ) ), 0, 1000 ) );
+		if ( '' === $text ) {
+			return self::fail( 'اكتب رسالة الأول.' );
+		}
+		$res = apply_filters( 'sawa_tracker_translate', new WP_Error( 'off', 'الترجمة مش متفعّلة لسه.' ), $text, self::uid() );
+		if ( is_wp_error( $res ) ) {
+			return self::fail( $res );
+		}
+		return array( 'ok' => true ) + $res;
 	}
 
 	public static function react( WP_REST_Request $r ) {
