@@ -399,7 +399,7 @@
   /* ------------------------------------------------------------ Language Lens (words learned and sentences saved) */
   function lensCard() {
     if (!cfg.lens) return '';
-    return '<section class="card lens" id="lens-card"><div class="card-h"><h3>' + ico('eye') + ' Language Lens</h3><span class="muted small">آخر ١٤ يوم</span></div><div id="lens-body"><p class="muted small">بيحمّل…</p></div></section>';
+    return '<section class="card lens" id="lens-card"><div class="card-h"><h3>' + ico('eye') + ' Language Lens</h3><span class="muted small">آخر ١٤ يوم</span></div><div id="lens-body"><p class="muted small">بيحمّل…</p></div><div class="lens-links"><a class="btn primary" href="/lens/">افتح التطبيق (مراجعة، فيديوهات، كتابة)</a><a class="btn ghost" href="/guide/">الدليل خطوة بخطوة</a></div></section>';
   }
   function loadLens() {
     if (!cfg.lens) return;
