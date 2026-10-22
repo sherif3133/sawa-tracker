@@ -977,6 +977,8 @@
       case 'party_win': return '🏆 Your party <b dir="auto">' + esc(d.party) + '</b> defeated the ' + esc(d.boss) + '! +' + d.coins + ' 🪙 +' + d.elixirs + ' ⚗';
       case 'party_down': return '⚔ The party <b dir="auto">' + esc(d.party) + '</b> defeated the ' + esc(d.boss) + (d.live ? ' in a live battle' : '') + '!';
       case 'road': return name(e.who) + ' walked the whole learning road in ' + esc(d.town) + ' today ' + esc(d.icons || '') + ' ✓ (studied ' + (d.n || 5) + ' ways, without leaving the Silk Road)';
+      case 'road_week': return name(e.who) + ' walked the learning road on ' + d.days + ' days this week (' + esc(d.chapter || '') + ') and got the title ' + esc(d.title) + ' 📜';
+      case 'road_group': return '🐫 Together we finished ' + d.camps + ' camps on the learning road this week (' + d.people + ' travellers)! Everyone with 3+ camps gets 30 🪙 and an elixir.';
       case 'town': return name(e.who) + ' defeated the ' + esc(d.boss) + ' in ' + esc(d.town) + (d.next ? ' and set off for ' + esc(d.next) : '') + ' 🐫';
       case 'coop_ask': return name(e.who) + ' asked you for help: <span dir="ltr">"' + esc(d.q) + '"</span> 🙋 Answer it on the caravan board.';
       case 'coop_answer': return name(e.who) + ' answered your question <span dir="ltr">"' + esc(d.q) + '"</span>. Did it help? 🐫';
@@ -998,7 +1000,7 @@
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', road: 'check', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', chat_helper: 'medal', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', road: 'check', road_week: 'medal', road_group: 'users', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', chat_helper: 'medal', feedback_fixed: 'check', feedback_planned: 'pen' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];

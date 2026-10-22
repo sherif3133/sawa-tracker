@@ -1544,7 +1544,7 @@
     try { if (localStorage.getItem('sawaRoadIntro')) return; localStorage.setItem('sawaRoadIntro', '1'); } catch (e) { return; }
     var nx = ROAD.st(r.next) || r.stations[0];
     dialog.who = 'elder';
-    dialog('Elder Wen', 'Traveller, look east! Between our gate and the beast there are ' + r.total + ' camps now: ' + r.stations.map(function (x) { return x.icon + ' ' + x.name.toLowerCase(); }).join(', ') + '. Walk the road every day: finish a camp and the next one opens. All you study there counts by itself — no need to report it anywhere. The strip at the bottom takes you to any camp.', [{ label: nx.icon + ' Take me to the first camp', primary: true, run: function () { ROAD.goTo(nx.k, true); } }], '👴');
+    dialog('Elder Wen', 'Traveller, look east! Between our gate and the beast there are ' + r.total + ' camps now: ' + r.stations.map(function (x) { return x.icon + ' ' + x.name.toLowerCase(); }).join(', ') + '. Walk the road every day: finish a camp and the next one opens. All you study there counts by itself — no need to report it anywhere. The strip at the bottom takes you to any camp, and 📜 shows this week\'s chapter: walk the road on more days, and all of us together, for big rewards.', [{ label: nx.icon + ' Take me to the first camp', primary: true, run: function () { ROAD.goTo(nx.k, true); } }], '👴');
   };
   var CAMP_C = { video: '#c0392b', song: '#8e44ad', story: '#2e86c1', cards: '#c99a2e', write: '#239b56' };
   var PROMPTS = ['Tell a traveller about your day yesterday. What did you do?', 'Describe your town or city to a traveller who has never been there.', 'What do you like to do at the weekend, and why?', 'Write about someone in your family. What are they like?', 'Where do you want to travel one day? Why there?', 'What is your favourite food, and how do you make it?', 'What did you learn on the road today? Use two of your new words.', 'Write a short message to a friend: invite them to do something with you this week.'];
@@ -1570,13 +1570,16 @@
     box.classList.toggle('on', !!r.total);
     if (!r.total) { box.innerHTML = ''; return; }
     var b = H.world().town.boss;
-    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + '</small><div>' + r.stations.map(function (s) {
+    var ch = r.chapter;
+    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + (ch ? ' · 📜 ' + ch.days + '/7 days' : '') + '</small><div>' + (ch ? '<button data-road="chapter" class="ch" aria-label="This week\'s chapter">📜</button>' : '') + r.stations.map(function (s) {
       return '<button data-road="' + s.k + '" class="' + s.state + '" aria-label="' + esc(s.name) + ' camp: ' + s.state + '">' + s.icon + (s.state === 'done' ? '<i>✓</i>' : '') + '</button>';
     }).join('') + '<button data-road="boss" class="boss" aria-label="The boss">' + esc(b.icon) + '</button></div>';
   };
   ROAD.tapStrip = function (k) {
     if (GAME.cur || $('.sg-battle.on') || $('.sg-panel.on')) return;
+    var S0 = ROAD.scene(); if (S0 && S0.frozen && $('.sg-dlg.on')) return; // a monster is asking “Fight it?”
     if (k === 'boss') return ROAD.toBoss();
+    if (k === 'chapter') return ROAD.chapter();
     var s = ROAD.st(k); if (!s) return;
     if (s.state === 'locked') return ROAD.open(k);
     ROAD.goTo(k, true);
@@ -1604,6 +1607,17 @@
     ROAD.cur = k; var S = ROAD.scene(); if (S) S.lastSync = 0; // tell the others where you are now
     ROAD[k](s);
   };
+  /** This week's chapter: walk the whole road on 3, 5 and 7 days, and the camps the whole community finishes together. */
+  ROAD.chapter = function () {
+    var r = ROAD.data(), c = r.chapter; if (!c) return;
+    var g = c.group, pct = Math.min(100, Math.round(100 * g.camps / Math.max(1, g.target))), nx = ROAD.st(r.next);
+    var b = panel('sg-roadp sg-chapp', '📜 Chapter ' + c.n + ': ' + esc(c.title), '<p>' + wrapWords(c.text) + '</p>'
+      + '<h4>Your week: ' + c.days + ' of 7 days</h4><div class="sg-days">' + [1, 2, 3, 4, 5, 6, 7].map(function (d) { return '<i class="' + (d <= c.days ? 'on' : '') + '">' + (d <= c.days ? '✓' : d) + '</i>'; }).join('') + '</div>'
+      + '<p class="small">A day counts when you walk the whole road (all ' + r.total + ' camps).' + (c.today ? ' Today counts already ✓' : '') + '</p><ul class="sg-tiers">' + c.tiers.map(function (t) { return '<li class="' + (t.got ? 'got' : '') + '"><b>' + (t.got ? '✓ ' : '') + t.days + ' days</b><span>+' + t.coins + ' 🪙' + (t.elixirs ? ' +' + t.elixirs + ' ⚗' : '') + (t.title ? ' · title “' + esc(t.title) + '”' : '') + '</span></li>'; }).join('') + '</ul>'
+      + '<h4>🐫 Together: ' + g.camps + ' of ' + g.target + ' camps</h4><div class="sg-gbar"><i style="width:' + pct + '%"></i></div><p class="small">' + g.people + ' traveller' + (g.people === 1 ? '' : 's') + ' walked the road this week. ' + (g.reached ? 'The goal is reached! 🎉 ' : 'When all of us reach the goal, ') + 'everyone with ' + g.need + '+ camps this week gets +' + g.coins + ' 🪙 and an elixir. You: ' + g.mine + ' camp' + (g.mine === 1 ? '' : 's') + '.</p>'
+      + (nx ? '<div class="sg-opts"><button class="pri" data-go>' + nx.icon + ' To the ' + esc(nx.name.toLowerCase()) + ' camp</button></div>' : ''));
+    var go = b.querySelector('[data-go]'); if (go) go.onclick = function () { closePanel(); ROAD.goTo(nx.k, true); };
+  };
   /** Stop the video and the song (when the panel closes or changes). */
   ROAD.media = function () {
     var V = ROAD.v; if (V) { clearInterval(V.tm); try { if (V.p && V.p.destroy) V.p.destroy(); } catch (e) { /* gone */ } ROAD.v = null; }
@@ -1625,11 +1639,13 @@
   /** Under a finished camp: the way on (the next camp, or the boss and the share card when the road is done). */
   ROAD.after = function (b, j) {
     if (!b.isConnected || b.querySelector('.sg-ron')) return;
-    var r = ROAD.data(), nx = ROAD.st(r.next), d = el('div', 'sg-ron');
+    var r = ROAD.data(), nx = ROAD.st(r.next), d = el('div', 'sg-ron'), wk = j && j.week, gp = j && j.group;
+    var extra = (wk && wk.coins ? '<p>📜 ' + wk.days + ' road days this week: +' + wk.coins + ' 🪙' + (wk.elixirs ? ' +' + wk.elixirs + ' ⚗' : '') + (wk.title ? ' and the title <b>' + esc(wk.title) + '</b>!' : '') + '</p>' : wk && wk.days ? '<p class="small">📜 ' + wk.days + ' of 7 road days this week.</p>' : '') + (gp && gp.paid ? '<p>🐫 The community reached this week\'s goal together! +' + gp.coins + ' 🪙 +1 ⚗</p>' : gp && gp.reached ? '<p>🐫 The community reached this week\'s goal together! Finish ' + ((r.chapter && r.chapter.group.need) || 3) + ' camps this week to share the reward.</p>' : '');
     d.innerHTML = j && j.complete
       ? '<b>🎉 You walked the whole road today!</b><p class="small">+' + j.coins + ' 🪙 +1 ⚗' + (j.xp ? ' +' + j.xp + ' XP' : '') + '. Your study counts by itself: the minutes are in your log already, no need to report them.</p><div class="sg-opts"><button class="pri" data-rn="boss">' + esc(H.world().town.boss.icon) + ' To the boss</button><button data-rn="share">📣 Share it on Skool</button></div>'
       : nx ? '<p class="small">Next on your road:</p><div class="sg-opts"><button class="pri" data-rn="' + nx.k + '">' + nx.icon + ' ' + esc(nx.name) + ' camp →</button></div>'
         : '<p class="small">✓ Today\'s road is done. Doing a camp again still counts as study.</p>';
+    if (extra) d.insertAdjacentHTML('afterbegin', extra);
     b.appendChild(d);
     d.querySelectorAll('[data-rn]').forEach(function (x) {
       x.onclick = function () { var k = x.dataset.rn; if (k === 'share') return SHARE.show('I walked the whole learning road today'); closePanel(); if (k === 'boss') ROAD.toBoss(); else ROAD.goTo(k, true); };
@@ -1679,21 +1695,24 @@
   ROAD.video = function () {
     var b = panel('sg-roadp sg-vidp', '📺 Video camp', '<p class="sg-wait">Loading the videos…</p>');
     H.lens.api('videos').then(function (d) {
-      var list = d.lessons || [];
+      var list = (d.lessons || []).filter(function (l) { return l.kind !== 'song'; });
       if (!list.length) { b.innerHTML = '<p>No videos at this camp yet. Sherif adds new ones often!</p>'; return; }
-      ROAD.watch(b, (list.filter(function (l) { return l.answered < l.total; })[0] || list[0]).id, list);
+      ROAD.watch(b, (list.filter(function (l) { return l.answered < l.total; })[0] || list[0]).id, list, 'video');
     }, ROAD.err(b));
   };
-  ROAD.watch = function (b, id, list) {
-    ROAD.media();
+  ROAD.watch = function (b, id, list, camp) {
+    ROAD.media(); camp = camp || 'video';
+    var pn = $('.sg-panel'); if (pn) pn.classList.add('sg-vidp'); // the video loop runs while this panel is open
     b.innerHTML = '<p class="sg-wait">Loading the video…</p>';
     Promise.all([H.lens.api('video?id=' + id), ROAD.yt(), H.lens.lex()]).then(function (r) {
       if (!b.isConnected) return;
-      var L = r[0], V = ROAD.v = { L: L, played: 0, last: 0, asking: null, tm: null, p: null, fresh: false, fin: false };
-      b.innerHTML = '<h4>' + esc(L.title || 'Video') + '</h4><div class="sg-yt"><div></div></div><div class="sg-qm"></div><div class="sg-vq"></div>'
+      var L = r[0], V = ROAD.v = { L: L, camp: camp, played: 0, last: 0, asking: null, tm: null, p: null, fresh: false, fin: false, line: -1 }, tr = L.transcript || [];
+      b.innerHTML = '<h4>' + (camp === 'song' ? '🎵 ' : '') + esc(L.title || 'Video') + '</h4><div class="sg-yt"><div></div></div><div class="sg-qm"></div><div class="sg-vq"></div>'
+        + (tr.length ? '<p class="small">' + (camp === 'song' ? '🎤 The lyrics' : '📜 The transcript') + ' — tap a word for its meaning (the video waits), tap a time to jump there.</p><div class="sg-trs">' + tr.map(function (x, i) { return '<p data-i="' + i + '"><button data-seek="' + x[0] + '">' + Math.floor(x[0] / 60) + ':' + ('0' + Math.floor(x[0] % 60)).slice(-2) + '</button> ' + wrapWords(x[1]) + '</p>'; }).join('') + '</div>' : '')
         + '<p class="small">The video stops for a few questions about the words you need. Missed words go to your review cards.</p>'
         + (list.length > 1 ? '<details class="sg-more"><summary>Other videos</summary>' + list.map(function (l) { return l.id === L.id ? '' : '<button data-vid="' + l.id + '">' + esc(l.title || 'Video') + ' · ' + l.correct + '/' + l.total + '</button>'; }).join('') + '</details>' : '');
-      b.querySelectorAll('[data-vid]').forEach(function (x) { x.onclick = function () { ROAD.watch(b, +x.dataset.vid, list); }; });
+      b.querySelectorAll('[data-vid]').forEach(function (x) { x.onclick = function () { ROAD.watch(b, +x.dataset.vid, list, camp); }; });
+      b.querySelectorAll('[data-seek]').forEach(function (x) { x.onclick = function () { if (V.asking) return; try { V.p.seekTo(+x.dataset.seek, true); V.p.playVideo(); } catch (e) { /* not ready */ } }; });
       ROAD.marks();
       V.p = new window.YT.Player(b.querySelector('.sg-yt > div'), {
         videoId: L.videoId, width: '100%', height: '100%',
@@ -1715,11 +1734,22 @@
     V.last = t;
     var qs = V.L.questions, all = qs.every(function (q) { return V.L.answers[q.id]; });
     // done: every question answered now, or most of the video watched (a quiz done on another day can still be watched again)
-    if (!V.fin && ((all && V.fresh) || V.played >= Math.min(150, (dur || 180) * 0.8) || (!qs.length && st === 0))) { V.fin = true; ROAD.finish('video', $('.sg-vidp .sg-pb')); }
+    if (!V.fin && ((all && V.fresh) || V.played >= Math.min(150, (dur || 180) * 0.8) || (!qs.length && st === 0))) { V.fin = true; ROAD.finish(V.camp, $('.sg-vidp .sg-pb')); }
+    ROAD.follow(t);
     if (V.asking || st !== 1) return;
     var q = qs.filter(function (x) { return !V.L.answers[x.id] && x.t <= t; })[0];
     if (q) { V.p.pauseVideo(); ROAD.ask(q); }
   };
+  /** The transcript line being said now: marked, and kept in view inside its box (the page itself does not jump). */
+  ROAD.follow = function (t) {
+    var V = ROAD.v, tr = V.L.transcript || [], box = $('.sg-trs'); if (!box || !tr.length) return;
+    var i = -1; for (var k = 0; k < tr.length && tr[k][0] <= t + 0.3; k++) i = k;
+    if (i === V.line) return; V.line = i;
+    box.querySelectorAll('p.on').forEach(function (p) { p.classList.remove('on'); });
+    var el2 = box.querySelector('p[data-i="' + i + '"]'); if (!el2) return;
+    el2.classList.add('on'); if (!box.matches(':hover')) box.scrollTop = Math.max(0, el2.offsetTop - box.offsetTop - box.clientHeight / 3);
+  };
+  ROAD.pause = function () { var V = ROAD.v; try { if (V && V.p && V.p.getPlayerState && V.p.getPlayerState() === 1) V.p.pauseVideo(); } catch (e) { /* gone */ } };
   ROAD.ask = function (q) {
     var V = ROAD.v, box = $('.sg-vq'); if (!box) return;
     V.asking = q;
@@ -1747,9 +1777,13 @@
   /* -------- 🎵 the song camp: "My songs" from Sawa Lens (the new words you saved, sung), with a fill-the-gaps game */
   ROAD.song = function () {
     var b = panel('sg-roadp sg-songp', '🎵 Song camp', '<p class="sg-wait">Loading your songs…</p>');
-    Promise.all([H.lens.api('songs'), H.lens.lex()]).then(function (res) {
+    var none = function () { return { songs: [], state: {} }; };
+    Promise.all([H.lens.api('songs').catch(none), H.lens.lex(), H.lens.api('videos').catch(function () { return { lessons: [] }; })]).then(function (res) {
       var r = res[0], ready = r.songs.filter(function (s) { return s.status === 'ready' && s.audio; }), st = r.state || {};
       var making = r.songs.filter(function (s) { return ['queued', 'writing', 'singing'].indexOf(s.status) >= 0; })[0];
+      var curated = (res[2].lessons || []).filter(function (l) { return l.kind === 'song'; });
+      if (curated.length && ready.length) return ROAD.songList(b, curated, ready, st);
+      if (curated.length) return ROAD.watch(b, (curated.filter(function (l) { return l.answered < l.total; })[0] || curated[0]).id, curated, 'song');
       if (ready.length) return ROAD.sing(b, ready[0], ready, st);
       if (making) { b.innerHTML = '<p>✍️ Your song is being written and sung right now. It takes about a minute: walk around and come back to this camp.</p>'; return; }
       if (st.can) {
@@ -1759,6 +1793,13 @@
       }
       b.innerHTML = '<p>' + ({ more: 'Save ' + Math.max(1, (st.need || 10) - (st.new || 0)) + ' more new words (tap any word in the game and press “+ Learning”) and your first song is ready to make.', today: 'One new song a day: come back tomorrow.', budget: 'New songs are paused until next month.', off: 'Songs are not switched on yet.' }[st.why] || 'No song here yet.') + '</p>';
     }, ROAD.err(b));
+  };
+  /** Both kinds of songs: Sherif's (a music video with the lyrics and questions) and your own (your new words, sung). */
+  ROAD.songList = function (b, curated, ready, st) {
+    b.innerHTML = '<h4>🎵 Songs from Sherif</h4><div class="sg-more">' + curated.map(function (l) { return '<button data-cs="' + l.id + '">' + esc(l.title || 'Song') + (l.total ? ' · ' + l.correct + '/' + l.total : '') + (l.answered >= l.total && l.total ? ' ✓' : '') + '</button>'; }).join('') + '</div>'
+      + '<h4>🎙 Your own songs</h4><div class="sg-more">' + ready.map(function (x, i) { return '<button data-ms="' + i + '">' + esc(x.title || 'Your song') + '</button>'; }).join('') + '</div><p class="small">Sing one of them today and the camp is done.</p>';
+    b.querySelectorAll('[data-cs]').forEach(function (x) { x.onclick = function () { ROAD.watch(b, +x.dataset.cs, curated, 'song'); }; });
+    b.querySelectorAll('[data-ms]').forEach(function (x) { x.onclick = function () { ROAD.sing(b, ready[+x.dataset.ms], ready, st); }; });
   };
   ROAD.sing = function (b, s, ready, st) {
     var lines = String(s.lyrics || '').split(/\n/).map(function (t) { return t.trim(); }).filter(function (t) { return t && !/^\[.*\]$/.test(t); });
@@ -1952,7 +1993,7 @@
       mount.appendChild(ROOT);
       ROOT.addEventListener('click', function (e) {
         var bh = e.target.closest('[data-bar]'); if (bh) { e.stopPropagation(); var x = BAR_HELP[bh.dataset.bar]; return dialog(x[0], x[1], [], '💡'); }
-        var w = e.target.closest('.lw'); if (w) { e.stopPropagation(); return LENS.word(w); }
+        var w = e.target.closest('.lw'); if (w) { e.stopPropagation(); if (w.closest('.sg-trs')) ROAD.pause(); return LENS.word(w); }
         var rd = e.target.closest('[data-road]'); if (rd) { e.stopPropagation(); return ROAD.tapStrip(rd.dataset.road); }
         var sp = e.target.closest('[data-say]'); if (sp) { e.stopPropagation(); return VOICE.say(sp.dataset.say); }
         var b = e.target.closest('[data-g]'); if (b) GAME.menu(b.dataset.g);

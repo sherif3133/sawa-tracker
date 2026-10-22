@@ -1126,3 +1126,18 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .sg-more summary { cursor: pointer; color: #d8cfb8; font-size: 13px; padding: 4px 0; }
 .sg-more button { display: block; width: 100%; text-align: left; margin-top: 4px; }
 .sg-err { color: #ff9a9a; }
+/* the learning road, phases 2–3: the transcript under the player, the weekly chapter */
+.sg-trs { position: relative; max-height: 34vh; overflow: auto; display: grid; gap: 4px; padding: 6px 8px; background: rgba(0, 0, 0, .22); border-radius: 8px; font: 16px/1.5 Georgia, serif; color: #f6ecd4; overscroll-behavior: contain; }
+.sg-trs p { padding: 2px 4px; border-radius: 6px; }
+.sg-trs p.on { background: rgba(231, 200, 115, .22); color: #fff; }
+.sg-pb .sg-trs button[data-seek] { font: 600 11px var(--body); padding: 3px 6px; min-width: 40px; margin-right: 4px; vertical-align: 1px; }
+.sg-road button.ch { border-color: #e7c873; background: #3a2f1a; }
+.sg-days { display: flex; gap: 5px; }
+.sg-days i { font-style: normal; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; background: #2b3168; border: 2px solid #8f86c9; font-weight: 700; }
+.sg-days i.on { background: #2f6a4a; border-color: #7fe08f; }
+.sg-tiers { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.sg-tiers li { display: flex; justify-content: space-between; gap: 8px; background: #2b3168; border-radius: 8px; padding: 6px 10px; }
+.sg-tiers li.got { background: #2f6a4a; }
+.sg-gbar { height: 14px; border-radius: 7px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.sg-gbar i { display: block; height: 100%; background: linear-gradient(#ffe39a, #c99a2e); transition: width .4s; }
+@media (max-width: 440px) { .sg-road { padding: 4px 5px 5px; } .sg-road div { gap: 3px; flex-wrap: nowrap; } .sg-road button { width: 32px; height: 34px; font-size: 16px; border-radius: 8px; } }

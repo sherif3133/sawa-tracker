@@ -1,6 +1,6 @@
 /* Silent test of the learning road in the Silk Road (📺 → 🎵 → 📖 → 🃏 → ✍️ → boss), on the local WordPress Playground:
    muted, speech stubbed, media play() stubbed, and a fake YouTube player (no video is loaded or played).
-   Needs the test mu-plugins (?mk_lesson2, ?road_reset, the AI mocks). Phone size with touch, then a desktop check.
+   Needs the test mu-plugins (sawa-road-test.php: ?road_lessons, ?road_reset, ?road_map; the AI mocks). Phone size with touch, then a desktop check.
    Run from language-lens/tools (for puppeteer): node ../../sawa-tracker/tools/road-test.js <outdir> */
 const puppeteer = require(require.resolve('puppeteer', { paths: [process.cwd()] }));
 const B = 'http://127.0.0.1:9410';
@@ -38,7 +38,7 @@ async function open(br, size) {
 }
 
 (async () => {
-	console.log(await fetch(B + '/?mk_lesson2=1').then((r) => r.text()), '|', await fetch(B + '/?road_reset=1').then((r) => r.text()));
+	console.log(await fetch(B + '/?road_lessons=1').then((r) => r.text()), '|', await fetch(B + '/?road_reset=1&week=1').then((r) => r.text()));
 	const br = await puppeteer.launch({ headless: 'new', args: ['--mute-audio', '--autoplay-policy=user-gesture-required', '--use-gl=swiftshader'] });
 	const { p, errs, syncs } = await open(br, { width: 390, height: 844, isMobile: true, hasTouch: true });
 	const q = (sel) => p.evaluate((s) => { const e = window.__q(s); return e ? e.innerText : ''; }, sel);
@@ -77,7 +77,14 @@ async function open(br, size) {
 	ok(atVideo, 'the character stands at the video camp');
 	await sleep(3500);
 	ok(syncs.some((s) => /"st":"video"/.test(s)), 'others are told you are at the video camp (sync st=video)');
+	ok(await p.evaluate(() => window.__q('.sg-vidp .sg-trs').querySelectorAll('p').length === 4 && window.__q('.sg-vidp .sg-trs .lw') !== null), 'the transcript is under the player, with tappable words');
 	await p.evaluate(() => window.__yt.playVideo());
+	await p.waitForFunction(() => window.__q('.sg-trs p.on'), { timeout: 10000 }).catch(() => {});
+	ok(!!(await q('.sg-trs p.on')), 'the line being said is marked (' + (await q('.sg-trs p.on')).slice(0, 40) + ')');
+	await p.evaluate(() => window.__q('.sg-trs p[data-i="1"] .lw').click());
+	await sleep(600);
+	ok(await p.evaluate(() => window.__yt.getPlayerState() === 2 && !!window.__q('.sg-word.on')), 'tapping a transcript word pauses the video and opens the word card');
+	await p.evaluate(() => { const x = window.__q('.sg-word.on [data-w="x"]'); if (x) x.click(); window.__yt.playVideo(); });
 	await p.waitForFunction(() => window.__q('.sg-vq .sg-vcard'), { timeout: 15000 });
 	ok(/conference/.test(await q('.sg-vq')), 'the video stops at the first question');
 	await p.screenshot({ path: `${OUT}/road-1-video.png` });
@@ -92,8 +99,19 @@ async function open(br, size) {
 	ok(/Song camp/.test(await q('.sg-vidp .sg-ron')), 'video done → the song camp is next');
 	ok(/done/.test(await st('video')) && /open/.test(await st('song')), 'the strip: video ✓, song open');
 
-	// 🎵 song: lyrics with tappable words and the fill-the-gaps game.
+	// 🎵 song: Sherif's songs and your own; Sherif's plays with its lyrics; your own has the fill-the-gaps game.
 	await click('.sg-ron [data-rn="song"]');
+	await p.waitForFunction(() => window.__q('.sg-songp [data-cs]'), { timeout: 15000 });
+	ok(/Songs from Sherif/.test(await q('.sg-songp')) && /Your own songs/.test(await q('.sg-songp')), 'the song camp: Sherif\'s songs and your own songs');
+	await click('.sg-songp [data-cs]');
+	await p.waitForFunction(() => window.__q('.sg-songp .sg-trs .lw'), { timeout: 15000 });
+	ok(/The lyrics/.test(await q('.sg-songp')), 'Sherif\'s song plays with its lyrics under the player');
+	await p.screenshot({ path: `${OUT}/road-2a-sherif-song.png` });
+	await p.evaluate(() => { const x = window.__q('.sg-panel [data-p="x"]'); if (x) x.click(); });
+	await sleep(500);
+	await click('.sg-road [data-road="song"]');
+	await p.waitForFunction(() => window.__q('.sg-songp [data-ms]'), { timeout: 15000 });
+	await click('.sg-songp [data-ms]');
 	await p.waitForFunction(() => window.__q('.sg-songp [data-gap]'), { timeout: 15000 });
 	ok(await p.evaluate(() => !!window.__q('.sg-songp .sg-lyr .lw') && !!window.__q('.sg-songp audio')), 'the song: player + lyrics with tappable words');
 	await p.evaluate(() => window.__q('.sg-songp .sg-lyr .lw').click());
@@ -153,6 +171,31 @@ async function open(br, size) {
 	ok(nearBoss < 80, 'To the boss: the character stands near the boss lair (' + nearBoss + ' px)');
 	await sleep(4000);
 	ok(!syncs.slice(-1)[0] || /"st":""/.test(syncs.slice(-1)[0]), 'after closing the camp, sync says no camp');
+
+	// 📜 this week's chapter: one road day, the 3 / 5 / 7-day rewards and the community goal.
+	ok(/📜 1\/7 days/.test(await road()), 'the strip counts this week\'s road days (📜 1/7)');
+	await p.evaluate(() => { const d = window.__q('.sg-dlg.on'); if (d) (d.querySelector('[data-o="1"]') || d.querySelector('[data-o="x"]')).click(); }); // walk away from a monster near the boss
+	await sleep(500);
+	await click('.sg-road [data-road="chapter"]');
+	await p.waitForFunction(() => window.__q('.sg-chapp .sg-gbar'), { timeout: 10000 });
+	const chap = await q('.sg-chapp');
+	ok(/Chapter \d+: /.test(chap) && /1 of 7 days/.test(chap) && /Road Walker/.test(chap) && /Together: 5 of 40 camps/.test(chap), 'the chapter panel: story, days, rewards, community goal (' + chap.replace(/\s+/g, ' ').slice(0, 80) + '…)');
+	await p.screenshot({ path: `${OUT}/road-7-chapter.png` });
+	await p.evaluate(() => window.__q('.sg-panel [data-p="x"]').click());
+	// The 3rd road day of the week and the 40th camp of the community, through the API.
+	console.log(await fetch(B + '/?road_reset=1&days=2&group=1').then((r) => r.text()));
+	const tapi = (path, body) => p.evaluate((path, body) => fetch(SAWA_LENS.root.replace('sawa-lens/v1/app/', 'sawa-tracker/v1/') + path, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': SAWA_LENS.nonce, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()), path, body);
+	const lapi = (path, body) => p.evaluate((path, body) => fetch(SAWA_LENS.root + path, { method: body ? 'POST' : 'GET', credentials: 'same-origin', headers: { 'X-WP-Nonce': SAWA_LENS.nonce, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json()), path, body);
+	let last = null;
+	for (const k of ['video', 'song', 'story', 'cards', 'write']) {
+		if (k === 'story') { const h = await lapi('readers'); const one = h.today ? await lapi('readers/' + h.today.id) : await lapi('readers/next', {}); await lapi('readers/done', { id: one.id, right: 1, total: 1 }); }
+		last = await tapi('world/road', { station: k });
+		if (last.group) console.log('     group after ' + k + ': ' + JSON.stringify(last.group));
+	}
+	ok(last && last.complete && last.week && last.week.days === 3 && last.week.coins === 30, '3 road days this week: +30 coins (' + JSON.stringify(last && last.week) + ')');
+	ok(last && last.road.chapter.group.reached && last.group && last.group.paid, 'the community goal is reached at 40 camps: +30 coins and an elixir for everyone with 3+ camps');
+	const map = await fetch(B + '/?road_map=1&as=1').then((r) => r.text());
+	ok(/Silk Road map/.test(map) && /walked the whole road today/.test(map) && /3 road days/.test(map) && /✅ reached/.test(map), 'admin: the Silk Road map shows every town, who is where, today\'s road and the week');
 	ok(!errs.length, 'no page errors (phone) ' + errs.join(' / '));
 	await p.close();
 
