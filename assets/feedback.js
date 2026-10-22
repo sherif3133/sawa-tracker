@@ -68,8 +68,8 @@
       + '<div class="grid">' + KINDS.map(function (x) { return '<button class="k' + (x[0] === st.kind ? ' on' : '') + '" data-k="' + x[0] + '">' + x[1] + ' ' + esc(x[2]) + '<small>' + esc(x[3]) + '</small></button>'; }).join('') + '</div>'
       + (k ? '<textarea dir="auto" maxlength="2000" placeholder="' + esc(k[4]) + '">' + esc(st.text) + '</textarea>' : '')
       + (st.target ? '<div class="tap">👆 You tapped: <b>' + esc(st.target) + '</b></div>' : '')
-      + '<div class="row"><button class="b" data-show>👆 Show me · وريني</button><button class="b p" data-send' + (k ? '' : ' disabled') + '>Send · ابعت</button></div>'
-      + (msg ? '<p class="err">' + esc(msg) + '</p>' : '')
+      + '<div class="row"><button class="b" data-show>👆 Point at it · وريني فين</button><button class="b p" data-send' + (k ? '' : ' disabled') + '>Send · ابعت</button></div>'
+      + (st.target ? '' : '<p class="ctx">👆 Point at it: then tap the button or part of the screen your note is about. · بعدها اضغط على الحاجة اللي تقصدها.</p>') + (msg ? '<p class="err">' + esc(msg) + '</p>' : '')
       + '<p class="ctx">Saved with it: ' + esc(st.at ? st.at.area : '') + ' · your level and stage</p>';
     var ta = sheet.querySelector('textarea');
     if (ta) { ta.oninput = function () { st.text = ta.value; }; ['keydown', 'keyup', 'keypress'].forEach(function (ev) { ta.addEventListener(ev, function (e) { e.stopPropagation(); }); }); setTimeout(function () { ta.focus(); }, 30); }

@@ -4,7 +4,7 @@
  *
  * - Level comes from XP (everything learned and written in English). Each level raises max health and mana, gives
  *   coins, and unlocks gear grades, titles and an aura other players can see.
- * - Health (❤) is lost when a monster hits you after a wrong answer. It comes back slowly by itself and quickly by
+ * - Health (❤: 70 at level 1, +8 a level) is lost when a monster hits you after a wrong answer. It comes back slowly by itself and quickly by
  *   reviewing word cards (resting at the inn). At 0 you are knocked out and wake up at the inn.
  * - Mana (💧) is earned only by studying today (cards, plan steps, practice, writing and speaking) and is spent
  *   on battle skills.
@@ -87,7 +87,7 @@ final class Sawa_Tracker_Hero {
 
 	public static function max_hp( $uid, $level = null ) {
 		$level = $level ? $level : self::level( $uid );
-		return 100 + 10 * ( $level - 1 ) + (int) round( 100 * Sawa_Tracker_RPG::slot_bonus( Sawa_Tracker_RPG::get( $uid ), 'armor' ) );
+		return 70 + 8 * ( $level - 1 ) + (int) round( 100 * Sawa_Tracker_RPG::slot_bonus( Sawa_Tracker_RPG::get( $uid ), 'armor' ) );
 	}
 
 	public static function max_mana( $level ) {

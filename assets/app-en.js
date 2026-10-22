@@ -256,7 +256,7 @@
     if (EMB) {
       emit({ view: S.view });
       if (S.view === 'today') return renderToday();
-      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="world-card"></div><div id="raids">' + (stage() >= 4 ? '<div class="card"><p class="muted small">Loading…</p></div>' : '<section class="card" dir="ltr"><p class="small muted">🔒 <b>Jobs, gear and raids</b> open at stage 4 (Speak). Until then: fight monsters and finish quests in the Silk Road.</p></section>') + '</div><div id="view">' + clanView() + '</div><div class="grid"><div class="col main">' + feedCard() + '</div><div class="col side">' + boardCard() + '</div></div>'; if (!S.clanLoading) loadClan(); paintBoard(); paintFeed(); if (stage() >= 4) loadRaids(); loadWorldCard(); return; }
+      if (S.view === 'community') { $('#app').innerHTML = header() + '<div id="world-card"></div><div id="raids">' + (stage() >= 4 ? '<div class="card"><p class="muted small">Loading…</p></div>' : '<section class="card" dir="ltr"><p class="small muted">🔒 <b>Jobs, gear and raids</b> open at stage 4 (Speak). Until then: fight monsters and finish quests in the Silk Road.</p></section>') + '</div><div id="view">' + clanView() + '</div>' + feedCard(); if (!S.clanLoading) loadClan(); paintFeed(); if (stage() >= 4) loadRaids(); loadWorldCard(); return; }
       if (S.view === 'world') { openWorld(); return; }
       if (S.view === 'me') { $('#app').innerHTML = header() + '<div class="grid one">' + xpCard() + helpCard() + trendCard() + '<div class="two">' + breakdownCard() + heatCard() + '</div>' + badgesCard() + recentCard() + '</div>'; return; }
       if (S.view === 'chat') { $('#app').innerHTML = '<div id="view"></div>'; paintChat(); return; }
@@ -635,7 +635,36 @@
     $('#app').innerHTML = header()
       + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>Welcome, ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="Today ' + s.todayMinutes + ' of ' + s.goal + ' minutes"><span><b>' + s.todayMinutes + '</b> of ' + s.goal + ' min</span></div></section>'
-      + statCards(s) + questCard();
+      + '<div id="hero-card" dir="ltr"></div>' + statCards(s) + questCard() + boardCard();
+    loadHero(); paintBoard(); // the leaderboard lives on the home screen
+  }
+  /* ------------------------------------------------------------ the Silk Road character on the Today screen */
+  function gameScript() { return window.SawaGame ? Promise.resolve() : new Promise(function (ok, bad) { var sc = document.createElement('script'); sc.src = cfg.game; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); }); }
+  function loadHero() {
+    var el = $('#hero-card'); if (!el) return;
+    if (stage() < 3) { // a peek at what is coming: the traveller waits in the dark
+      gameScript().then(function () { var c = window.SawaGame.portrait({ look: { skin: 2, hair: 1, hairc: 0, outfit: 0 } }, 4); el.innerHTML = '<section class="card hc locked"><div class="hc-top"><div class="hc-fig"><img src="' + c.toDataURL() + '" alt=""></div><div class="hc-info"><b>Your Silk Road traveller</b><small>🔒 Opens at stage 3</small><p class="small">A world you walk through with the other students. Monsters attack with the words you save, and your character grows with your English: levels, gear, skills and titles.</p></div></div></section>'; }, function () { el.innerHTML = ''; });
+      return;
+    }
+    Promise.all([api('/play/card'), gameScript()]).then(function (r) { paintHero(r[0]); }, function () { el.innerHTML = ''; });
+  }
+  function hcBar(cls, v, max, label) { return '<div class="hc-bar ' + cls + '"><i style="width:' + Math.max(0, Math.min(100, v / Math.max(1, max) * 100)) + '%"></i><span>' + label + '</span></div>'; }
+  function paintHero(d) {
+    var el = $('#hero-card'); if (!el) return;
+    var h = d.hero, img = window.SawaGame.portrait(d.avatar, 5).toDataURL(), open = d.skills.filter(function (k) { return k.open; }).length, st4 = stage() >= 4;
+    var gear = d.gear.map(function (g, i) { var ic = ['⚔', '🛡', '📿'][i]; return '<div class="hc-slot' + (g.grade ? ' g' + g.grade : '') + '"><span>' + ic + '</span><b>' + esc(g.name || g.slot) + '</b><small>' + (g.grade ? '+' + g.bonus + '% ' + esc(g.stat) : st4 ? 'Empty · buy it at the forge' : 'Opens at stage 4') + '</small></div>'; }).join('');
+    var skills = d.skills.map(function (k) { return '<li class="' + (k.open ? 'open' : '') + '"><span>' + (k.open ? (k.kind === 'mana' ? '💧' : k.on ? '✦' : '✓') : '🔒') + '</span><div><b>' + esc(k.name) + (k.cost ? ' <small>💧' + k.cost + '</small>' : '') + '</b><small>' + esc(k.text) + (k.open ? '' : ' · ' + (k.kind === 'mana' ? 'opens at level 2' : 'needs ' + esc(k.need))) + '</small></div></li>'; }).join('');
+    var next = [d.next ? 'Lv ' + d.next.level + ': the title <b>' + esc(d.next.title) + '</b>' : '', d.aura.level ? 'Lv ' + d.aura.level + ': a ' + ({ 10: 'silver', 20: 'gold', 30: 'jade' }[d.aura.level]) + ' aura everyone sees' : ''].filter(Boolean).join(' · ');
+    el.innerHTML = '<section class="card hc"><div class="hc-top"><div class="hc-fig' + (h.aura ? ' aura-' + h.aura : '') + '"><img src="' + img + '" alt="Your character"><em>' + h.level + '</em></div>'
+      + '<div class="hc-info"><b>' + esc(d.avatar.name) + '</b><small>' + (function () { var r = (d.roles || []).filter(function (x) { return x.id === d.avatar.role; })[0]; return r ? r.icon + ' ' + esc(r.name) + ' · ' : ''; })() + esc(h.title) + (d.job ? ' · ' + d.job.icon + ' ' + esc(d.job.name) : '') + ' · ' + d.town.icon + ' ' + esc(d.town.name) + ' (' + esc(d.town.level) + ')</small>'
+      + hcBar('xp', h.xp - h.xpFrom, h.xpNext - h.xpFrom, 'Lv ' + h.level + ' · ' + (h.xpNext - h.xp) + ' XP to Lv ' + (h.level + 1)) + hcBar('hp', h.hp, h.hpMax, '❤ ' + h.hp + '/' + h.hpMax) + hcBar('mp', h.mana, h.manaMax, '💧 ' + h.mana + '/' + h.manaMax)
+      + '<div class="hc-pills"><span title="Coins">🪙 ' + d.coins + '</span><span title="Elixirs">⚗ ' + d.elixirs + '</span><span title="Fights left today">⚡ ' + d.stamina.left + '/' + d.stamina.max + '</span><span title="Arena rank">🏆 ' + esc(h.rank) + '</span></div></div></div>'
+      + '<div class="hc-gear">' + gear + '</div>'
+      + '<details class="hc-skills"><summary>✨ Skills · ' + open + ' of ' + d.skills.length + ' open · ' + d.mastered + ' skill point' + (d.mastered === 1 ? '' : 's') + ' mastered</summary><ul>' + skills + '</ul><p class="small muted">💧 skills use mana in battles; you get mana by studying. ✓ skills come from mastering points in your skill tree.</p></details>'
+      + (next ? '<p class="hc-next">⭐ Next: ' + next + '</p>' : '')
+      + '<p class="small muted">XP comes from writing and speaking English, helping other travellers and winning fights.</p>'
+      + (d.titles.length ? '<div class="hc-titles">' + d.titles.map(function (t) { return '<span>🏅 ' + esc(t) + '</span>'; }).join('') + '</div>' : '')
+      + '<button class="btn primary wide" data-act="w-open">Enter the Silk Road</button></section>';
   }
 
   function renderHome() {
@@ -665,9 +694,9 @@
     var d = S.data, v = S.view || 'home', cu = S.chatUnread || 0;
     if (EMB) {
       if (v === 'chat') return '';
-      return '<div class="emb-bar">'
-        + '<button class="btn primary" data-act="log-day">' + ico('cal') + '<span>Log your day</span></button>'
-        + '<button class="btn" data-act="log-activity">' + ico('plus') + '<span>Activity</span></button>'
+      return '<div class="emb-bar">' // logging your day lives on the home screen, not in Play
+        + (v === 'community' ? '' : '<button class="btn primary" data-act="log-day">' + ico('cal') + '<span>Log your day</span></button>'
+        + '<button class="btn" data-act="log-activity">' + ico('plus') + '<span>Activity</span></button>')
         + '<button class="icon-btn bell" data-act="notifs" aria-label="Notifications' + (d.unread ? ', ' + d.unread + ' new' : '') + '">' + ico('bell') + (d.unread ? '<i>' + d.unread + '</i>' : '') + '</button>'
         + '<button class="icon-btn me-btn" data-act="settings" aria-label="Your settings">' + avatar(d.me, 34) + '</button></div>';
     }

@@ -43,6 +43,7 @@ final class Sawa_Tracker_Play {
 			array( '/play/notes/delete', 'POST', 'delete_note' ),
 			array( '/play/duel', 'POST', 'duel' ),
 			array( '/play/profile', 'GET', 'profile' ),
+			array( '/play/card', 'GET', 'card' ),
 		);
 		foreach ( $routes as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
@@ -71,7 +72,11 @@ final class Sawa_Tracker_Play {
 			$l[ $k ] = max( 0, min( $m - 1, (int) $r->get_param( $k ) ) );
 		}
 		Sawa_Tracker_Game::set( $uid, 'look', $l );
-		return array( 'look' => self::look( $uid ) );
+		$role = sanitize_key( (string) $r->get_param( 'role' ) );
+		if ( isset( Sawa_Tracker_Combat::ROLES[ $role ] ) ) {
+			Sawa_Tracker_Game::set( $uid, 'role', $role ); // Guardian, Healer, Mage or Trickster
+		}
+		return array( 'look' => self::look( $uid ), 'role' => Sawa_Tracker_Combat::role( $uid ) );
 	}
 
 	/** What the game draws for a student: look, job, gear grades, title. */
@@ -85,6 +90,7 @@ final class Sawa_Tracker_Play {
 			'photo'  => $p['avatar'] ?? '',
 			'look'   => self::look( $uid ),
 			'job'    => $rpg['job'],
+			'role'   => Sawa_Tracker_Combat::role( $uid ),
 			'weapon' => (int) ( $rpg['gear']['weapon']['grade'] ?? 0 ),
 			'armor'  => (int) ( $rpg['gear']['armor']['grade'] ?? 0 ),
 			'title'  => (string) ( end( $w['titles'] ) ? end( $w['titles'] ) : '' ),
@@ -189,6 +195,46 @@ final class Sawa_Tracker_Play {
 			'party'    => (bool) Sawa_Tracker_Party::of( $id ),
 			'clan'     => Sawa_Tracker_Social::clan_of( $id ) === Sawa_Tracker_Social::clan_of( self::uid() ) && Sawa_Tracker_Social::clan_of( $id ),
 			'duelsLeft' => self::duels_left( self::uid() ),
+		);
+	}
+
+	/** The character card on the app's Today screen: the hero, gear, skills, coins and what opens next. */
+	public static function card() {
+		$uid  = self::uid();
+		$hero = Sawa_Tracker_Hero::sheet( $uid );
+		$rpg  = Sawa_Tracker_RPG::sheet( $uid );
+		$w    = Sawa_Tracker_World::get( $uid );
+		$lv   = $hero['level'];
+		$next = null;
+		foreach ( Sawa_Tracker_Hero::TITLES as $l => $name ) {
+			if ( $l > $lv ) {
+				$next = array( 'level' => $l, 'title' => $name );
+				break;
+			}
+		}
+		$skills = array();
+		foreach ( Sawa_Tracker_Hero::SKILLS as $id => $s ) { // battle skills (mana) open at level 2
+			$skills[] = array( 'name' => $s[0], 'text' => $s[2], 'cost' => $s[1], 'open' => $lv >= 2, 'kind' => 'mana' );
+		}
+		foreach ( $rpg['skills'] as $s ) { // combat passives open with mastered skill-tree points
+			$skills[] = array( 'name' => $s['name'], 'text' => $s['text'], 'open' => (bool) $s['unlocked'], 'on' => (bool) $s['on'], 'need' => $s['need'] . ' mastered ' . $s['track'] . ' point' . ( 1 === (int) $s['need'] ? '' : 's' ), 'kind' => 'passive' );
+		}
+		$t = Sawa_Tracker_World::TOWNS[ $w['at'] ];
+		return array(
+			'avatar'   => self::avatar( $uid ),
+			'hero'     => $hero,
+			'next'     => $next,
+			'aura'     => array( 'level' => $lv < 10 ? 10 : ( $lv < 20 ? 20 : ( $lv < 30 ? 30 : 0 ) ) ),
+			'gear'     => array_values( $rpg['gear'] ),
+			'job'      => $rpg['job'] ? array( 'id' => $rpg['job'], 'icon' => $rpg['jobs'][ $rpg['job'] ][0], 'name' => $rpg['jobs'][ $rpg['job'] ][1] ) : null,
+			'skills'   => $skills,
+			'mastered' => (int) ( $rpg['english']['mastered'] ?? 0 ),
+			'roles'    => Sawa_Tracker_Combat::roles(),
+			'coins'    => Sawa_Tracker_Raids::coins( $uid ),
+			'elixirs'  => $rpg['elixirs'],
+			'stamina'  => Sawa_Tracker_World::stamina( $uid, $w ),
+			'titles'   => array_values( (array) $w['titles'] ),
+			'town'     => array( 'name' => $t[0], 'icon' => $t[1], 'level' => $t[2], 'beaten' => count( (array) $w['beaten'] ) ),
 		);
 	}
 

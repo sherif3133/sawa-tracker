@@ -303,13 +303,19 @@
   }
   function moment(key) { try { window.dispatchEvent(new CustomEvent('sawa:moment', { detail: { key: key } })); } catch (e) { /* old browser */ } }
   function say(msg, ms) { var t = $('.sg-hint'); if (!t) return; t.textContent = msg; t.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(function () { t.classList.remove('on'); }, ms || 3200); }
-  function dialog(name, text, buttons, portrait) {
+  function dialog(name, text, buttons, portrait, onBye) {
     var d = $('.sg-dlg'); if (!d) return; d.innerHTML = '<div class="sg-box">' + (portrait ? '<span class="sg-por">' + portrait + '</span>' : '') + '<div class="sg-txt"><b>' + esc(name) + '</b><p></p><div class="sg-opts">' + (buttons || []).map(function (b, i) { return '<button data-o="' + i + '"' + (b.primary ? ' class="pri"' : '') + '>' + esc(b.label) + '</button>'; }).join('') + '<button data-o="x">Bye</button></div></div></div>';
     d.classList.add('on');
     var p = d.querySelector('p'), i = 0, full = text;
     if (dialog.who) { VOICE.act(dialog.who, text); dialog.who = null; }
     clearInterval(dialog.t); dialog.t = setInterval(function () { i += 2; p.textContent = full.slice(0, i); if (i >= full.length) { clearInterval(dialog.t); p.innerHTML = wrapWords(full) + ' ' + VOICE.btn(full); } }, 18);
-    d.querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { clearInterval(dialog.t); var o = b.dataset.o; d.classList.remove('on'); d.innerHTML = ''; if (o !== 'x' && buttons[+o]) buttons[+o].run(); }; });
+    d.querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { clearInterval(dialog.t); var o = b.dataset.o; d.classList.remove('on'); d.innerHTML = ''; if (o !== 'x' && buttons[+o]) buttons[+o].run(); else if (o === 'x' && onBye) onBye(); }; });
+  }
+  function busyNow() {
+    if (!ROOT) return false;
+    if ($('.sg-dlg.on') || $('.sg-panel.on') || $('.sg-word.on') || $('.sg-battle.on') || $('.sg-levelup')) return true;
+    var m = ROOT.parentNode && ROOT.parentNode.querySelector('#modal'); if (m && m.innerHTML.trim()) return true;
+    var fb = document.querySelector('.sawa-beta'); return !!(fb && fb.shadowRoot && fb.shadowRoot.querySelector('.sheet.on, .banner.on'));
   }
   function closeDialog() { var d = $('.sg-dlg'); if (d) { d.classList.remove('on'); d.innerHTML = ''; } }
   function inputBox(title, ph, ok) {
@@ -427,6 +433,7 @@
         S.syncT = 0; S.lastSync = 0; S.sync(); S.loadNotes();
         S.events.on('shutdown', function () { S.scale.off('resize', S.fitZoom, S); Object.keys(S.labels).forEach(function (k) { S.labels[k].remove(); }); });
         say(w.town.icon + ' ' + w.town.name + ' — ' + (t === 1 ? 'the start of the Silk Road' : 'level ' + w.town.level), 3000);
+        S.cool = S.now() + 4000; // a moment to look around before any monster comes over
       },
       now: function () { return this.game.loop.time; }, // the same clock update() gets, even right after a pause
       fitZoom: function () { var c = this.cameras.main, w = this.scale.width, h = this.scale.height; c.setZoom(Math.max(2, Math.min(4, Math.round(Math.min(w / (TS * 20), h / (TS * 12)) * 2) / 2))); },
@@ -452,11 +459,12 @@
         if (pl.x > (MW - 1.6) * TS) S.leave(S.t + 1, 'west'); else if (pl.x < 1.2 * TS && S.t > 1) S.leave(S.t - 1, 'east');
         // monsters wander and chase
         var tired = H.world().stamina.left < 1;
+        if (!S.busyAt || time - S.busyAt > 250) { S.busyAt = time; S.busy = busyNow(); }
         S.monsters.forEach(function (m) {
           if (!m.active) return;
           var dx = pl.x - m.x, dy = pl.y - m.y, dd = Math.hypot(dx, dy);
           if (m.flee > time) { m.setVelocity(-dx / dd * 40, -dy / dd * 40); m.setAlpha(0.6); }
-          else if (!tired && dd < 70 && S.cool < time) m.setVelocity(dx / dd * 34, dy / dd * 34);
+          else if (!tired && !S.busy && dd < 70 && S.cool < time) m.setVelocity(dx / dd * 34, dy / dd * 34);
           else { if (!m.wt || m.wt < time) { m.wt = time + 1500 + Math.random() * 2500; var a = Math.random() * 7; var back = Math.hypot(m.home.x - m.x, m.home.y - m.y) > 90; m.setVelocity(back ? (m.home.x - m.x) / 4 : Math.cos(a) * 18, back ? (m.home.y - m.y) / 4 : Math.sin(a) * 18); if (Math.random() < 0.4) m.setVelocity(0, 0); } }
           m.setDepth(m.y); if (!(m.flee > time)) m.setAlpha(tired ? 0.6 : 1); m.setFlipX(m.body.velocity.x < 0);
         });
@@ -522,16 +530,19 @@
         if (id === 'guard') return dialog(L[0], L[2] + ' Speak with Elder Wen to learn how.', [], L[1]);
       },
       encounter: function (mo) {
-        var S = this, now = S.now(); if (S.frozen || S.cool > now || mo.flee > now) return;
+        var S = this, now = S.now(); if (S.frozen || S.busy || busyNow() || S.cool > now || mo.flee > now) return;
         var w = H.world();
         if (w.stamina.left < 1) { S.cool = now + 4000; S.pl.setVelocity(0); say('You are too tired to fight. Every step of today\'s plan gives you one more fight.'); return; }
         if (!w.ready) { S.cool = now + 4000; say('Battles open soon.'); return; }
-        S.cool = now + 99999; S.frozen = true; S.fighting = mo;
-        S.cameras.main.flash(250, 255, 255, 255); S.cameras.main.shake(200, 0.004);
-        S.time.delayedCall(260, function () { G.battle('/world/fight', { kind: 'monster', m: mo.m }, mo); });
+        S.cool = now + 99999; S.frozen = true; mo.setVelocity(0, 0); S.pl.setVelocity(0, 0);
+        var mon = w.town.monsters[mo.m] || {}, kind = (SHAPES[mon.name] || ['beast'])[0], style = MOB_STYLE[mon.name];
+        SFX.growl(mon.name); setTimeout(function () { SFX.laugh(kind); }, 450);
+        var away = function () { var t = S.now(); S.frozen = false; S.cool = t + 2500; mo.flee = t + 12000; };
+        dialog(mon.name, '“' + (GAME.lastTaunt = pickOne(TAUNTS.intro[kind] || TAUNTS.intro.beast)) + '”' + (style ? ' ' + style : '') + ' Fight it? (⚡ ' + w.stamina.left + ' fights left today)',
+          [{ label: '⚔ Fight', primary: true, run: function () { S.fighting = mo; S.cameras.main.flash(250, 255, 255, 255); S.cameras.main.shake(200, 0.004); S.time.delayedCall(220, function () { G.battle('/world/fight', { kind: 'monster', m: mo.m }, mo); }); } }, { label: 'Walk away', run: away }], mon.icon || '👾', away);
       },
       bossTouch: function () {
-        var S = this, w = H.world(), b = w.town.boss; if (S.frozen || S.cool > S.now()) return; S.cool = S.now() + 2500;
+        var S = this, w = H.world(), b = w.town.boss; if (S.frozen || busyNow() || S.cool > S.now()) return; S.cool = S.now() + 2500;
         dialog.who = 'boss';
         if (!b.ready) return dialog(b.name, 'The ' + b.name + ' looks down at you. You are not ready. (Finish Elder Wen\'s tasks first.)', [], b.icon);
         if (!b.tries) return dialog(b.name, 'The ' + b.name + ' is resting. Come back tomorrow.', [], b.icon);
@@ -620,7 +631,7 @@
       },
       chat: function () {
         var S = this, room = H.world().town.room;
-        inputBox('Say something to ' + H.world().town.name + ' (English)', 'Hello! Where are you from?', function (v, err, done) {
+        inputBox('Say something to everyone (English)', 'Hello! Where are you from?', function (v, err, done) {
           if (/[؀-ۿ]/.test(v)) return err('Write in English here. In the Chat tab you can write Arabic and get it translated.');
           H.api('/chat/rooms/' + room + '/messages', { method: 'POST', body: { body: v } }).then(function () { done(); S.bubble = { text: v, until: Date.now() + 7000 }; }, function (x) { err(x.message); });
         });
@@ -687,6 +698,12 @@
       }, 190);
     }
   };
+  Arena.prototype.taunt = function (text) {
+    if (!this.el.isConnected || !text) return; var old = this.el.querySelector('.sg-taunt'); if (old) old.remove();
+    var r = this.foe.getBoundingClientRect(), a = this.el.getBoundingClientRect(), t = el('div', 'sg-taunt', wrapWords(text));
+    t.style.right = Math.max(6, a.right - r.right - 10) + 'px'; t.style.bottom = Math.max(60, a.bottom - r.top + 6) + 'px'; this.el.appendChild(t);
+    setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 300); }, 2600);
+  };
   Arena.prototype.heal = function () { this.hero.classList.add('healed'); var h = this.hero; setTimeout(function () { h.classList.remove('healed'); }, 700); this.pop(this.hero, '+❤', 'heal'); };
   Arena.prototype.charge = function () { this.hero.classList.add('charged'); this.pop(this.hero, 'Power!', 'quick'); };
   Arena.prototype.finish = function (won) { (won ? this.foe : this.hero).classList.add(won ? 'gone' : 'down'); };
@@ -697,21 +714,22 @@
     battle: function (path, body, monster) {
       var world = G.phaser.scene.getScene('World');
       H.api(path, { method: 'POST', body: body || {} }).then(function (b) {
-        world.scene.pause(); $('.sg-labels').style.visibility = 'hidden'; MUSIC.battle(true); GAME.battleUI(b, new Arena(b));
-        SFX.growl(b.foe.name);
-        if (b.foe.boss || b.kind === 'pboss') setTimeout(function () { VOICE.act('boss', pickOne(BOSS_LINES.intro)); }, 500);
-        else if (b.foe.shadow) setTimeout(function () { VOICE.act('shadow', 'I fight just like you. Show me your English!'); }, 500);
-        else if ((SHAPES[b.foe.name] || [])[0] === 'bandit') setTimeout(function () { VOICE.act('bandit', pickOne(['Give me your coins!', 'Stop right there!', 'This road is mine!'])); }, 500);
+        closeDialog(); LENS.close();
+        world.scene.pause(); $('.sg-labels').style.visibility = 'hidden'; MUSIC.battle(true); var arena = GAME.arena = new Arena(b); GAME.battleUI(b, arena);
+        var kind = mobKind(b.foe); SFX.growl(b.foe.name);
+        setTimeout(function () { var lines = (b.foe.shadow ? TAUNTS.intro.shadow : b.foe.boss || b.kind === 'pboss' ? TAUNTS.intro.boss : TAUNTS.intro[kind] || TAUNTS.intro.beast).filter(function (x) { return x !== GAME.lastTaunt; }); arena.taunt(pickOne(lines)); SFX.laugh(kind); }, 500);
       }, function (x) { world.frozen = false; world.cool = world.now() + 2500; say(x.message, 4500); });
     },
     battleUI: function (b, scene) {
       var box = $('.sg-battle'), n = b.questions.length, i = 0, timer = null, t0 = 0, busy = false;
-      var me = b.me, foe = { hp: b.foe.hp, max: b.foe.hpMax || b.foe.hp }, combo = 0, phase = 1, mana = me.mana, used = {};
+      var me = b.me, foe = { hp: b.foe.hp, max: b.foe.hpMax || b.foe.hp }, combo = 0, phase = 1, mana = me.mana, used = {}, stat = {}, spooked = false, lowSaid = false, leaveArmed = 0, kind = mobKind(b.foe);
       box.classList.add('on');
       function bars() {
         return '<div class="sg-duo"><div class="sg-side"><b>' + esc(H.me().name.split(' ')[0]) + ' <small>Lv ' + me.level + '</small></b><div class="sg-hpb me"><i style="width:' + Math.max(0, me.hp / me.hpMax * 100) + '%"></i><span>❤ ' + me.hp + '/' + me.hpMax + '</span></div><div class="sg-mpb"><i style="width:' + Math.max(0, mana / me.manaMax * 100) + '%"></i><span>💧 ' + mana + '</span></div></div>'
           + '<div class="sg-combo' + (combo >= 3 ? ' hot' : '') + '">' + (combo >= 2 ? '×' + combo + '<small>combo</small>' : '') + '</div>'
-          + '<div class="sg-side foe"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + (phase === 2 ? ' <small class="rage">ENRAGED</small>' : '') + '</b><div class="sg-hpb"><i style="width:' + Math.max(0, foe.hp / foe.max * 100) + '%"></i><span>❤ ' + foe.hp + '/' + foe.max + '</span></div></div></div>';
+          + '<div class="sg-side foe"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + (phase === 2 ? ' <small class="rage">ENRAGED</small>' : '') + '</b><div class="sg-hpb"><i style="width:' + Math.max(0, foe.hp / foe.max * 100) + '%"></i><span>❤ ' + foe.hp + '/' + foe.max + '</span></div></div></div>'
+          + '<div class="sg-styles"><span>' + (me.styles || []).map(function (s) { return '<i title="' + esc(s.text) + '">' + s.icon + ' ' + esc(s.name) + '</i>'; }).join('') + (stat.poison ? '<i class="bad">☠ Poison ' + stat.poison + '</i>' : '') + (stat.burn ? '<i class="bad">🔥 Burning ' + stat.burn + '</i>' : '') + (stat.ice ? '<i class="good">❄ Foe frozen</i>' : '') + '</span>'
+          + (b.foe.style ? '<span class="foe"><i title="' + esc(b.foe.style.text) + '">' + b.foe.style.icon + ' ' + esc(b.foe.style.name) + '</i>' + (stat.rage ? '<i class="bad">🐾 Angry ×' + stat.rage + '</i>' : '') + (stat.charged ? '<i class="bad blink">⚡ Charging!</i>' : '') + '</span>' : '') + '</div>';
       }
       function skillBar() {
         if (me.level < 2) return '<p class="small sg-skills-soon">✨ Battle skills open at level 2.</p>';
@@ -726,11 +744,11 @@
       function q() {
         clearInterval(timer); used = {}; busy = false;
         if (i >= n) return end();
-        var it = b.questions[i], secs = b.seconds + (it.type === 'type' || it.type === 'order' ? 10 : 0), left = secs;
+        var it = b.questions[i], secs = b.seconds + (it.type === 'type' || it.type === 'order' ? 10 : 0) - (spooked ? 6 : 0), left = secs;
         GAME.cur = { kind: b.kind, foe: b.foe.name, q: (i + 1) + '/' + n, type: it.type, point: it.point || '', text: it.q };
         var label = { listen: '🎧 Listen', type: '⌨ Type the missing word', order: '🧩 Build the sentence', mc: '' }[it.type] || '';
         var qtext = it.type === 'listen' ? '<p class="sg-listen"><button class="sg-bigsay" data-say="' + esc(it.say) + '">🔊</button> ' + esc(it.q) + '</p>' : '<p>' + wrapWords(it.q, null, true) + ' ' + VOICE.btn(it.q) + '</p>';
-        box.innerHTML = '<div class="sg-bp">' + bars() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (label ? ' · ' + label : '') + (it.point ? ' · ' + esc(it.point) : '') + '</small>' + qtext + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '<p class="sg-hint" hidden></p></div>' + body(it) + skillBar() + '</div>';
+        box.innerHTML = '<div class="sg-bp"><button class="sg-leave" data-leave aria-label="Leave the battle">🏃 Leave</button>' + bars() + (stat.charged ? '<p class="sg-warn">⚡ ' + esc(b.foe.name) + ' is charging a heavy blow! A miss now hurts double; a right answer breaks it.</p>' : spooked ? '<p class="sg-warn">😱 Spooked: less time for this one!</p>' : '') + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (label ? ' · ' + label : '') + (it.point ? ' · ' + esc(it.point) : '') + '</small>' + qtext + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '<p class="sg-hint" hidden></p></div>' + body(it) + skillBar() + '</div>';
         if (it.type === 'listen') setTimeout(function () { VOICE.say(it.say); }, 350);
         var bar = box.querySelector('.sg-tm i');
         box.querySelectorAll('[data-k]').forEach(function (btn) { btn.onclick = function () { pick({ choice: +btn.dataset.k }, btn); }; });
@@ -743,11 +761,21 @@
           box.querySelector('[data-done]').onclick = function () { pick({ text: picked.map(function (k) { return it.tokens[k]; }).join(' ') }); };
           paint();
         }
-        bindSkills();
+        bindSkills(); bindLeave(); spooked = false;
         t0 = Date.now();
         timer = setInterval(function () { left -= 0.1; bar.style.width = Math.max(0, left / secs * 100) + '%'; bar.classList.toggle('low', left < 5); if (left <= 0) pick({ choice: -1, text: '' }, null); }, 100);
         G.keyPick = it.type === 'mc' || it.type === 'listen' ? function (k) { var bt = box.querySelector('[data-k="' + k + '"]'); if (bt && !bt.disabled) pick({ choice: k }, bt); } : null;
       }
+      function bindLeave() {
+        var lb = box.querySelector('[data-leave]'); if (!lb) return;
+        if (Date.now() < leaveArmed) lb.textContent = 'Tap again to leave'; // still armed after the next question appears
+        lb.onclick = function () {
+          if (Date.now() > leaveArmed) { leaveArmed = Date.now() + 4000; lb.textContent = 'Tap again to leave'; setTimeout(function () { var x = box.querySelector('[data-leave]'); if (x && Date.now() > leaveArmed) x.textContent = '🏃 Leave'; }, 4100); return; }
+          clearInterval(timer); busy = true; G.keyPick = null;
+          H.api('/world/flee', { method: 'POST', body: { battle: b.battle } }).then(function (r) { if (r.world) H.setWorld(r.world); scene.taunt(pickOne(TAUNTS.flee)); SFX.laugh(kind); setTimeout(function () { close({ kind: b.kind, fled: true, won: false }); say(r.refund ? 'You left the battle. The fight was given back.' : 'You left the battle. Take your time!', 4000); }, 900); }, function () { close({ kind: b.kind, fled: true, won: false }); });
+        };
+      }
+      function fxText(f) { return { poison: '☠ -' + f.n, burn: '🔥 -' + f.n, poisoned: '☠ Poisoned!', burning: '🔥 On fire!', stole: '🫳 -' + f.n + ' 💧', spooked: '😱 Spooked!', smash: '💥 SMASH ×2', stagger: '💫 Guard broken!', swoop: '🪶 Too slow: half damage', riddle: '❓ It healed +' + f.n, mend: '💚 +' + f.n, spell: '🔮 Spell!', freeze: '❄ Frozen!', frozen: '❄ Its attack missed!', frenzy: '🐾 Angrier!' }[f.k] || ''; }
       function bindSkills() {
         box.querySelectorAll('[data-sk]').forEach(function (s) {
           s.onclick = function () {
@@ -769,12 +797,17 @@
         H.api('/world/step', { method: 'POST', body: Object.assign({ battle: b.battle, i: i, ms: Date.now() - t0 }, ans) }).then(function (r) {
           if (btn) btn.classList.add(r.correct ? 'ok' : 'no');
           if (!r.correct) box.querySelectorAll('[data-k]').forEach(function (x) { if (x.textContent.slice(1) === r.right) x.classList.add('ok'); });
-          foe.hp = r.foeHp; me.hp = r.hp; combo = r.combo; phase = r.phase;
+          foe.hp = r.foeHp; me.hp = r.hp; combo = r.combo; phase = r.phase; if (r.mana != null) mana = r.mana;
+          stat = Object.assign({}, r.status || {}, { charged: r.charged, ice: (r.fx || []).some(function (f) { return f.k === 'freeze'; }) }); spooked = !!r.spooked;
+          (r.fx || []).forEach(function (f, k) { var t = fxText(f); if (t) setTimeout(function () { scene.pop(/^(mend|poison|burn|poisoned|burning|stole|spooked|smash|frozen)$/.test(f.k) ? scene.hero : scene.foe, t, /^(mend|freeze|frozen|stagger|spell)$/.test(f.k) ? 'heal' : 'miss'); }, 500 + k * 380); });
+          var taunt = !r.correct ? (ans.choice === -1 && !ans.text ? TAUNTS.slow : TAUNTS.miss) : r.combo >= 3 ? TAUNTS.combo : TAUNTS.hit;
+          if (!r.correct || r.combo >= 3 || Math.random() < 0.45) setTimeout(function () { scene.taunt(pickOne(taunt)); if (r.correct) SFX.scream(kind, true); else SFX.laugh(kind); }, r.correct ? 700 : 520);
+          if (!lowSaid && foe.hp > 0 && foe.hp < foe.max * 0.3) { lowSaid = true; setTimeout(function () { scene.taunt(pickOne(TAUNTS.low)); SFX.scream(kind); }, 1500); }
           scene.hit(r.correct, r.correct ? r.dmg : r.taken, { quick: r.quick, combo: r.combo, blocked: r.blocked, enrage: r.enrage });
           if (r.correct) { setTimeout(SFX.slash, 170); VOICE.bark(r.combo >= 3 ? 'combo' : r.quick ? 'quick' : 'hit'); }
           else if (r.blocked) SFX.blocked();
           else { setTimeout(function () { SFX.growl(b.foe.name); SFX.hurt(); }, 190); VOICE.bark('hurt'); }
-          if (r.enrage) setTimeout(function () { SFX.growl(b.foe.name); VOICE.act('boss', pickOne(BOSS_LINES.rage)); }, 900);
+          if (r.enrage) setTimeout(function () { SFX.growl(b.foe.name); SFX.laugh('dragon'); scene.taunt(pickOne(BOSS_LINES.rage)); }, 1900);
           paintBars();
           if (!r.correct) { var fb = el('div', 'sg-fb', '✗ <b>' + wrapWords(r.right) + '</b>' + (r.why ? ' — ' + wrapWords(r.why) : '') + ' ' + VOICE.btn(r.right)); var bp = box.querySelector('.sg-bp'); if (bp) bp.appendChild(fb); }
           i++;
@@ -787,7 +820,7 @@
         H.api('/world/answer', { method: 'POST', body: { battle: b.battle } }).then(function (r) {
           if (r.world) H.setWorld(r.world);
           scene.finish(r.won && !r.ko);
-          if (r.ko) { SFX.sad(); VOICE.bark('lose'); } else if (r.won) { if (r.foe.boss) { SFX.fanfare(); VOICE.act('boss', pickOne(BOSS_LINES.fall)); } else { SFX.coin(); VOICE.bark('win'); } } else SFX.sad();
+          if (r.ko) { SFX.sad(); SFX.laugh(kind); scene.taunt(pickOne(TAUNTS.win)); } else if (r.won) { SFX.scream(kind); scene.taunt(pickOne(r.foe.boss ? BOSS_LINES.fall : TAUNTS.fall)); setTimeout(r.foe.boss ? SFX.fanfare : SFX.coin, 500); } else { SFX.sad(); SFX.laugh(kind); scene.taunt(pickOne(TAUNTS.escape)); }
           var leveled = r.hero && r.hero.level > me.level;
           var pb = r.kind === 'pboss', duel = r.kind === 'duel';
           var title = r.ko ? '💫 You were knocked out' : pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.attack + ' damage to the party boss') : duel ? (r.won ? '🏆 You beat the shadow!' : '💨 The shadow was stronger') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' got away';
@@ -808,9 +841,9 @@
         }, function (x) { say(x.message); close(null); });
       }
       function close(r) {
-        G.keyPick = null; box.classList.remove('on'); box.innerHTML = ''; GAME.cur = null;
+        G.keyPick = null; box.classList.remove('on'); box.innerHTML = ''; GAME.cur = null; GAME.arena = null; clearInterval(timer);
         if (close.done) return; close.done = true;
-        if (r) setTimeout(function () { moment(r.kind === 'boss' ? 'first_boss' : 'first_battle'); }, 900);
+        if (r && !r.fled) setTimeout(function () { moment(r.kind === 'boss' ? 'first_boss' : 'first_battle'); }, 900);
         var world = G.phaser.scene.getScene('World'); scene.close(); world.scene.resume(); MUSIC.battle(false);
         if (GAME.needRebuild) { GAME.needRebuild = false; setTimeout(rebuild, 300); } $('.sg-labels').style.visibility = ''; world.afterBattle(r);
         if (r && r.kind === 'pboss') H.refreshParty();
@@ -818,22 +851,25 @@
       q();
     },
     levelUp: function (hr) {
-      var d = el('div', 'sg-levelup', '<div><small>LEVEL UP</small><b>' + hr.level + '</b><span>' + esc(hr.title) + '</span><p>❤ +10 · 💧 +5 · +' + (10 * hr.level) + ' 🪙</p></div>');
+      var d = el('div', 'sg-levelup', '<div><small>LEVEL UP</small><b>' + hr.level + '</b><span>' + esc(hr.title) + '</span><p>❤ +8 · 💧 +5 · +' + (10 * hr.level) + ' 🪙</p></div>');
       if (!ROOT) return; ROOT.appendChild(d); setTimeout(function () { d.classList.add('on'); }, 30);
       SFX.fanfare(); setTimeout(function () { VOICE.bark('level'); }, 600); setTimeout(function () { moment('first_level'); }, 9000); setTimeout(function () { say('📣 Tap Share to show your new level in the community!', 5000); }, 3800); setTimeout(function () { d.classList.remove('on'); setTimeout(function () { d.remove(); }, 500); }, 3600);
     },
     emote: function (e) { var w = G.phaser.scene.getScene('World'); w.emote = { e: e, until: Date.now() + 5000 }; H.api('/play/emote', { method: 'POST', body: { e: e } }).catch(function () {}); },
     look: function (first) {
-      var L = Object.assign({}, H.avatar().look), d = $('.sg-dlg');
+      var L = Object.assign({}, H.avatar().look), d = $('.sg-dlg'), role = H.avatar().role || 'guardian';
       function prev() { var c = drawChar({ look: L, job: H.world().job }), p = d.querySelector('canvas'), g = p.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 96, 144); g.drawImage(c, 0, 0, 16, 24, 0, 0, 96, 144); }
       var rows = [['skin', 'Skin', 5], ['hair', 'Hair', 4], ['hairc', 'Hair colour', 6], ['outfit', 'Clothes', 6]];
       d.innerHTML = '<div class="sg-box sg-look"><canvas width="96" height="144"></canvas><div class="sg-txt"><b>' + (first ? 'Create your traveller' : 'Your look') + '</b><p>' + (first ? 'This is you on the Silk Road. Your job and the gear you earn will show on you too.' : 'Change how you look.') + '</p>'
         + rows.map(function (r) { return '<div class="sg-lr"><span>' + r[1] + '</span><button data-l="' + r[0] + '" data-v="-1" aria-label="Previous">‹</button><button data-l="' + r[0] + '" data-v="1" aria-label="Next">›</button></div>'; }).join('')
+        + '<p class="sg-rolet"><b>Your role</b> · how you fight, and how you help others</p><div class="sg-roles">' + ROLES.map(function (x) { return '<button data-role="' + x[0] + '"' + (x[0] === role ? ' class="on"' : '') + '><span>' + x[1] + '</span>' + esc(x[2]) + '</button>'; }).join('') + '</div><p class="small sg-roled"></p>'
         + '<div class="sg-opts"><button class="pri" data-o="save">Start my journey</button></div></div></div>';
       d.classList.add('on'); prev();
+      var roleTxt = function () { var x = ROLES.filter(function (y) { return y[0] === role; })[0]; d.querySelector('.sg-roled').innerHTML = '<b>' + x[1] + ' ' + esc(x[2]) + '</b>: ' + esc(x[3]) + '<br>Helping others: ' + esc(x[4]); d.querySelectorAll('[data-role]').forEach(function (b) { b.classList.toggle('on', b.dataset.role === role); }); };
+      d.querySelectorAll('[data-role]').forEach(function (b) { b.onclick = function () { role = b.dataset.role; roleTxt(); }; }); roleTxt();
       var w0 = G.phaser && G.phaser.scene.getScene('World'); if (w0) w0.frozen = true; // nothing attacks while you dress up
       d.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { var r = rows.filter(function (x) { return x[0] === b.dataset.l; })[0]; L[r[0]] = ((L[r[0]] || 0) + +b.dataset.v + r[2]) % r[2]; prev(); }; });
-      d.querySelector('[data-o="save"]').onclick = function () { H.api('/play/look', { method: 'POST', body: L }).then(function (j) { H.setLook(j.look); d.classList.remove('on'); d.innerHTML = ''; var w = G.phaser.scene.getScene('World'); w.scene.restart({}); if (first) setTimeout(GAME.welcome, 900); }, function (x) { say(x.message); }); };
+      d.querySelector('[data-o="save"]').onclick = function () { H.api('/play/look', { method: 'POST', body: Object.assign({ role: role }, L) }).then(function (j) { H.setLook(j.look); H.avatar().role = j.role; d.classList.remove('on'); d.innerHTML = ''; var w = G.phaser.scene.getScene('World'); w.scene.restart({}); if (first) setTimeout(GAME.welcome, 900); }, function (x) { say(x.message); }); };
     },
     welcome: function () {
       var steps = [
@@ -870,6 +906,13 @@
       }
     }
   };
+  /** Silk Road roles: [id, icon, name, in battle, when helping others]. The server has the same list (Sawa_Tracker_Combat::ROLES). */
+  var ROLES = [
+    ['guardian', '🛡', 'Guardian', 'a tank: you take 25% less damage', 'a shield, so your ally takes no damage from the first hits'],
+    ['healer', '💚', 'Healer', 'every right answer heals you, and cleans off poison and fire', 'heals when your ally\'s health is low'],
+    ['mage', '🔮', 'Mage', 'typing and sentence questions hit 40% harder', 'a fireball when your ally\'s battle starts'],
+    ['trickster', '❄', 'Trickster', '3 right answers in a row freeze the monster: its next attack misses', 'the monster\'s first attacks miss']
+  ];
   var EMO_LIST = { wave: '👋', cheer: '🎉', clap: '👏', heart: '❤️', laugh: '😂', bow: '🙇' };
 
   /* ================================================================ sound: read-aloud (the browser's own voices) and calm music
@@ -919,12 +962,24 @@
       var c = MUSIC.ctx; if (!c) return;
       var t = H && H.world ? H.world().at : 1, mode = MODES[t] || MODES[1], root = ROOTS[t] || 57, now = c.currentTime + 0.05, beat = MUSIC.fast ? 0.42 : 0.75;
       if (MUSIC.step % 16 === 0) { var deg = [0, 3, 2, 4][(MUSIC.step / 16) % 4]; [0, 2, 4].forEach(function (k) { var s = mode[(deg + k) % 5] + ((deg + k) >= 5 ? 12 : 0); MUSIC.note(root - 12 + s, now, beat * 16, 'sine', 0.05); MUSIC.note(root + s, now + 0.02, beat * 16, 'triangle', 0.018); }); }
+      if (MUSIC.fast) { // battle: a kick on every beat, a hi-hat between, a bass line
+        MUSIC.drum(now, 'kick'); MUSIC.drum(now + beat / 2, 'hat'); if (MUSIC.step % 4 === 2) MUSIC.drum(now, 'snare');
+        if (MUSIC.step % 2 === 0) MUSIC.note(root - 24 + mode[[0, 0, 3, 4][(MUSIC.step / 2) % 4]], now, beat * 1.8, 'square', 0.03);
+      }
       if (Math.random() < (MUSIC.fast ? 0.55 : 0.32)) { var n = mode[Math.floor(Math.random() * 5)] + (Math.random() < 0.3 ? 12 : 0); MUSIC.note(root + 12 + n, now, beat * 3, 'triangle', 0.035); }
       MUSIC.step++;
       MUSIC.t = setTimeout(MUSIC.loop, beat * 1000);
     },
-    battle: function (on) { MUSIC.fast = on; },
-    duck: function (on) { if (MUSIC.ctx) MUSIC.master.gain.linearRampToValueAtTime(on ? 0.015 : 0.07, MUSIC.ctx.currentTime + 0.3); },
+    drum: function (when, k) {
+      var c = MUSIC.ctx, o = c.createOscillator(), g = c.createGain();
+      if (k === 'kick') { o.type = 'sine'; o.frequency.setValueAtTime(130, when); o.frequency.exponentialRampToValueAtTime(42, when + 0.16); g.gain.setValueAtTime(0.32, when); g.gain.exponentialRampToValueAtTime(0.001, when + 0.2); o.connect(g); g.connect(MUSIC.master); o.start(when); o.stop(when + 0.22); return; }
+      var n = c.createBufferSource(), len = c.sampleRate * 0.2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0); for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      var fl = c.createBiquadFilter(); fl.type = k === 'hat' ? 'highpass' : 'bandpass'; fl.frequency.value = k === 'hat' ? 7000 : 1800; n.buffer = buf;
+      g.gain.setValueAtTime(k === 'hat' ? 0.05 : 0.14, when); g.gain.exponentialRampToValueAtTime(0.001, when + (k === 'hat' ? 0.05 : 0.15)); n.connect(fl); fl.connect(g); g.connect(MUSIC.master); n.start(when); n.stop(when + 0.2);
+    },
+    level: function () { return MUSIC.fast ? 0.11 : 0.07; },
+    battle: function (on) { MUSIC.fast = on; if (MUSIC.ctx) { if (MUSIC.ctx.state === 'suspended') MUSIC.ctx.resume(); MUSIC.master.gain.linearRampToValueAtTime(MUSIC.level(), MUSIC.ctx.currentTime + 0.5); } },
+    duck: function (on) { if (!MUSIC.ctx) return; clearTimeout(MUSIC.dt); MUSIC.master.gain.linearRampToValueAtTime(on ? 0.02 : MUSIC.level(), MUSIC.ctx.currentTime + 0.3); if (on) MUSIC.dt = setTimeout(function () { MUSIC.duck(false); }, 6000); }, // speech may never say it ended
     toggle: function () {
       MUSIC.on = !MUSIC.ctx; try { localStorage.setItem('sawaMusic', MUSIC.on ? '1' : '0'); } catch (e) { /* private mode */ }
       if (MUSIC.on) MUSIC.start(); else MUSIC.stop();
@@ -946,7 +1001,31 @@
     hurt: ['Ouch!', 'That hurt!', 'Oh no!'], win: ['Victory!', 'We did it!', 'Yes! I won!'], lose: ['I need to rest.', 'Next time!'], level: ['Level up!', 'I feel stronger!'],
     focus: ['Focus!'], hint: ['Insight!'], power: ['Power strike!'], heal: ['I feel better.']
   };
-  var BOSS_LINES = { intro: ['You dare to face me?', 'Turn back, traveller!', 'Your English is not ready!'], rage: ['Now you will see my real power!', 'Enough! I am angry now!'], fall: ['No! Impossible!', 'You are… strong.'] };
+  function mobKind(f) { return f.shadow ? 'shadow' : f.boss ? 'boss' : (SHAPES[f.name] || ['beast'])[0]; }
+  var MOB_STYLE = { 'Sand Scorpion': 'Its sting poisons you when you miss.', 'Desert Wyrm': 'Its bite poisons you when you miss.', 'Night Assassin': 'Its blade is poisoned.', 'Lantern Ghost': 'It spooks you: less time to answer.', 'Cave Bat': 'It spooks you: less time to answer.', 'Shadow Khan': 'It spooks you: less time to answer.', 'Rice Rat': 'It steals your mana when you miss.', 'Dune Bandit': 'It steals your mana when you miss.', 'Bazaar Trickster': 'It steals your mana when you miss.', 'Stone Golem': 'Watch out when it charges up!', 'Iron Boar': 'Watch out when it charges up!', 'Brass Automaton': 'Watch out when it charges up!', 'Varangian Guard': 'Watch out when it charges up!', 'Fire Djinn': 'Its fire keeps burning you.', 'Fire Drake': 'Its fire keeps burning you.', 'Roc Chick': 'Answer fast: slow answers only do half damage.', 'Hippodrome Champion': 'Answer fast: slow answers only do half damage.', 'Riddling Sphinx': 'A miss heals it.', 'Paper Tiger': 'Every miss makes it angrier.', 'Mountain Wolf': 'Every miss makes it angrier.' };
+  var TAUNTS = {
+    intro: {
+      beast: ['Grrr! Your words look tasty!', 'I am hungry for verbs!', 'Roar! Do you even know the past tense?'],
+      bandit: ['Hand over your vocabulary!', 'This road is mine, little student!', 'Your words or your coins!'],
+      spirit: ['Boooo! Did I scare your grammar?', 'Wooo… I eat forgotten words!', 'Hee hee! Can you see me?'],
+      golem: ['I… am… rock. You… are… small.', 'Stone… never… forgets… words.', 'Crush… your… English!'],
+      bug: ['Click-click! I will sting your verbs!', 'Tiny but dangerous! Like irregular verbs!', 'Bzzzt! Spell it, if you can!'],
+      flyer: ['Squawk! Catch me if you can spell!', 'Too slow! Too slow!', 'Caw! Answer fast or cry!'],
+      dragon: ['Ha ha ha! Another tiny traveller!', 'I have eaten many dictionaries!', 'Your English smells like a beginner!'],
+      boss: ['Mwa-ha-ha! You came to ME?', 'Turn back, little scholar!', 'I have beaten a hundred students today!'],
+      shadow: ['I fight just like you. Show me!', 'I know all your mistakes!', 'Ha! I am you, but better.']
+    },
+    miss: ['Ha! Nice try!', 'Ooh, so close… NOT!', 'My grandmother knows that one!', 'Wrong! I love it!', 'Was that a guess?', 'Even my tail knows that!', 'Hee hee! Try again, friend!', 'Oops! Did your brain take a nap?'],
+    hit: ['Ouch! Lucky shot!', 'Hey! That hurt!', 'Okay, okay, you know that one.', 'Grr… not bad!', 'Ow! Who taught you that?'],
+    combo: ['Stop! Stop! You are too good!', 'Who are you, a teacher?!', 'No fair! You studied!', 'Help! This one reads books!'],
+    slow: ['Zzz… are you sleeping?', 'Tick-tock, traveller!', 'Hello? Anybody there?'],
+    low: ['Wait! Let us be friends!', 'I will tell my mother!', 'Please! I have a family of verbs!'],
+    fall: ['Nooo! I will study harder!', 'You… speak… too well…', 'Not fair! You did your homework!', 'Okay, you win. Teach me?'],
+    win: ['Ha ha! Go and review your cards!', 'Come back when you know more words!', 'Sleep well, little scholar!'],
+    escape: ['See you next time, slowpoke!', 'Ha! My English is better today!'],
+    flee: ['Running away? Ha ha! Come back soon!', 'Go! Go and study! I will wait!', 'Bye-bye! Bring better words next time!']
+  };
+  var BOSS_LINES = { rage: ['Enough! Now I am REALLY angry!', 'You made me angry! Big mistake!', 'Grrraaah! My real power!'], fall: ['No! Impossible! Who taught you?!', 'You… are… a real scholar!', 'I will be back… after I study!'] };
   function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
   var SFX = {
     ctx: null,
@@ -987,6 +1066,30 @@
       else if (k === 'dragon') { SFX.tone('sawtooth', 75, 45, 1.0, 0.2); SFX.noise('lowpass', 900, 150, 1.0, 0.4); }
       else { SFX.tone('sawtooth', 160, 120, 0.25, 0.1); }
     },
+    /** An evil (or silly) laugh: "ha-ha-ha" from a buzzing voice through two vowel filters. */
+    laugh: function (kind) {
+      var c = SFX.ac(); if (!c) return;
+      var base = { dragon: 88, golem: 80, boss: 92, shadow: 120, beast: 125, bandit: 165, spirit: 300, bug: 470, flyer: 540 }[kind] || 150, n = kind === 'spirit' || kind === 'bug' ? 6 : kind === 'golem' ? 3 : 5, gap = kind === 'golem' ? 0.26 : kind === 'bug' ? 0.11 : 0.17;
+      for (var i = 0; i < n; i++) {
+        var t = c.currentTime + i * gap, f = base * (1.3 - i * 0.07) * (i === n - 1 ? 1.15 : 1), o = c.createOscillator(), g = c.createGain(), f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter();
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(f * 1.12, t); o.frequency.exponentialRampToValueAtTime(f * 0.86, t + gap * 0.8);
+        if (kind === 'spirit') { var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 9; lg.gain.value = f * 0.06; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + gap); }
+        f1.type = 'bandpass'; f1.frequency.value = kind === 'spirit' ? 600 : 780; f1.Q.value = 5; f2.type = 'bandpass'; f2.frequency.value = 1220; f2.Q.value = 7;
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.55, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + gap * 0.85);
+        o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(SFX.out); o.start(t); o.stop(t + gap);
+        SFX.noise('highpass', 2600, 1400, 0.035, 0.16, i * gap);
+      }
+    },
+    /** A cartoon scream ("aaah!"), or a short yelp when it is hit. */
+    scream: function (kind, short) {
+      var c = SFX.ac(); if (!c) return;
+      var base = { dragon: 110, golem: 90, boss: 120, beast: 180, bandit: 240, spirit: 420, bug: 700, flyer: 820, shadow: 160 }[kind] || 200, d = short ? 0.28 : 0.75, t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(base, t); o.frequency.exponentialRampToValueAtTime(base * (short ? 1.8 : 2.4), t + d * 0.35); o.frequency.exponentialRampToValueAtTime(base * 0.7, t + d);
+      f1.type = 'bandpass'; f1.frequency.value = 900; f1.Q.value = 4; f2.type = 'bandpass'; f2.frequency.value = 1400; f2.Q.value = 6;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.04); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+      o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(SFX.out); o.start(t); o.stop(t + d + 0.05);
+      SFX.noise('bandpass', 1800, 900, d * 0.8, 0.12);
+    },
     toggle: function () { var on = !SFX.on(); try { localStorage.setItem('sawaVoices', on ? '1' : '0'); } catch (e) { /* private mode */ } if (!on && window.speechSynthesis) speechSynthesis.cancel(); say(on ? '🗣 Voices and sounds on' : '🔇 Voices and sounds off'); hud(); }
   };
   /** A character says a line (voices on): its own pitch and speed. */
@@ -996,7 +1099,7 @@
     var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.pitch = c.pitch; u.rate = c.rate; var v = VOICE.pick(); if (v) u.voice = v;
     MUSIC.duck(true); u.onend = u.onerror = function () { MUSIC.duck(false); }; speechSynthesis.speak(u);
   };
-  VOICE.bark = function (kind, who) { if (Math.random() < (kind === 'hit' || kind === 'hurt' ? 0.45 : 1)) VOICE.act(who || 'me', pickOne(BARKS[kind] || BARKS.hit)); };
+  VOICE.bark = function (kind) { var A = GAME.arena; if (A && A.el.isConnected && Math.random() < (kind === 'hit' || kind === 'hurt' ? 0.35 : 0.8)) A.pop(A.hero, pickOne(BARKS[kind] || BARKS.hit), 'say'); };
 
   /* ================================================================ the share card: a picture to post on Skool */
   var SHARE = {};
@@ -1075,24 +1178,38 @@
     return '<span class="lws" data-s="' + esc(sentence || t) + '">' + out + P(t.slice(last)) + '</span>';
   }
   var LENS = {
+    sel: null,
+    /** Tap a word: its card. Tap another word in the same sentence while the card is open: the phrase between them ("looks down"). */
     word: function (span) {
-      var L = H.lens; if (!L) return;
-      var word = span.textContent, holder = span.closest('[data-s]'), sentence = holder ? holder.dataset.s : word;
-      ROOT.querySelectorAll('.lw.on').forEach(function (x) { x.classList.remove('on'); }); span.classList.add('on');
+      if (!H.lens) return;
+      var holder = span.closest('[data-s]') || span.parentNode, list = [].slice.call(holder.querySelectorAll('.lw')), k = list.indexOf(span), S0 = LENS.sel;
+      if (S0 && S0.holder === holder && $('.sg-word.on') && k !== S0.a) { S0.a = Math.min(S0.a, k); S0.b = Math.max(S0.b, k); if (S0.b - S0.a > 5) S0.a = S0.b - 5; }
+      else LENS.sel = { holder: holder, list: list, a: k, b: k };
+      LENS.show();
+    },
+    show: function () {
+      var L = H.lens, sel = LENS.sel, spans = sel.list.slice(sel.a, sel.b + 1), sentence = sel.holder.dataset.s || spans.map(function (x) { return x.textContent; }).join(' ');
+      ROOT.querySelectorAll('.lw.on').forEach(function (x) { x.classList.remove('on'); }); spans.forEach(function (x) { x.classList.add('on'); });
       var box = $('.sg-word'); box.classList.add('on'); box.innerHTML = '<div class="sg-wbox"><p class="sg-wait">…</p></div>';
       L.lex().then(function () {
-        var lemma = L.lemmaOf(word), ms = L.meanings(lemma), town = H.world().town;
-        box.innerHTML = '<div class="sg-wbox"><div class="sg-wh"><b>' + esc(lemma) + '</b><button class="sg-x" data-w="x" aria-label="Close">✕</button></div>'
-          + (ms.length ? ms.slice(0, 2).map(function (m) { return '<div class="sg-wm"><small>' + esc(m.pos) + (m.level ? ' · ' + esc(m.level) : '') + '</small><p class="ar" dir="rtl">' + esc(m.ar) + '</p>' + (m.en ? '<p class="en">' + esc(m.en) + '</p>' : '') + '</div>'; }).join('') : '<p class="en">Not in the dictionary yet.</p>')
-          + '<div class="sg-wai"></div><p class="sg-wctx">“' + esc(sentence.slice(0, 160)) + '”</p>'
-          + '<div class="sg-opts"><button class="pri" data-w="learn">+ Learning</button><button data-w="ai">' + (ms.length ? 'Meaning here (AI)' : 'Explain (AI)') + '</button><button data-w="ask">🙋 Ask the caravan</button></div></div>';
-        box.querySelector('[data-w="x"]').onclick = LENS.close;
-        box.querySelector('[data-w="learn"]').onclick = function () { var b = this; b.disabled = true; L.api('library/word', { body: { lemma: lemma, status: 'learning', sentence: sentence, title: 'Silk Road · ' + town.name } }).then(function () { b.textContent = '✓ In your review cards'; say('“' + lemma + '” is now a review card — it may attack you later!'); }, function (x) { b.disabled = false; say(x.message); }); };
-        box.querySelector('[data-w="ask"]').onclick = function () { this.disabled = true; CARAVAN.askWord(lemma, sentence); };
-        box.querySelector('[data-w="ai"]').onclick = function () { var b = this, out = box.querySelector('.sg-wai'); b.disabled = true; b.textContent = 'Explaining…'; L.api('library/explain', { body: { word: word, sentence: sentence } }).then(function (x) { b.remove(); out.innerHTML = '<p class="ar" dir="rtl">' + esc(x.meaning) + '</p>' + (x.note ? '<p class="ar small" dir="rtl">' + esc(x.note) + '</p>' : ''); }, function (x) { b.disabled = false; b.textContent = 'Try again'; say(x.message); }); };
+        var words = spans.map(function (x) { return x.textContent; }), many = words.length > 1, said = words.join(' ');
+        var lemma = many ? words.map(function (w) { return L.lemmaOf(w); }).join(' ') : L.lemmaOf(said), ms = L.meanings(lemma);
+        if (many && !ms.length) { var raw = said.toLowerCase(); ms = L.meanings(raw); if (ms.length) lemma = raw; }
+        var save = many && !ms.length ? said.toLowerCase() : lemma, town = H.world().town;
+        box.innerHTML = '<div class="sg-wbox"><div class="sg-wh">' + (sel.a > 0 ? '<button class="sg-wx" data-w="left" aria-label="Add the word before">◀ +</button>' : '') + '<b>' + esc(many ? said : lemma) + '</b>' + (sel.b < sel.list.length - 1 ? '<button class="sg-wx" data-w="right" aria-label="Add the next word">+ ▶</button>' : '') + '<button class="sg-x" data-w="x" aria-label="Close">✕</button></div>'
+          + (many && lemma !== said.toLowerCase() && ms.length ? '<small>' + esc(lemma) + '</small>' : '')
+          + (ms.length ? ms.slice(0, 2).map(function (m) { return '<div class="sg-wm"><small>' + esc(m.pos) + (m.level ? ' · ' + esc(m.level) : '') + '</small><p class="ar" dir="rtl">' + esc(m.ar) + '</p>' + (m.en ? '<p class="en">' + esc(m.en) + '</p>' : '') + '</div>'; }).join('') : '<p class="en">' + (many ? 'This phrase is not in the dictionary — tap “Meaning here”.' : 'Not in the dictionary yet.') + '</p>')
+          + '<div class="sg-wai"></div><p class="sg-wctx">“' + esc(sentence.replace(/_{2,}/g, '___').slice(0, 160)) + '”</p>'
+          + '<p class="small sg-whint">' + (many ? 'Tap a word in the sentence to change the phrase.' : 'Tap another word in the sentence to look up the phrase (like “looks down”).') + '</p>'
+          + '<div class="sg-opts"><button class="pri" data-w="learn">+ Learning</button><button data-w="ai">' + (ms.length ? 'Meaning here (AI)' : 'Explain (AI)') + '</button>' + (many ? '<button data-w="one">Just “' + esc(words[words.length - 1]) + '”</button>' : '') + '</div></div>';
+        var on = function (k, fn) { var b = box.querySelector('[data-w="' + k + '"]'); if (b) b.onclick = fn; };
+        on('x', LENS.close);
+        on('left', function () { sel.a--; LENS.show(); }); on('right', function () { sel.b++; LENS.show(); }); on('one', function () { sel.a = sel.b; LENS.show(); });
+        on('learn', function () { var b = this; b.disabled = true; L.api('library/word', { body: { lemma: save, status: 'learning', sentence: sentence, title: 'Silk Road · ' + town.name } }).then(function () { b.textContent = '✓ In your review cards'; say('“' + save + '” is now a review card — it may attack you later!'); }, function (x) { b.disabled = false; say(x.message); }); });
+        on('ai', function () { var b = this, out = box.querySelector('.sg-wai'); b.disabled = true; b.textContent = 'Explaining…'; L.api('library/explain', { body: { word: said, sentence: sentence } }).then(function (x) { b.remove(); out.innerHTML = '<p class="ar" dir="rtl">' + esc(x.meaning) + '</p>' + (x.note ? '<p class="ar small" dir="rtl">' + esc(x.note) + '</p>' : ''); }, function (x) { b.disabled = false; b.textContent = 'Try again'; say(x.message); }); });
       });
     },
-    close: function () { var b = $('.sg-word'); if (b) { b.classList.remove('on'); b.innerHTML = ''; } if (ROOT) ROOT.querySelectorAll('.lw.on').forEach(function (x) { x.classList.remove('on'); }); }
+    close: function () { LENS.sel = null; var b = $('.sg-word'); if (b) { b.classList.remove('on'); b.innerHTML = ''; } if (ROOT) ROOT.querySelectorAll('.lw.on').forEach(function (x) { x.classList.remove('on'); }); }
   };
 
   /* ================================================================ panels inside the game (chat, review cards, today's plan) */
@@ -1114,7 +1231,7 @@
   var CHAT = { room: 0, rooms: [], msgs: [], t: null, open: false };
   CHAT.show = function (roomId) {
     var w = H.world(); CHAT.open = true;
-    CHAT.rooms = [{ id: w.town.room, name: w.town.icon + ' ' + w.town.name }];
+    CHAT.rooms = [{ id: w.town.room, name: '💬 Community' }]; // one chat for the whole community
     var go = function () {
       CHAT.room = roomId || CHAT.room && CHAT.rooms.some(function (r) { return r.id === CHAT.room; }) && CHAT.room || CHAT.rooms[0].id;
       var b = panel('sg-chatp', '💬 Chat', '<div class="sg-tabs">' + CHAT.rooms.map(function (r) { return '<button data-room="' + r.id + '"' + (r.id === CHAT.room ? ' class="on"' : '') + '>' + esc(r.name) + '</button>'; }).join('') + '</div><div class="sg-msgs"><p class="sg-wait">…</p></div><div class="sg-tr"></div><div class="sg-send"><input maxlength="500" placeholder="Write in English — or in Arabic to get help" dir="auto"><button class="pri">Send</button></div>');
@@ -1308,6 +1425,8 @@
   /* ================================================================ start / stop */
   window.SawaGame = {
     running: function () { return running; },
+    /** The character drawn big, facing you (plain canvas, no game engine): for the card on the Today screen. */
+    portrait: function (a, scale) { var k = scale || 6, c = cnv(16 * k, 24 * k), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(drawChar(a), 0, 0, 16, 24, 0, 0, 16 * k, 24 * k); return c; },
     start: function (mount, hooks) {
       if (running) return Promise.resolve();
       H = hooks; running = true;

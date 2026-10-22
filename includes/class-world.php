@@ -13,6 +13,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/class-combat.php'; // monster and traveller fighting styles
+
 final class Sawa_Tracker_World {
 
 	/** [name, icon, CEFR, monsters [[name, icon] × 3], boss [name, icon]] */
@@ -72,7 +74,7 @@ final class Sawa_Tracker_World {
 	}
 
 	public static function routes() {
-		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
+		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/flee', 'POST', 'flee' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
 		}
 	}
@@ -298,9 +300,13 @@ final class Sawa_Tracker_World {
 		return array_slice( $out, 0, 8 );
 	}
 
-	/** Every town has its own chat room for the students who reached it. */
+	/** The game's chat is the one community chat (one room for everyone, fewer places to look). */
 	public static function town_room( $t ) {
 		global $wpdb;
+		$public = Sawa_Tracker_Social::public_room();
+		if ( $public ) {
+			return $public;
+		}
 		$rooms = Sawa_Tracker_Social::t( 'rooms' );
 		$id    = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $rooms WHERE type = 'town' AND clan_id = %d", $t ) ); // phpcs:ignore
 		if ( ! $id && isset( self::TOWNS[ $t ] ) ) {
@@ -372,8 +378,9 @@ final class Sawa_Tracker_World {
 		$rpg   = Sawa_Tracker_RPG::get( $uid );
 		$lv    = Sawa_Tracker_Hero::level( $uid );
 		$qs    = self::vary( array_slice( array_values( $qs ), 0, self::QUESTIONS[ $kind ] ?? 8 ) );
-		$foe   = $foe + array( 'atk' => 8 + 2 * $t, 'boss' => false ); // about 6–7 mistakes before a knock-out
+		$foe   = $foe + array( 'atk' => 10 + 3 * $t, 'boss' => false ); // about 4–5 mistakes before a knock-out
 		$foe['hpMax'] = (int) $foe['hp'];
+		$foe['style'] = empty( $foe['shadow'] ) ? Sawa_Tracker_Combat::foe_style( $foe['name'] ) : null; // how it attacks
 		$me    = array(
 			'hp'    => Sawa_Tracker_Hero::hp( $uid ),
 			'hpMax' => Sawa_Tracker_Hero::max_hp( $uid, $lv ),
@@ -382,8 +389,9 @@ final class Sawa_Tracker_World {
 		);
 		$secs  = 20 + ( Sawa_Tracker_RPG::skill_on( $uid, 'eagle_eye' ) ? 5 : 0 );
 		$id    = wp_generate_password( 20, false );
-		$me['soft'] = 1 === $t || $lv <= 3; // gentle for beginners
-		$me['noKo'] = 1 === $t;
+		$me['soft']   = 1 === $t; // gentle in the first town only
+		$me['noKo']   = 1 === $t;
+		$me['styles'] = Sawa_Tracker_Combat::my_styles( $uid );
 		$state = array( 'picks' => array(), 'combo' => 0, 'best' => 0, 'dealt' => 0, 'taken' => 0, 'right' => 0, 'power' => false, 'used' => array(), 'sw' => false, 'phase' => 1, 'done' => false );
 		set_transient( 'sawa_tr_wb_' . $id, array( 'uid' => $uid, 'kind' => $kind, 'qs' => $qs, 'foe' => $foe, 'me' => $me, 'st' => $state, 'meta' => $meta, 'secs' => $secs, 't' => time() ), 20 * MINUTE_IN_SECONDS );
 		$skills = array();
@@ -508,13 +516,15 @@ final class Sawa_Tracker_World {
 		$ms    = (int) $r->get_param( 'ms' );
 		$limit = ( $b['secs'] + ( in_array( $q['type'], array( 'type', 'order' ), true ) ? 10 : 0 ) ) * 1000;
 		$quick = $correct && $ms > 300 && $ms < $limit * 0.35;
-		$out   = array( 'correct' => $correct, 'right' => $right, 'why' => $q['why'] ?? '', 'dmg' => 0, 'taken' => 0, 'quick' => $quick, 'blocked' => false );
+		$out   = array( 'correct' => $correct, 'right' => $right, 'why' => $q['why'] ?? '', 'dmg' => 0, 'taken' => 0, 'quick' => $quick, 'blocked' => false, 'fx' => array() );
+		Sawa_Tracker_Combat::tick( $b, $out ); // poison and fire
 		if ( $correct ) {
 			$st['combo']++;
 			$st['best'] = max( $st['best'], $st['combo'] );
 			$st['right']++;
 			$mult = ( $quick ? 1.25 : 1 ) * ( $st['combo'] >= 5 ? 2 : ( $st['combo'] >= 3 ? 1.5 : 1 ) ) * ( $st['power'] ? 2 : 1 );
 			$dmg  = (int) round( $b['me']['atk'] * $mult ) + ( 3 === $st['combo'] && Sawa_Tracker_RPG::skill_on( $uid, 'critical' ) ? 15 : 0 );
+			$dmg  = Sawa_Tracker_Combat::right( $b, $out, $dmg, $quick, $ms > $limit * 0.6, $q['type'] );
 			$st['power']      = false;
 			$b['foe']['hp']   = max( 0, $b['foe']['hp'] - $dmg );
 			$st['dealt']     += $dmg;
@@ -525,7 +535,8 @@ final class Sawa_Tracker_World {
 				$st['sw']       = true;
 				$out['blocked'] = true;
 			} else {
-				$hit            = (int) round( $b['foe']['atk'] * ( 2 === $st['phase'] ? 1.5 : 1 ) * ( 1 - $b['me']['armor'] ) * ( empty( $b['me']['soft'] ) ? 1 : 0.6 ) );
+				$hit            = (int) round( $b['foe']['atk'] * ( 2 === $st['phase'] ? 1.5 : 1 ) * ( 1 - $b['me']['armor'] ) * ( empty( $b['me']['soft'] ) ? 1 : 0.75 ) );
+				$hit            = Sawa_Tracker_Combat::wrong( $b, $out, $hit, $uid );
 				$b['me']['hp']  = max( empty( $b['me']['noKo'] ) ? 0 : 1, $b['me']['hp'] - $hit );
 				$st['taken']   += $hit;
 				$out['taken']   = $hit;
@@ -535,9 +546,33 @@ final class Sawa_Tracker_World {
 			$st['phase']   = 2; // the boss gets angry: it hits harder
 			$out['enrage'] = true;
 		}
+		Sawa_Tracker_Combat::next( $b, $out ); // what the monster gets ready to do next
 		$st['done'] = $b['foe']['hp'] <= 0 || $b['me']['hp'] <= 0 || $i + 1 >= count( $b['qs'] );
 		set_transient( $key, $b, 20 * MINUTE_IN_SECONDS );
 		return $out + array( 'combo' => $st['combo'], 'foeHp' => $b['foe']['hp'], 'hp' => $b['me']['hp'], 'phase' => $st['phase'], 'done' => $st['done'] );
+	}
+
+	/** Leave a battle at any time. No rewards; leaving before the second question gives the fight back. */
+	public static function flee( WP_REST_Request $r ) {
+		$uid = self::uid();
+		list( $key, $b ) = self::battle_get( $r, $uid );
+		if ( ! $b ) {
+			return self::state( $uid );
+		}
+		delete_transient( $key );
+		Sawa_Tracker_Hero::set_hp( $uid, max( 1, (int) $b['me']['hp'] ) );
+		$early = count( $b['st']['picks'] ) <= 1;
+		if ( $early ) {
+			$w = self::get( $uid );
+			if ( 'monster' === $b['kind'] ) {
+				$w['f']['used'] = max( 0, (int) $w['f']['used'] - 1 );
+			} elseif ( 'boss' === $b['kind'] ) {
+				$w['f']['boss'] = max( 0, (int) $w['f']['boss'] - 1 );
+			}
+			self::save( $uid, $w );
+		}
+		Sawa_Tracker_Play::record_accuracy( $uid, (int) $b['st']['right'], max( 1, count( $b['st']['picks'] ) ) );
+		return array( 'fled' => true, 'refund' => $early && in_array( $b['kind'], array( 'monster', 'boss' ), true ), 'hero' => Sawa_Tracker_Hero::sheet( $uid ), 'world' => self::state( $uid ) );
 	}
 
 	/** Battle skills cost mana (earned by studying). */
