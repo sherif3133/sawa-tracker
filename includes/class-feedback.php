@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Sawa_Tracker_Feedback {
 
-	const DB     = 1;
+	const DB     = 2; // 2: board columns (pub, anon, score, nrep, hidden, merged, road) for Feedback & Dev
 	const KINDS  = array(
 		'confused' => array( '😕', 'I don\'t understand' ),
 		'what'     => array( '❓', 'What does this do?' ),
@@ -29,9 +29,11 @@ final class Sawa_Tracker_Feedback {
 		'boring'   => array( '😴', 'Boring' ),
 		'bug'      => array( '🐞', 'Something broke' ),
 		'idea'     => array( '💡', 'Idea' ),
+		'request'  => array( '🙋', 'Request' ),
 		'error'    => array( '⚠️', 'Script error (automatic)' ),
 	);
-	const STATUS = array( 'new' => 'New', 'seen' => 'Seen', 'planned' => 'Planned', 'fixed' => 'Fixed', 'wontdo' => 'Won\'t do' );
+	const STATUS = array( 'new' => 'New', 'seen' => 'Seen', 'planned' => 'Planned', 'progress' => 'In progress', 'fixed' => 'Fixed / done', 'later' => 'Later', 'wontdo' => 'Won\'t do' );
+	const CHECK  = array( 'bug', 'idea', 'request' ); // notes that must be clear enough to act on (Sawa_Tracker_Board::clarity)
 	const PER_DAY = 30;
 	const COINS   = 5; // for the first feedback of the day
 
@@ -66,11 +68,19 @@ final class Sawa_Tracker_Feedback {
 			version varchar(20) NOT NULL DEFAULT '',
 			status varchar(10) NOT NULL DEFAULT 'new',
 			reply varchar(500) NOT NULL DEFAULT '',
+			pub tinyint(1) NOT NULL DEFAULT 0,
+			anon tinyint(1) NOT NULL DEFAULT 0,
+			score int(11) NOT NULL DEFAULT 0,
+			nrep int(11) NOT NULL DEFAULT 0,
+			hidden tinyint(1) NOT NULL DEFAULT 0,
+			merged bigint(20) unsigned NOT NULL DEFAULT 0,
+			road varchar(80) NOT NULL DEFAULT '',
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY kind_status (kind,status),
 			KEY area (area),
-			KEY created (created_at)
+			KEY created (created_at),
+			KEY pub (pub,merged,hidden)
 			) " . $wpdb->get_charset_collate() . ';'
 		);
 		update_option( 'sawa_tr_fb_db', self::DB );
@@ -101,6 +111,16 @@ final class Sawa_Tracker_Feedback {
 		if ( 'error' === $kind && $n >= 5 ) {
 			return array( 'ok' => true ); // automatic error reports: a few a day is enough
 		}
+		$area = mb_substr( sanitize_text_field( (string) $r->get_param( 'area' ) ), 0, 120 );
+		// Not clear enough to act on yet ("it doesn't work")? Ask what's missing first; "Post anyway" after one try.
+		if ( in_array( $kind, self::CHECK, true ) && class_exists( 'Sawa_Tracker_Board' ) && ! ( $r->get_param( 'force' ) && (int) $r->get_param( 'tries' ) >= 1 ) ) {
+			$has_where = ( '' !== $area && false === strpos( $area, 'Feedback & Dev' ) ) || '' !== (string) $r->get_param( 'target' );
+			$ask       = Sawa_Tracker_Board::clarity( $kind, $body, $has_where, (string) $r->get_param( 'lang' ) );
+			if ( $ask ) {
+				return array( 'ok' => false, 'canForce' => (int) $r->get_param( 'tries' ) >= 1 ) + $ask;
+			}
+		}
+		$pub = $r->get_param( 'pub' ) && class_exists( 'Sawa_Tracker_Board' ) && in_array( $kind, Sawa_Tracker_Board::KINDS, true ) && '' !== $body ? 1 : 0;
 		$ctx = $r->get_param( 'ctx' );
 		$ctx = is_array( $ctx ) ? $ctx : array();
 		$ctx['stage'] = (int) $r->get_param( 'stage' );
@@ -112,7 +132,9 @@ final class Sawa_Tracker_Feedback {
 				'user_id'    => $uid,
 				'kind'       => $kind,
 				'body'       => $body,
-				'area'       => mb_substr( sanitize_text_field( (string) $r->get_param( 'area' ) ), 0, 120 ),
+				'area'       => $area,
+				'pub'        => $pub,
+				'anon'       => $r->get_param( 'anon' ) ? 1 : 0,
 				'target'     => mb_substr( sanitize_text_field( (string) $r->get_param( 'target' ) ), 0, 160 ),
 				'ctx'        => mb_substr( wp_json_encode( $ctx, JSON_UNESCAPED_UNICODE ), 0, 4000 ),
 				'prompt'     => sanitize_key( (string) $r->get_param( 'prompt' ) ),
@@ -126,7 +148,8 @@ final class Sawa_Tracker_Feedback {
 			Sawa_Tracker_Game::set( $uid, 'fb_paid_' . Sawa_Tracker_Game::today(), 1 );
 			$coins = Sawa_Tracker_Raids::add_coins( $uid, self::COINS );
 		}
-		return array( 'ok' => true, 'coins' => $coins, 'total' => (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t() . " WHERE user_id = %d AND kind <> 'error'", $uid ) ) ); // phpcs:ignore
+		$new_id = (int) $wpdb->insert_id;
+		return array( 'ok' => true, 'id' => $pub ? $new_id : 0, 'pub' => $pub, 'coins' => $coins, 'total' => (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t() . " WHERE user_id = %d AND kind <> 'error'", $uid ) ) ); // phpcs:ignore
 	}
 
 	/* ------------------------------------------------------------------ wp-admin */
@@ -186,6 +209,12 @@ final class Sawa_Tracker_Feedback {
 			if ( isset( $_POST['beta'] ) ) {
 				update_option( 'sawa_tr_beta', '1' === $_POST['beta'] ? '1' : '0', false );
 			}
+			// Feedback & Dev board: share a note on the board (students vote and reply) and link it to a roadmap item.
+			foreach ( (array) ( $_POST['onpage'] ?? array() ) as $id => $one ) {
+				$id   = (int) $id;
+				$road = sanitize_key( wp_unslash( $_POST['road'][ $id ] ?? '' ) );
+				$wpdb->query( $wpdb->prepare( "UPDATE $t SET pub = %d, road = %s WHERE id = %d AND kind IN ('idea','bug','request') AND body <> ''", empty( $_POST['pub'][ $id ] ) ? 0 : 1, $road, $id ) ); // phpcs:ignore
+			}
 			foreach ( (array) ( $_POST['st'] ?? array() ) as $id => $st ) {
 				$id    = (int) $id;
 				$st    = sanitize_key( $st );
@@ -195,10 +224,7 @@ final class Sawa_Tracker_Feedback {
 					continue;
 				}
 				$wpdb->update( $t, array( 'status' => $st, 'reply' => $reply ), array( 'id' => $id ) ); // phpcs:ignore
-				// Closing the loop: the student hears back when their feedback led to a change.
-				if ( in_array( $st, array( 'fixed', 'planned' ), true ) && $row['status'] !== $st && (int) $row['user_id'] ) {
-					Sawa_Tracker_Game::event( get_current_user_id(), 'feedback_' . $st, (int) $row['user_id'], array( 'text' => mb_substr( $row['body'], 0, 90 ), 'kind' => $row['kind'], 'reply' => $reply ) );
-				}
+				self::notify( $row, $st, $reply );
 			}
 			echo '<div class="updated"><p>Saved.</p></div>';
 		}
@@ -246,9 +272,23 @@ final class Sawa_Tracker_Feedback {
 				. '<td>' . esc_html( ( self::KINDS[ $r['kind'] ][0] ?? '' ) . ' ' . ( self::KINDS[ $r['kind'] ][1] ?? $r['kind'] ) ) . ( $r['prompt'] ? '<br><small>asked after: ' . esc_html( $r['prompt'] ) . '</small>' : '' ) . '</td>'
 				. '<td dir="auto" style="white-space:pre-wrap">' . esc_html( $r['body'] ) . '</td>'
 				. '<td><b>' . esc_html( $r['area'] ) . '</b>' . ( $r['target'] ? '<br>tapped: <i>' . esc_html( $r['target'] ) . '</i>' : '' ) . '<details><summary><small>details</small></summary><pre style="white-space:pre-wrap;font-size:11px;max-width:260px">' . esc_html( wp_json_encode( $ctx, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) ) . "\nv" . esc_html( $r['version'] ) . '</pre></details></td>'
-				. '<td><select name="st[' . (int) $r['id'] . ']">' . implode( '', array_map( function ( $k, $l ) use ( $r ) { return '<option value="' . $k . '"' . selected( $r['status'], $k, false ) . '>' . $l . '</option>'; }, array_keys( self::STATUS ), self::STATUS ) ) . '</select><input name="reply[' . (int) $r['id'] . ']" value="' . esc_attr( $r['reply'] ) . '" placeholder="Reply to the student (optional)" style="width:100%;margin-top:4px" dir="auto"></td></tr>';
+				. '<td><select name="st[' . (int) $r['id'] . ']">' . implode( '', array_map( function ( $k, $l ) use ( $r ) { return '<option value="' . $k . '"' . selected( $r['status'], $k, false ) . '>' . $l . '</option>'; }, array_keys( self::STATUS ), self::STATUS ) ) . '</select><input name="reply[' . (int) $r['id'] . ']" value="' . esc_attr( $r['reply'] ) . '" placeholder="Reply to the student (optional)" style="width:100%;margin-top:4px" dir="auto">'
+				. ( in_array( $r['kind'], array( 'idea', 'bug', 'request' ), true ) && '' !== $r['body'] ? '<input type="hidden" name="onpage[' . (int) $r['id'] . ']" value="1"><label style="display:block;margin-top:4px"><input type="checkbox" name="pub[' . (int) $r['id'] . ']" value="1"' . checked( (int) $r['pub'], 1, false ) . '> 📢 On the board' . ( (int) $r['pub'] ? ' · ' . (int) $r['score'] . ' votes · ' . (int) $r['nrep'] . ' replies' . ( (int) $r['anon'] ? ' · name hidden' : '' ) . ( (int) $r['hidden'] ? ' · hidden' : '' ) . ( (int) $r['merged'] ? ' · merged into #' . (int) $r['merged'] : '' ) : '' ) . '</label><input name="road[' . (int) $r['id'] . ']" value="' . esc_attr( $r['road'] ) . '" placeholder="Roadmap item id (optional)" list="sawa-road-ids" style="width:100%;margin-top:4px">' : '' )
+				. '</td></tr>';
 		}
-		echo '</tbody></table>' . ( $rows ? '<p><button class="button button-primary">Save changes</button></p>' : '<p>No feedback yet.</p>' ) . '</form></div>';
+		echo '</tbody></table>' . ( $rows ? '<p><button class="button button-primary">Save changes</button></p>' : '<p>No feedback yet.</p>' ) . '</form>';
+		if ( class_exists( 'Sawa_Tracker_Board' ) ) {
+			echo '<datalist id="sawa-road-ids">' . implode( '', array_map( function ( $i ) { return '<option value="' . esc_attr( $i['id'] ) . '">' . esc_html( mb_substr( $i['title'], 0, 80 ) ) . '</option>'; }, Sawa_Tracker_Board::roadmap()['items'] ) ) . '</datalist>';
+		}
+		echo '</div>';
+	}
+
+	/** Closing the loop: the student hears back when their feedback is planned (or being built) or led to a change. */
+	public static function notify( $row, $st, $reply ) {
+		$ev = 'progress' === $st ? 'planned' : $st;
+		if ( in_array( $ev, array( 'fixed', 'planned' ), true ) && $row['status'] !== $st && (int) $row['user_id'] ) {
+			Sawa_Tracker_Game::event( get_current_user_id(), 'feedback_' . $ev, (int) $row['user_id'], array( 'text' => mb_substr( $row['body'], 0, 90 ), 'kind' => $row['kind'], 'reply' => $reply ) );
+		}
 	}
 
 	public static function csv() {

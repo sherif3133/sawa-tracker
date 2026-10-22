@@ -45,12 +45,18 @@
     + '.k{border:2px solid #e3d8bd;background:#fff;border-radius:10px;padding:8px;text-align:left;cursor:pointer;font-size:14px;color:#2b2233}.k small{display:block;color:#6b5f7a;font-size:12px;direction:rtl;text-align:left}.k.on{border-color:#c99a2e;background:#fff3cf}'
     + 'textarea{width:100%;min-height:84px;margin-top:10px;border:2px solid #e3d8bd;border-radius:10px;padding:9px;font-size:15px;resize:vertical;color:#2b2233;background:#fff}'
     + '.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}.b{border:2px solid #2b2233;background:#fff;color:#2b2233;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:14px}.b.p{background:#2b2233;color:#fff}.b:disabled{opacity:.5}'
+    + '.warn{background:#fff3cf;border:2px solid #e7c873;border-radius:10px;padding:10px;margin-top:10px;font-size:14px}.warn ul{margin:6px 0 0;padding-inline-start:20px}.warn li{margin:3px 0}'
+    + '.chk{display:flex;gap:8px;align-items:center;min-height:40px;font-size:14px;margin-top:6px}.chk input{width:20px;height:20px;flex:none}'
     + '.ctx{font-size:12px;color:#6b5f7a;margin-top:8px}.tap{background:#fff3cf;border-radius:8px;padding:6px 8px;font-size:13px;margin-top:8px}.err{color:#b8392c;font-size:13px}.ok{font-size:16px;text-align:center;padding:18px 0}'
     + '.banner{position:fixed;top:0;left:0;right:0;z-index:2147483002;background:#14193a;color:#fff;padding:12px;text-align:center;font-size:15px;display:none}.banner.on{display:block}.banner button{margin-left:10px}'
     + '.ask{position:fixed;left:10px;right:10px;bottom:calc(124px + env(safe-area-inset-bottom,0px));max-width:420px;z-index:2147483000;background:#14193a;color:#fff;border:2px solid #e7c873;border-radius:12px;padding:10px 12px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.4)}.ask.on{display:block}.ask p{margin:0 0 8px;font-size:14px}.ask .b{background:#fffaf0;border-color:#e7c873;padding:6px 10px;font-size:13px}.ask .b.p{background:#e7c873;color:#2b2233}'
     + '</style><button class="fab" aria-label="Beta feedback">💬<small>Beta</small></button><div class="sheet" role="dialog" aria-label="Beta feedback"></div><div class="banner"></div><div class="ask"></div>';
   var fab = R.querySelector('.fab'), sheet = R.querySelector('.sheet'), banner = R.querySelector('.banner'), ask = R.querySelector('.ask');
-  var st = { kind: '', text: '', target: '', prompt: '', at: null };
+  var st = { kind: '', text: '', target: '', prompt: '', at: null, share: true, anon: false, tries: 0, warn: null };
+  var SHARE = ['idea', 'bug']; // these can go on the Feedback & Dev board, where classmates vote and reply
+  var BOARD = (function () { try { return JSON.parse(document.querySelector('.sawa-tracker-app').nextElementSibling.textContent).boardJs || ''; } catch (e) { return ''; } })();
+  // The language of the "tell us more" check: Arabic in the Arabic tracker; in the app, the student's explanations language.
+  function lang() { var L = window.SAWA_LENS; return L && L.appMode ? (L.explainLang === 'ar' ? 'ar' : 'en') : (document.documentElement.dir === 'rtl' || /^ar/.test(document.documentElement.lang) ? 'ar' : 'en'); }
 
   function open(o) {
     o = o || {};
@@ -60,7 +66,7 @@
     pause(true); paint(); sheet.classList.add('on');
   }
   function close() { sheet.classList.remove('on'); pause(false); }
-  function reset() { st = { kind: '', text: '', target: '', prompt: '', at: null }; }
+  function reset() { st = { kind: '', text: '', target: '', prompt: '', at: null, share: true, anon: false, tries: 0, warn: null }; }
   function paint(msg) {
     var k = KINDS.filter(function (x) { return x[0] === st.kind; })[0];
     sheet.innerHTML = '<div class="h"><b>💬 Beta feedback · رأيك</b><button class="x" data-x aria-label="Close">×</button></div>'
@@ -68,21 +74,33 @@
       + '<div class="grid">' + KINDS.map(function (x) { return '<button class="k' + (x[0] === st.kind ? ' on' : '') + '" data-k="' + x[0] + '">' + x[1] + ' ' + esc(x[2]) + '<small>' + esc(x[3]) + '</small></button>'; }).join('') + '</div>'
       + (k ? '<textarea dir="auto" maxlength="2000" placeholder="' + esc(k[4]) + '">' + esc(st.text) + '</textarea>' : '')
       + (st.target ? '<div class="tap">👆 You tapped: <b>' + esc(st.target) + '</b></div>' : '')
-      + '<div class="row"><button class="b" data-show>👆 Point at it · وريني فين</button><button class="b p" data-send' + (k ? '' : ' disabled') + '>Send · ابعت</button></div>'
+      + (st.warn ? '<div class="warn" dir="' + (st.warn.lang === 'ar' ? 'rtl' : 'ltr') + '" role="alert"><b>' + esc(st.warn.msg) + '</b><ul>' + st.warn.prompts.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>' : '')
+      + (k && SHARE.indexOf(st.kind) >= 0 && BOARD ? '<label class="chk"><input type="checkbox" data-share' + (st.share ? ' checked' : '') + '> 📢 Share on the Feedback &amp; Dev board, so classmates can vote · شاركها عشان زمايلك يصوّتوا</label>' + (st.share ? '<label class="chk"><input type="checkbox" data-anon' + (st.anon ? ' checked' : '') + '> Hide my name · خبّي اسمي</label>' : '') : '')
+      + '<div class="row"><button class="b" data-show>👆 Point at it · وريني فين</button><button class="b p" data-send' + (k ? '' : ' disabled') + '>' + (st.warn ? 'Send my changes · ابعت التعديل' : 'Send · ابعت') + '</button>' + (st.warn && st.warn.canForce ? '<button class="b" data-force>Send anyway · ابعت كده</button>' : '') + '</div>'
       + (st.target ? '' : '<p class="ctx">👆 Point at it: then tap the button or part of the screen your note is about. · بعدها اضغط على الحاجة اللي تقصدها.</p>') + (msg ? '<p class="err">' + esc(msg) + '</p>' : '')
       + '<p class="ctx">Saved with it: ' + esc(st.at ? st.at.area : '') + ' · your level and stage</p>';
     var ta = sheet.querySelector('textarea');
     if (ta) { ta.oninput = function () { st.text = ta.value; }; ['keydown', 'keyup', 'keypress'].forEach(function (ev) { ta.addEventListener(ev, function (e) { e.stopPropagation(); }); }); setTimeout(function () { ta.focus(); }, 30); }
     sheet.querySelector('[data-x]').onclick = function () { close(); };
-    sheet.querySelectorAll('[data-k]').forEach(function (b) { b.onclick = function () { st.kind = b.dataset.k; paint(); }; });
+    sheet.querySelectorAll('[data-k]').forEach(function (b) { b.onclick = function () { if (st.kind !== b.dataset.k) { st.warn = null; st.tries = 0; } st.kind = b.dataset.k; paint(); }; });
+    var sh = sheet.querySelector('[data-share]'); if (sh) sh.onchange = function () { st.share = sh.checked; paint(); };
+    var an = sheet.querySelector('[data-anon]'); if (an) an.onchange = function () { st.anon = an.checked; };
     sheet.querySelector('[data-show]').onclick = point;
-    sheet.querySelector('[data-send]').onclick = send;
+    sheet.querySelector('[data-send]').onclick = function () { send(false); };
+    var fo = sheet.querySelector('[data-force]'); if (fo) fo.onclick = function () { send(true); };
   }
-  function send() {
+  function send(force) {
     var b = sheet.querySelector('[data-send]'); b.disabled = true;
-    post({ kind: st.kind, text: st.text, area: st.at.area, ctx: st.at.ctx, target: st.target, prompt: st.prompt, stage: +window.SawaAppStage || 0 }).then(function (j) {
-      sheet.innerHTML = '<div class="ok">🙏 Thank you! · شكرًا!' + (j.coins ? '<br><small>+' + j.coins + ' 🪙 for your first feedback today</small>' : '') + '<br><small>We read every note. When we change something because of it, you get a notification.</small></div>';
-      reset(); setTimeout(close, 2600);
+    var pub = SHARE.indexOf(st.kind) >= 0 && st.share && !!BOARD;
+    post({ kind: st.kind, text: st.text, area: st.at.area, ctx: st.at.ctx, target: st.target, prompt: st.prompt, stage: +window.SawaAppStage || 0, lang: lang(), tries: st.tries, force: force ? 1 : 0, pub: pub ? 1 : 0, anon: st.anon ? 1 : 0 }).then(function (j) {
+      // Not clear enough to act on yet: say what's missing, keep the note, try again (then "Send anyway").
+      if (j.unclear) { st.warn = j; st.tries++; paint(); return; }
+      var inApp = window.SAWA_LENS && window.SAWA_LENS.appMode;
+      sheet.innerHTML = '<div class="ok">🙏 Thank you! · شكرًا!' + (j.coins ? '<br><small>+' + j.coins + ' 🪙 for your first feedback today</small>' : '') + '<br><small>We read every note. When we change something because of it, you get a notification.</small>'
+        + (j.pub && inApp ? '<br><button class="b" data-board style="margin-top:10px">📢 See it on the board · شوفها</button>' : '') + '</div>';
+      var bb = sheet.querySelector('[data-board]');
+      if (bb) bb.onclick = function () { close(); document.dispatchEvent(new CustomEvent('sawa-tracker', { detail: { go: 'dev' } })); };
+      reset(); setTimeout(close, j.pub && inApp ? 6000 : 2600);
     }, function (x) { paint(x.message); });
   }
 
