@@ -311,7 +311,7 @@
     var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
     var MAIN = { today: 1, cards: 1, quests: 1, caravan: 1, chat: 1, more: 1 }, cv = CARAVAN.s ? CARAVAN.s.badge : 0;
     var ev = $('.sg-event'); if (ev) { ev.textContent = w.event ? '🎉 ' + w.event : ''; ev.classList.toggle('on', !!w.event); }
-    $('.sg-menu').classList.toggle('more', !!GAME.more); $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['caravan', '🐫', 'Caravan', cv], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['journal', '📖', 'Journal', 0], ['share', '📣', 'Share', 0], ['report', '📰', 'This week', 0], ['voices', SFX.on() ? '🗣' : '🔇', 'Voices', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
+    $('.sg-menu').classList.toggle('more', !!GAME.more); $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['caravan', '🐫', 'Caravan', cv], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['journal', '📖', 'Journal', 0], ['share', '📣', 'Share', 0], ['report', '📰', 'This week', 0], ['voices', SFX.on() ? '🗣' : '🔇', 'Voices', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['radio', '📻', 'Radio', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
     ROAD.strip();
@@ -970,7 +970,8 @@
       if (k === 'report') return REPORT.show();
       if (k === 'voices') return SFX.toggle();
       if (k === 'cards') return REV.show();
-      if (k === 'music') return MUSIC.toggle();
+      if (k === 'music') { if (RADIO.a) RADIO.stop(); return MUSIC.toggle(); }
+      if (k === 'radio') return RADIO.show();
       if (k === 'note') return w.writeNote();
       if (k === 'emote') { return dialog('Emote', 'Show how you feel. Everyone here sees it for a few seconds.', Object.keys(EMO_LIST).map(function (e) { return { label: EMO_LIST[e] + ' ' + e, run: function () { GAME.emote(e); } }; }).concat([{ label: '🎨 Change my look', run: function () { GAME.look(false); } }]), '🙂'); }
       if (k === 'map') {
@@ -1536,17 +1537,17 @@
   /* ================================================================ the learning road: five camps between the east gate and the boss
      📺 video → 🎵 song → 📖 story → 🃏 the day's cards → ✍️ write, once a day. Each camp opens a Sawa Lens feature here in the game
      (Sawa Lens counts the study itself: XP, study minutes, the tracker log); finishing one opens the next. Monsters never attack at a camp. */
-  var ROAD = { cur: '', v: null, x: { video: 42, song: 46.5, story: 51, cards: 55.5, write: 60 }, verb: { video: 'watching', song: 'singing', story: 'reading', cards: 'reviewing', write: 'writing' } };
-  ROAD.icon = { video: '📺', song: '🎵', story: '📖', cards: '🃏', write: '✍️' };
+  var ROAD = { cur: '', v: null, x: { video: 42, song: 46.5, story: 51, cards: 55.5, write: 60, reels: 29, web: 31.5 }, verb: { video: 'watching', song: 'singing', story: 'reading', cards: 'reviewing', write: 'writing', reels: 'watching Shorts', web: 'reading online' } };
+  ROAD.icon = { video: '📺', song: '🎵', story: '📖', cards: '🃏', write: '✍️', reels: '📱', web: '📰' };
   /** Once: the Elder shows the new road (guidance inside the game). */
   ROAD.intro = function () {
     var r = ROAD.data(); if (!running || !r.total || busyNow()) return;
     try { if (localStorage.getItem('sawaRoadIntro')) return; localStorage.setItem('sawaRoadIntro', '1'); } catch (e) { return; }
     var nx = ROAD.st(r.next) || r.stations[0];
     dialog.who = 'elder';
-    dialog('Elder Wen', 'Traveller, look east! Between our gate and the beast there are ' + r.total + ' camps now: ' + r.stations.map(function (x) { return x.icon + ' ' + x.name.toLowerCase(); }).join(', ') + '. Walk the road every day: finish a camp and the next one opens. All you study there counts by itself — no need to report it anywhere. The strip at the bottom takes you to any camp, and 📜 shows this week\'s chapter: walk the road on more days, and all of us together, for big rewards.', [{ label: nx.icon + ' Take me to the first camp', primary: true, run: function () { ROAD.goTo(nx.k, true); } }], '👴');
+    dialog('Elder Wen', 'Traveller, look east! Between our gate and the beast there are ' + r.total + ' camps now: ' + r.stations.filter(function (x) { return !x.bonus; }).map(function (x) { return x.icon + ' ' + x.name.toLowerCase(); }).join(', ') + '. Walk the road every day: finish a camp and the next one opens. All you study there counts by itself — no need to report it anywhere. The strip at the bottom takes you to any camp, and 📜 shows this week\'s chapter: walk the road on more days, and all of us together, for big rewards.', [{ label: nx.icon + ' Take me to the first camp', primary: true, run: function () { ROAD.goTo(nx.k, true); } }], '👴');
   };
-  var CAMP_C = { video: '#c0392b', song: '#8e44ad', story: '#2e86c1', cards: '#c99a2e', write: '#239b56' };
+  var CAMP_C = { video: '#c0392b', song: '#8e44ad', story: '#2e86c1', cards: '#c99a2e', write: '#239b56', reels: '#e0457b', web: '#5d6d7e' };
   var PROMPTS = ['Tell a traveller about your day yesterday. What did you do?', 'Describe your town or city to a traveller who has never been there.', 'What do you like to do at the weekend, and why?', 'Write about someone in your family. What are they like?', 'Where do you want to travel one day? Why there?', 'What is your favourite food, and how do you make it?', 'What did you learn on the road today? Use two of your new words.', 'Write a short message to a friend: invite them to do something with you this week.'];
   function drawCamp(k) {
     var c = cnv(24, 28), g = c.getContext('2d'), col = CAMP_C[k] || '#c98a2e';
@@ -1560,7 +1561,7 @@
   }
   ROAD.data = function () { var r = H && H.lens && H.world() && H.world().road; return r && r.stations ? r : { stations: [], total: 0, done: 0, next: '' }; };
   ROAD.st = function (k) { return ROAD.data().stations.filter(function (s) { return s.k === k; })[0]; };
-  ROAD.y = function (x) { return 19 + Math.round(Math.sin(Math.floor(x) / 5) * 2); }; // the road's top row there (see buildMap)
+  ROAD.y = function (x) { return x < 37 ? 19 : 19 + Math.round(Math.sin(Math.floor(x) / 5) * 2); }; // the road's top row there (see buildMap: straight in town, wiggly in the wilds)
   ROAD.scene = function () { return G && G.phaser && G.phaser.scene.getScene('World'); };
   /** The strip at the bottom of the screen: today's camps, tap one to go there. */
   ROAD.strip = function () {
@@ -1571,15 +1572,17 @@
     if (!r.total) { box.innerHTML = ''; return; }
     var b = H.world().town.boss;
     var ch = r.chapter;
-    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + (ch ? ' · 📜 ' + ch.days + '/7 days' : '') + '</small><div>' + (ch ? '<button data-road="chapter" class="ch" aria-label="This week\'s chapter">📜</button>' : '') + r.stations.map(function (s) {
+    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + (ch ? ' · 📜 ' + ch.days + '/7 days' : '') + '</small><div>' + (ch ? '<button data-road="chapter" class="ch" aria-label="This week\'s chapter">📜</button>' : '') + r.stations.filter(function (s) { return !s.bonus; }).map(function (s) {
       return '<button data-road="' + s.k + '" class="' + s.state + '" aria-label="' + esc(s.name) + ' camp: ' + s.state + '">' + s.icon + (s.state === 'done' ? '<i>✓</i>' : '') + '</button>';
-    }).join('') + '<button data-road="boss" class="boss" aria-label="The boss">' + esc(b.icon) + '</button></div>';
+    }).join('') + '<button data-road="boss" class="boss" aria-label="The boss">' + esc(b.icon) + '</button></div>'
+      + (r.stations.some(function (s) { return s.bonus; }) ? '<div class="bonus"><small>Bonus</small>' + r.stations.filter(function (s) { return s.bonus; }).map(function (s) { return '<button data-road="' + s.k + '" class="' + s.state + '" aria-label="' + esc(s.name) + ' camp (bonus)">' + s.icon + (s.state === 'done' ? '<i>✓</i>' : '') + '</button>'; }).join('') + '<button data-road="radio" class="radio' + (RADIO.a ? ' done' : '') + '" aria-label="Radio">📻</button></div>' : '');
   };
   ROAD.tapStrip = function (k) {
     if (GAME.cur || $('.sg-battle.on') || $('.sg-panel.on')) return;
     var S0 = ROAD.scene(); if (S0 && S0.frozen && $('.sg-dlg.on')) return; // a monster is asking “Fight it?”
     if (k === 'boss') return ROAD.toBoss();
     if (k === 'chapter') return ROAD.chapter();
+    if (k === 'radio') return RADIO.show();
     var s = ROAD.st(k); if (!s) return;
     if (s.state === 'locked') return ROAD.open(k);
     ROAD.goTo(k, true);
@@ -1906,6 +1909,153 @@
     };
   };
 
+
+  /* -------- 📱 the reels camp (bonus): English Shorts and TikToks in their official players, memes as official Reddit embeds.
+     Swipe up for the next one; under each, "What did they say?" for XP. Shorts watched on your own YouTube with Language Lens count too. */
+  ROAD.embed = function (it) {
+    if (it.platform === 'tiktok') return '<iframe src="https://www.tiktok.com/embed/v2/' + esc(it.id) + '" allow="encrypted-media; fullscreen" allowfullscreen loading="lazy" title="' + esc(it.title) + '"></iframe>';
+    return '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(it.id) + '?playsinline=1&rel=0&modestbranding=1&cc_load_policy=1&cc_lang_pref=en" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" title="' + esc(it.title) + '"></iframe>';
+  };
+  ROAD.reels = function () {
+    var b = panel('sg-roadp sg-reelp', '📱 Reels camp', '<p class="sg-wait">Finding English Shorts for you…</p>');
+    H.lens.api('reels').then(function (d) {
+      if (!b.isConnected) return;
+      var need = Math.max(0, 3 - (d.done || []).length), heardOk = d.heard >= d.goal;
+      b.innerHTML = '<p class="small">Swipe up for the next one. Under each: <b>What did they say?</b> ' + (need ? need + ' more answer' + (need > 1 ? 's' : '') + ' and the camp is done.' : '✓ done today — keep scrolling for XP.') + '</p>'
+        + '<div class="sg-reels">' + d.items.map(function (it, i) { return '<section data-r="' + i + '"><div class="sg-rv ' + it.platform + '" data-emb="' + i + '"><button class="sg-rplay">▶ ' + esc(it.title) + '</button></div><div class="sg-rq" data-q="' + i + '"></div></section>'; }).join('')
+        + d.memes.map(function (m, i) { return '<section class="meme"><div class="sg-meme" data-meme="' + i + '"><button class="sg-rplay">😂 ' + esc(m.title || 'A meme from Reddit') + '</button></div></section>'; }).join('') + '</div>'
+        + '<div class="sg-own"><b>📲 On your own YouTube</b><p class="small">Scroll English Shorts for 10 minutes with Language Lens on (and “Hide Arabic videos” on): it counts here. Today: ' + d.heard + ' of ' + d.goal + ' words heard.</p>' + (heardOk ? '<div class="sg-opts"><button class="pri" data-own>✓ Count my Shorts</button></div>' : '') + '</div>';
+      // Load a player only for the reel on screen (less data on a phone); a tap starts it.
+      var load = function (sec) {
+        var i = +sec.dataset.r, box = sec.querySelector('[data-emb]');
+        if (box && !box.dataset.on) { box.dataset.on = 1; box.innerHTML = ROAD.embed(d.items[i]); ROAD.ask2(sec.querySelector('[data-q]'), d.items[i], b, d); }
+      };
+      var io = window.IntersectionObserver ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && e.target.dataset.r != null) load(e.target); }); }, { root: b.querySelector('.sg-reels'), threshold: 0.6 }) : null;
+      b.querySelectorAll('.sg-reels section[data-r]').forEach(function (sec) { if (io) io.observe(sec); sec.querySelector('.sg-rplay').onclick = function () { load(sec); }; });
+      b.querySelectorAll('[data-meme]').forEach(function (x) { x.querySelector('.sg-rplay').onclick = function () { var m = d.memes[+x.dataset.meme]; x.innerHTML = '<blockquote class="reddit-embed-bq" data-embed-height="420"><a href="' + esc(m.url) + '">' + esc(m.title || 'Reddit') + '</a></blockquote>'; var sc = document.createElement('script'); sc.src = 'https://embed.reddit.com/widgets.js'; sc.async = true; x.appendChild(sc); }; });
+      var own = b.querySelector('[data-own]'); if (own) own.onclick = function () { own.disabled = true; ROAD.finish('reels', b); };
+      if (!d.items.length && !d.memes.length) b.querySelector('.sg-reels').innerHTML = '<p>No Shorts here yet. Sherif adds new ones often.</p>';
+    }, ROAD.err(b));
+  };
+  ROAD.ask2 = function (box, it, b, d) {
+    if (!box) return;
+    var send = function (body, btn) {
+      box.querySelectorAll('button, input').forEach(function (x) { x.disabled = true; });
+      H.lens.api('reels/check', { body: Object.assign({ key: it.key }, body) }).then(function (r) {
+        if (btn) btn.classList.add(r.ok ? 'ok' : 'no');
+        if (r.ok) SFX.coin(); else SFX.blocked();
+        box.insertAdjacentHTML('beforeend', '<p class="small">' + (r.ok ? '✓ ' + (r.xp ? '+' + r.xp + ' XP' : 'Nice!') : '✗ They said: ' + esc(r.right)) + '</p>');
+        if (r.done >= 3 && !d.counted) { d.counted = true; ROAD.finish('reels', b); }
+      }, function (x) { box.querySelectorAll('button, input').forEach(function (y) { y.disabled = false; }); say(x.message); });
+    };
+    if (it.check) {
+      box.innerHTML = '<p><b>' + wrapWords(it.check.q) + '</b></p><div class="sg-vops">' + it.check.options.map(function (o, k) { return '<button data-k="' + k + '" dir="ltr">' + esc(o) + '</button>'; }).join('') + '</div>';
+      box.querySelectorAll('[data-k]').forEach(function (x) { x.onclick = function () { send({ a: +x.dataset.k }, x); }; });
+    } else {
+      box.innerHTML = '<div class="sg-typer"><input maxlength="120" dir="ltr" placeholder="What did they say? Write 3+ words you heard"><button class="pri" data-ok>Send</button></div>';
+      var inp = box.querySelector('input'); inp.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') send({ text: inp.value }); };
+      box.querySelector('[data-ok]').onclick = function () { send({ text: inp.value }); };
+    }
+  };
+
+  /* -------- 📰 the reading camp (bonus): newsletter posts (title, a short preview, how hard for you), discussions as links.
+     The post opens on its own site to read with Language Lens, or you paste it into "Adapt to my level". Nothing is copied. */
+  ROAD.web = function () {
+    var b = panel('sg-roadp sg-webp', '📰 Read the internet', '<p class="sg-wait">Fetching today\'s posts…</p>');
+    Promise.all([H.lens.api('reading'), H.lens.lex()]).then(function (r) {
+      var d = r[0], tag = { easy: '🟢 easy for you', good: '🟡 just right', hard: '🔴 hard' };
+      if (!b.isConnected) return;
+      b.innerHTML = '<p class="small">Open a post and read it with Language Lens (computer or phone), or copy it into ✨ Adapt to my level. Then tell us one thing you learned. Your level: ' + esc(d.level) + '.</p>'
+        + '<ul class="sg-posts">' + d.items.map(function (p, i) { return '<li class="' + (p.read ? 'done' : '') + '"><small>' + esc(p.source) + ' · ' + tag[p.level.label] + ' (' + esc(p.level.cefr) + ')' + (p.read ? ' · ✓ read' : '') + '</small><b>' + wrapWords(p.title) + '</b><p>' + wrapWords(p.preview) + '</p><div class="sg-opts"><a class="sg-btn pri" href="' + esc(p.link) + '" target="_blank" rel="noopener" data-open="' + i + '">Open &amp; read ↗</a><button data-ad="' + i + '">✨ Adapt</button><button data-did="' + i + '">I read it</button></div><div class="sg-did"></div></li>'; }).join('') + '</ul>'
+        + (d.discuss.length ? '<h4>💬 Discussions</h4><ul class="sg-posts">' + d.discuss.map(function (x) { return '<li><small>' + (x.kind === 'quora' ? 'Quora' : 'Reddit') + '</small><a href="' + esc(x.link) + '" target="_blank" rel="noopener">' + esc(x.title) + ' ↗</a></li>'; }).join('') + '</ul>' : '');
+      b.querySelectorAll('[data-ad]').forEach(function (x) { x.onclick = function () { var p = d.items[+x.dataset.ad]; window.open(p.link, '_blank', 'noopener'); ROAD.adapt(b); var n = b.querySelector('.small'); if (n) n.textContent = 'Copy the post from the page that just opened (select all → copy), paste it here, and it is rewritten at your level.'; }; });
+      b.querySelectorAll('[data-did]').forEach(function (x) {
+        x.onclick = function () {
+          var p = d.items[+x.dataset.did], box = x.closest('li').querySelector('.sg-did');
+          box.innerHTML = '<div class="sg-typer"><input maxlength="200" dir="ltr" placeholder="One thing you learned, in English"><button class="pri" data-ok>Send</button></div>';
+          var inp = box.querySelector('input'); inp.onkeydown = function (e) { e.stopPropagation(); }; inp.focus();
+          box.querySelector('[data-ok]').onclick = function () {
+            H.lens.api('reading/done', { body: { link: p.link, note: inp.value } }).then(function (j) { box.innerHTML = '<p class="small">✓ ' + (j.xp ? '+' + j.xp + ' XP · ' : '') + 'it counts as study time.</p>'; ROAD.finish('web', b); }, function (e) { say(e.message, 4000); });
+          };
+        };
+      });
+    }, ROAD.err(b));
+  };
+
+  /* ================================================================ 📻 radio: English podcasts (or allowed live stations) instead of the game's music,
+     with captions at the bottom (made once per piece of an episode and shared by everyone; tap a word for its meaning). */
+  var RADIO = { a: null, st: null, eps: [], i: 0, caps: {}, ask: {}, chunk: 30, live: false, lines: [], t: null, heard: 0, music: false };
+  RADIO.show = function () {
+    var b = panel('sg-radiop', '📻 Radio', '<p class="sg-wait">Tuning in…</p>');
+    H.lens.api('radio').then(function (d) {
+      if (!d.on || !d.stations.length) { b.innerHTML = '<p>The radio is off for now.</p>'; return; }
+      b.innerHTML = (RADIO.a ? '<div class="sg-own"><b>▶ Now: ' + esc(RADIO.title || '') + '</b><div class="sg-opts"><button data-stop>■ Stop the radio</button></div></div>' : '')
+        + '<p class="small">Listen to real English while you play (instead of the game\'s music)' + (d.captions ? ', with captions at the bottom of the screen: tap any word.' : '.') + ' Listening counts as study time.</p>'
+        + '<ul class="sg-posts">' + d.stations.map(function (s) { return '<li><b>' + (s.kind === 'live' ? '🔴 ' : '🎙 ') + esc(s.name) + '</b><p>' + esc(s.desc) + '</p><div class="sg-opts"><button class="pri" data-st="' + esc(s.id) + '">' + (s.kind === 'live' ? '▶ Listen live' : 'Episodes') + '</button></div><div class="sg-eps"></div></li>'; }).join('') + '</ul>';
+      var stop = b.querySelector('[data-stop]'); if (stop) stop.onclick = function () { RADIO.stop(); RADIO.show(); };
+      b.querySelectorAll('[data-st]').forEach(function (x) {
+        x.onclick = function () {
+          var id = x.dataset.st, box = x.closest('li').querySelector('.sg-eps'); x.disabled = true;
+          H.lens.api('radio/episodes?station=' + encodeURIComponent(id)).then(function (e) {
+            if (e.live) { closePanel(); return RADIO.play(id, [{ title: e.name, audio: e.audio }], 0, true); }
+            box.innerHTML = e.episodes.map(function (ep, k) { return '<button data-ep="' + k + '">▶ ' + esc(ep.title) + (ep.dur ? ' · ' + Math.round(ep.dur / 60) + ' min' : '') + '</button>'; }).join('') || '<p class="small">No episodes right now.</p>';
+            RADIO.chunk = e.chunk || 30;
+            box.querySelectorAll('[data-ep]').forEach(function (y) { y.onclick = function () { closePanel(); RADIO.play(id, e.episodes, +y.dataset.ep, false); }; });
+          }, function (er) { x.disabled = false; say(er.message); });
+        };
+      });
+    }, ROAD.err(b));
+  };
+  RADIO.bar = function () {
+    var bar = $('.sg-cap');
+    if (!bar) { bar = el('div', 'sg-cap'); bar.innerHTML = '<span class="t"></span><span class="c"><button data-rc="pause" aria-label="Pause">⏸</button><button data-rc="x" aria-label="Stop the radio">✕</button></span>'; ROOT.insertBefore(bar, $('.sg-battle')); }
+    return bar;
+  };
+  RADIO.play = function (station, eps, i, live) {
+    RADIO.stop(true);
+    var ep = eps[i]; if (!ep) return RADIO.stop();
+    RADIO.st = station; RADIO.eps = eps; RADIO.i = i; RADIO.live = live; RADIO.caps = {}; RADIO.ask = {}; RADIO.lines = []; RADIO.title = ep.title; RADIO.ep = ep.ep;
+    RADIO.music = !!MUSIC.ctx; MUSIC.stop(); // the radio plays instead of the game's music
+    var a = RADIO.a = new Audio(); a.preload = 'auto'; a.src = ep.audio;
+    a.onended = function () { if (!live) RADIO.play(station, eps, i + 1, false); };
+    a.onerror = function () { say('This episode does not play right now. Try another one.', 4000); RADIO.stop(); };
+    var p = a.play(); if (p && p.catch) p.catch(function () { /* the player button resumes it */ });
+    var bar = RADIO.bar(); bar.classList.add('on'); bar.querySelector('.t').textContent = '📻 ' + ep.title;
+    clearInterval(RADIO.t); RADIO.t = setInterval(RADIO.tick, 1000);
+    say('📻 ' + ep.title, 3500);
+  };
+  RADIO.tick = function () {
+    var a = RADIO.a; if (!a) return;
+    if (!a.paused) { RADIO.heard++; if (RADIO.heard >= 120) { RADIO.heard = 0; H.lens.api('radio/heard', { body: { mins: 2 } }).catch(function () {}); } }
+    var bar = $('.sg-cap .t'); if (!bar) return;
+    if (RADIO.live) {
+      if (!RADIO.lt || Date.now() - RADIO.lt > 15000) { RADIO.lt = Date.now(); H.lens.api('radio/live', { body: { station: RADIO.st } }).then(function (j) { RADIO.lines = j.lines || []; }, function () {}); }
+      var ln = RADIO.lines[RADIO.lines.length - 1]; if (ln && bar.dataset.s !== ln[1]) { bar.dataset.s = ln[1]; bar.innerHTML = wrapWords(ln[1].split(/(?<=[.!?])\s+/).slice(-2).join(' ')); }
+      return;
+    }
+    var t = a.currentTime || 0, n = RADIO.chunk, k = Math.floor(t / n);
+    [k, t % n > n - 8 ? k + 1 : -1].forEach(function (x) {
+      if (x < 0 || RADIO.caps[x] != null || RADIO.ask[x] > Date.now()) return;
+      RADIO.ask[x] = Date.now() + 8000;
+      H.lens.api('radio/caption', { body: { station: RADIO.st, ep: RADIO.ep, k: x } }).then(function (j) { if (j.off) RADIO.off = true; if (!j.wait && !j.off) RADIO.caps[x] = j.text || ''; }, function () {});
+    });
+    var txt = RADIO.caps[k];
+    if (!txt) { if (bar.dataset.s !== 'title') { bar.dataset.s = 'title'; bar.textContent = '📻 ' + RADIO.title + (RADIO.off ? '' : ' · captions coming…'); } return; }
+    var ss = txt.split(/(?<=[.!?])\s+/).filter(Boolean), j2 = Math.min(ss.length - 1, Math.floor((t % n) / n * ss.length)), line = ss[j2] || '';
+    if (bar.dataset.s !== line) { bar.dataset.s = line; bar.innerHTML = wrapWords(line); }
+  };
+  RADIO.ctl = function (k) {
+    var a = RADIO.a; if (!a) return;
+    if (k === 'x') return RADIO.stop();
+    if (a.paused) { a.play(); $('.sg-cap [data-rc="pause"]').textContent = '⏸'; } else { a.pause(); $('.sg-cap [data-rc="pause"]').textContent = '▶'; }
+  };
+  RADIO.stop = function (keep) {
+    clearInterval(RADIO.t);
+    if (RADIO.a) { try { RADIO.a.pause(); RADIO.a.src = ''; } catch (e) { /* gone */ } RADIO.a = null; }
+    var bar = $('.sg-cap'); if (bar && !keep) bar.classList.remove('on');
+    if (!keep && RADIO.music && running) { RADIO.music = false; MUSIC.start(); }
+  };
+
   /* -------- the caravan: help each other (at any time of day), build the caravanserai, guides for newcomers */
   var CARAVAN = { s: null, tab: 'help' };
   CARAVAN.load = function () { return H.api('/coop').then(function (j) { CARAVAN.s = j; if (ROOT) { hud(); CARAVAN.thanks(j.thanks || []); var w = G && G.phaser && G.phaser.scene.getScene('World'); if (w && w.serai && j.project && w.seraiPct !== j.project.pct) w.serai(j.project.pct); } return j; }); };
@@ -1995,6 +2145,7 @@
         var bh = e.target.closest('[data-bar]'); if (bh) { e.stopPropagation(); var x = BAR_HELP[bh.dataset.bar]; return dialog(x[0], x[1], [], '💡'); }
         var w = e.target.closest('.lw'); if (w) { e.stopPropagation(); if (w.closest('.sg-trs')) ROAD.pause(); return LENS.word(w); }
         var rd = e.target.closest('[data-road]'); if (rd) { e.stopPropagation(); return ROAD.tapStrip(rd.dataset.road); }
+        var rc = e.target.closest('[data-rc]'); if (rc) { e.stopPropagation(); return RADIO.ctl(rc.dataset.rc); }
         var sp = e.target.closest('[data-say]'); if (sp) { e.stopPropagation(); return VOICE.say(sp.dataset.say); }
         var b = e.target.closest('[data-g]'); if (b) GAME.menu(b.dataset.g);
       }, true);
@@ -2014,7 +2165,7 @@
     stop: function (back, mode) {
       if (!running) return;
       try { var w0 = GAME.phaser && GAME.phaser.scene.getScene('World'); if (w0 && w0.pl) H.api('/play/sync', { method: 'POST', body: { x: Math.round(w0.pl.x), y: Math.round(w0.pl.y), d: w0.pl.dir } }).catch(function () {}); } catch (e) { /* leaving anyway */ }
-      running = false; closePanel(); MUSIC.stop(); if (window.speechSynthesis) speechSynthesis.cancel();
+      RADIO.stop(true); running = false; closePanel(); MUSIC.stop(); if (window.speechSynthesis) speechSynthesis.cancel();
       window.removeEventListener('keydown', G.keys);
       try { if (GAME.phaser) GAME.phaser.destroy(true); } catch (e) { /* already gone */ }
       if (ROOT) ROOT.remove(); ROOT = null; GAME.phaser = null;
@@ -2027,7 +2178,7 @@
     context: function () {
       if (!running) return null;
       var w = H.world() || {}, p = $('.sg-panel.on'), d = $('.sg-dlg.on b'), hr = w.hero || {};
-      var pn = p ? ({ 'sg-carp': 'caravan board', 'sg-chatp': 'chat', 'sg-revp': 'review cards', 'sg-todayp': 'today\'s plan', 'sg-ranksp': 'rankings', 'sg-journalp': 'journal', 'sg-reportp': 'weekly report', 'sg-sharep': 'share card', 'sg-roadp': 'road camp: ' + (ROAD.cur || '?') }[[].filter.call(p.classList, function (c) { return /^sg-.+p$/.test(c) && c !== 'sg-panel'; })[0]] || 'panel') : '';
+      var pn = p ? ({ 'sg-carp': 'caravan board', 'sg-chatp': 'chat', 'sg-revp': 'review cards', 'sg-todayp': 'today\'s plan', 'sg-ranksp': 'rankings', 'sg-journalp': 'journal', 'sg-reportp': 'weekly report', 'sg-sharep': 'share card', 'sg-roadp': 'road camp: ' + (ROAD.cur || '?'), 'sg-radiop': 'radio' }[[].filter.call(p.classList, function (c) { return /^sg-.+p$/.test(c) && c !== 'sg-panel'; })[0]] || 'panel') : '';
       var modal = ROOT && ROOT.parentNode && ROOT.parentNode.querySelector('#modal'), mh = modal && modal.innerHTML ? (modal.querySelector('h2, h3') || {}).textContent : '';
       var area = GAME.cur ? (GAME.cur.kind === 'boss' ? 'boss battle' : GAME.cur.kind === 'pboss' ? 'party boss battle' : GAME.cur.kind === 'duel' ? 'shadow duel' : 'battle') : $('.sg-res') ? 'battle result' : pn || (mh ? 'panel: ' + mh.trim().slice(0, 30) : $('.sg-look') ? 'character creator' : d ? 'talking to ' + d.textContent : $('.sg-word.on') ? 'word popup' : 'map');
       return { area: area, town: (w.town || {}).name, battle: GAME.cur || undefined, level: hr.level, hp: hr.hp, stamina: w.stamina ? w.stamina.left + '/' + w.stamina.max : '' };

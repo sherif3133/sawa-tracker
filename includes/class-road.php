@@ -20,7 +20,11 @@ final class Sawa_Tracker_Road {
 		'story' => array( '📖', 'Story' ),
 		'cards' => array( '🃏', 'Cards' ),
 		'write' => array( '✍️', 'Write' ),
+		'reels' => array( '📱', 'Reels' ),
+		'web'   => array( '📰', 'Read' ),
 	);
+	/** Bonus camps: open all day in any order, not needed for the whole road (English Shorts and memes; reading the internet). */
+	const BONUS = array( 'reels', 'web' );
 	const STATION_COINS = 5;
 	const ROAD_COINS    = 25;
 	const ROAD_XP       = 20;
@@ -71,6 +75,8 @@ final class Sawa_Tracker_Road {
 			'story' => class_exists( 'Sawa_Lens_Readers' ) && Sawa_Lens_Readers::allowed( $uid ),
 			'cards' => class_exists( 'Sawa_Lens_Review' ),
 			'write' => class_exists( 'Sawa_Lens_AI' ),
+			'reels' => (bool) apply_filters( 'sawa_tracker_road_reels', false, $uid ),
+			'web'   => (bool) apply_filters( 'sawa_tracker_road_web', false, $uid ),
 		);
 		return array_keys( array_filter( $on ) );
 	}
@@ -82,12 +88,17 @@ final class Sawa_Tracker_Road {
 
 	/** Today's road for the game: every camp with its state (done / open / locked), and the one to go to next. */
 	public static function state( $uid ) {
-		$keys = self::available( $uid );
+		$all  = self::available( $uid );
+		$keys = array_values( array_diff( $all, self::BONUS ) ); // the road itself
 		$done = self::today_done( $uid );
 		$out  = array();
 		$next = '';
-		foreach ( $keys as $k ) {
+		foreach ( $all as $k ) {
 			$is = in_array( $k, $done, true );
+			if ( in_array( $k, self::BONUS, true ) ) {
+				$out[] = array( 'k' => $k, 'icon' => self::STATIONS[ $k ][0], 'name' => self::STATIONS[ $k ][1], 'state' => $is ? 'done' : 'open', 'bonus' => true );
+				continue;
+			}
 			if ( ! $is && ! $next ) {
 				$next = $k;
 			}
@@ -120,6 +131,7 @@ final class Sawa_Tracker_Road {
 		if ( 'done' === $all[ $k ] ) {
 			return array( 'coins' => 0, 'complete' => false, 'road' => $st );
 		}
+		$was = $st['complete'];
 		if ( 'locked' === $all[ $k ] ) {
 			return new WP_Error( 'road', 'Finish the ' . self::STATIONS[ $st['next'] ][1] . ' camp first: it is the next one on your road.', array( 'status' => 400 ) );
 		}
@@ -133,15 +145,15 @@ final class Sawa_Tracker_Road {
 		$coins = self::STATION_COINS;
 		$group = self::group_add( $uid );
 		$st    = self::state( $uid );
-		$out   = array( 'coins' => $coins, 'complete' => $st['complete'], 'road' => $st );
-		if ( $st['complete'] ) {
+		$out   = array( 'coins' => $coins, 'complete' => $st['complete'] && ! $was, 'road' => $st );
+		if ( $st['complete'] && ! $was ) { // a bonus camp after the whole road doesn't pay the road again
 			Sawa_Tracker_Raids::add_coins( $uid, self::ROAD_COINS, 'road' );
 			Sawa_Tracker_RPG::add_elixirs( $uid, 1 );
 			$out['coins']  += self::ROAD_COINS;
 			$out['elixirs'] = 1;
 			$out['xp']      = class_exists( 'Sawa_Tracker_XP' ) ? (int) Sawa_Tracker_XP::award( $uid, self::ROAD_XP, 'road' ) : 0;
 			$town           = Sawa_Tracker_World::TOWNS[ Sawa_Tracker_World::at( $uid ) ];
-			Sawa_Tracker_Game::event( $uid, 'road', null, array( 'town' => $town[0], 'icons' => implode( '', wp_list_pluck( $st['stations'], 'icon' ) ), 'n' => $st['total'] ) );
+			Sawa_Tracker_Game::event( $uid, 'road', null, array( 'town' => $town[0], 'icons' => implode( '', wp_list_pluck( array_filter( $st['stations'], function ( $x ) { return empty( $x['bonus'] ); } ), 'icon' ) ), 'n' => $st['total'] ) );
 			Sawa_Tracker_Game::set( $uid, 'road_days', (int) Sawa_Tracker_Game::m( $uid, 'road_days', 0 ) + 1 );
 			$out['week'] = self::week_day( $uid );
 		}
@@ -301,7 +313,7 @@ final class Sawa_Tracker_Road {
 		$rows = self::rows();
 		$ch   = self::chapter( get_current_user_id() );
 		$ago  = function ( $s ) { return $s < 120 ? 'now' : ( $s < 3600 ? round( $s / 60 ) . ' min ago' : ( $s < DAY_IN_SECONDS ? round( $s / 3600 ) . ' h ago' : round( $s / DAY_IN_SECONDS ) . ' days ago' ) ); };
-		$all  = count( array_filter( $rows, function ( $r ) { return count( $r['done'] ) >= count( self::STATIONS ); } ) );
+		$all  = count( array_filter( $rows, function ( $r ) { return count( array_diff( $r['done'], self::BONUS ) ) >= count( self::STATIONS ) - count( self::BONUS ); } ) );
 		echo '<div class="wrap"><h1>Silk Road map</h1>';
 		echo '<p>Where every student is on the Silk Road (last 14 days): their town, the camp they are at right now, today\'s learning road and this week\'s chapter. Refresh the page to update.</p>';
 		echo '<p><b>Chapter ' . (int) $ch['n'] . ': ' . esc_html( $ch['title'] ) . '</b> · Community goal: ' . (int) $ch['group']['camps'] . ' / ' . (int) $ch['group']['target'] . ' camps by ' . (int) $ch['group']['people'] . ' students' . ( $ch['group']['reached'] ? ' ✅ reached' : '' ) . ' · ' . (int) $all . ' walked the whole road today.</p>';

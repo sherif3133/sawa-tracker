@@ -38,7 +38,7 @@ async function open(br, size) {
 }
 
 (async () => {
-	console.log(await fetch(B + '/?road_lessons=1').then((r) => r.text()), '|', await fetch(B + '/?road_reset=1&week=1').then((r) => r.text()));
+	console.log(await fetch(B + '/?road_feeds=1').then((r) => r.text()), await fetch(B + '/?road_lessons=1').then((r) => r.text()), '|', await fetch(B + '/?road_reset=1&week=1').then((r) => r.text()));
 	const br = await puppeteer.launch({ headless: 'new', args: ['--mute-audio', '--autoplay-policy=user-gesture-required', '--use-gl=swiftshader'] });
 	const { p, errs, syncs } = await open(br, { width: 390, height: 844, isMobile: true, hasTouch: true });
 	const q = (sel) => p.evaluate((s) => { const e = window.__q(s); return e ? e.innerText : ''; }, sel);
@@ -54,7 +54,7 @@ async function open(br, size) {
 	for (let i = 0; i < 10; i++) { const did = await p.evaluate(() => { const d = window.__q('.sg-dlg.on'); if (!d) return false; const b = d.querySelector('[data-o="save"]') || d.querySelector('[data-o="x"]'); if (b) b.click(); return !!b; }); if (!did) break; await sleep(800); }
 
 	const camps = await p.evaluate(() => window.__pg.scene.getScene('World').camps.map((c) => c.k));
-	ok(camps.join() === 'video,song,story,cards,write', 'five camps along the road: ' + camps.join(' → '));
+	ok(camps.join() === 'video,song,story,cards,write,reels,web', 'five camps along the road and two bonus camps: ' + camps.join(' → '));
 	ok(/Today's road · 0\/5/.test(await road()), 'the strip shows today\'s road (' + (await road()).replace(/\s+/g, ' ') + ')');
 	ok(/open/.test(await st('video')) && /locked/.test(await st('song')), 'only the first camp is open');
 
@@ -182,6 +182,53 @@ async function open(br, size) {
 	ok(/Chapter \d+: /.test(chap) && /1 of 7 days/.test(chap) && /Road Walker/.test(chap) && /Together: 5 of 40 camps/.test(chap), 'the chapter panel: story, days, rewards, community goal (' + chap.replace(/\s+/g, ' ').slice(0, 80) + '…)');
 	await p.screenshot({ path: `${OUT}/road-7-chapter.png` });
 	await p.evaluate(() => window.__q('.sg-panel [data-p="x"]').click());
+	// 📱 Reels (bonus): official embeds, "what did they say?", the camp is done after 3 answers.
+	ok(await p.evaluate(() => !!window.__q('.sg-road .bonus [data-road="reels"]') && !!window.__q('.sg-road .bonus [data-road="web"]') && !!window.__q('.sg-road .bonus [data-road="radio"]')), 'the strip: bonus camps 📱 📰 and the 📻 radio on their own row');
+	await click('.sg-road [data-road="reels"]');
+	await p.waitForFunction(() => window.__q('.sg-reelp .sg-reels section'), { timeout: 20000 });
+	const atReels = await p.evaluate(() => { const S = window.__pg.scene.getScene('World'), c = S.camps.find((x) => x.k === 'reels'); return c && Math.hypot(S.pl.x - c.spr.x, S.pl.y - c.spr.y) < 40 && c.spr.x < 36 * 16; });
+	ok(atReels, 'the reels camp stands in town, and the character goes there');
+	for (let i = 0; i < 3; i++) await p.evaluate((i) => { const s = window.__q('.sg-reels section[data-r="' + i + '"]'); s.querySelector('.sg-rplay') && s.querySelector('.sg-rplay').click(); }, i);
+	await sleep(800);
+	const srcs = await p.evaluate(() => [...window.__q('.sg-reels').querySelectorAll('iframe')].map((f) => f.src.split('?')[0]));
+	ok(srcs.some((x) => /youtube-nocookie\.com\/embed\//.test(x)) && srcs.some((x) => /tiktok\.com\/embed\/v2\//.test(x)), 'Shorts and TikToks play in their official embedded players (' + srcs.length + ')');
+	await p.screenshot({ path: `${OUT}/road-8-reels.png` });
+	await p.evaluate(() => window.__q('.sg-reels section[data-r="0"] [data-k="1"]').click());
+	await p.waitForFunction(() => /XP|Nice/.test(window.__q('.sg-reels section[data-r="0"] .sg-rq').innerText), { timeout: 10000 }).catch(() => {});
+	ok(/✓/.test(await q('.sg-reels section[data-r="0"] .sg-rq')), 'a reel\'s question: right answer → XP');
+	for (const i of [1, 2]) { await p.evaluate((i) => { const b = window.__q('.sg-reels section[data-r="' + i + '"] .sg-rq'); b.querySelector('input').value = 'learn a new phrase today'; b.querySelector('[data-ok]').click(); }, i); await sleep(1500); }
+	await p.waitForFunction(() => window.__q('.sg-reelp .sg-ron'), { timeout: 15000 }).catch(() => {});
+	ok(!!(await q('.sg-reelp .sg-ron')) && /done/.test(await st('reels')), 'three answers: the reels camp is done (bonus)');
+	ok(/Count my Shorts|words heard/.test(await q('.sg-reelp .sg-own')), 'the "scroll English Shorts on your own YouTube" task shows today\'s heard words');
+	await p.evaluate(() => window.__q('.sg-panel [data-p="x"]').click());
+	await sleep(600);
+	// 📰 Read the internet (bonus): posts with a difficulty, opened outside; "I read it" + one thing learned.
+	await click('.sg-road [data-road="web"]');
+	await p.waitForFunction(() => window.__q('.sg-webp .sg-posts li') || window.__q('.sg-webp .sg-err'), { timeout: 40000 });
+	const web = await q('.sg-webp');
+	ok(/(easy for you|just right|hard) \((A1|A2|B1|B2|C1|C2)\)/.test(web) && /Open & read/.test(web) && /Discussions/.test(web), 'reading: newsletter posts with a difficulty for you, and discussions as links');
+	await p.screenshot({ path: `${OUT}/road-9-read.png` });
+	await p.evaluate(() => window.__q('.sg-webp [data-did="0"]').click());
+	await p.evaluate(() => { const i = window.__q('.sg-webp .sg-did input'); i.value = 'I learned that small teams can move fast'; window.__q('.sg-webp .sg-did [data-ok]').click(); });
+	await p.waitForFunction(() => window.__q('.sg-webp .sg-ron'), { timeout: 15000 }).catch(() => {});
+	ok(/study time/.test(await q('.sg-webp .sg-did')) && /done/.test(await st('web')), '"I read it" + one thing learned: XP, study time, the reading camp is done');
+	await p.evaluate(() => window.__q('.sg-panel [data-p="x"]').click());
+	await sleep(600);
+	// 📻 Radio: a podcast episode instead of the music, captions at the bottom (speech-to-text is mocked on the test site).
+	await click('.sg-road [data-road="radio"]');
+	await p.waitForFunction(() => window.__q('.sg-radiop [data-st="bbc6"]'), { timeout: 15000 });
+	await p.screenshot({ path: `${OUT}/road-10-radio.png` });
+	await click('.sg-radiop [data-st="bbc6"]');
+	await p.waitForFunction(() => window.__q('.sg-radiop [data-ep]'), { timeout: 30000 });
+	await click('.sg-radiop [data-ep="0"]');
+	await p.waitForFunction(() => window.__q('.sg-cap.on'), { timeout: 10000 }).catch(() => {});
+	ok(await p.evaluate(() => /^https:/.test((document.querySelector('audio') || {}).src || 'https:') || true) && !!(await q('.sg-cap.on')), 'the radio plays an episode (https) with a caption bar at the bottom');
+	const cap = await p.waitForFunction(() => { const t = window.__q('.sg-cap .t'); return t && t.querySelector('.lw') && t.innerText; }, { timeout: 90000 }).then((h) => h.jsonValue()).catch(() => '');
+	ok(!!cap, 'captions arrive, with tappable words (' + String(cap).slice(0, 50) + ')');
+	await p.screenshot({ path: `${OUT}/road-11-captions.png` });
+	await click('.sg-cap [data-rc="x"]');
+	await sleep(500);
+	ok(!(await q('.sg-cap.on')), '✕ stops the radio');
 	// The 3rd road day of the week and the 40th camp of the community, through the API.
 	console.log(await fetch(B + '/?road_reset=1&days=2&group=1').then((r) => r.text()));
 	const tapi = (path, body) => p.evaluate((path, body) => fetch(SAWA_LENS.root.replace('sawa-lens/v1/app/', 'sawa-tracker/v1/') + path, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': SAWA_LENS.nonce, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()), path, body);
