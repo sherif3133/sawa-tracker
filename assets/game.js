@@ -314,6 +314,7 @@
     $('.sg-menu').classList.toggle('more', !!GAME.more); $('.sg-menu').innerHTML = [['today', '📅', 'Today', 0], ['cards', '🃏', 'Cards', 0], ['ranks', '🏆', 'Ranks', 0], ['quests', '📜', 'Quests', ready], ['caravan', '🐫', 'Caravan', cv], ['party', '⚔', 'Party', 0], ['chat', '💬', 'Chat', 0], ['emote', '🙂', 'Emote', 0], ['note', '✍', 'Note', 0], ['map', '🗺', 'Map', 0], ['journal', '📖', 'Journal', 0], ['share', '📣', 'Share', 0], ['report', '📰', 'This week', 0], ['voices', SFX.on() ? '🗣' : '🔇', 'Voices', 0], ['music', MUSIC.ctx ? '🎵' : '🔇', 'Music', 0], ['help', '?', 'Help', 0], ['list', '☰', 'List view', 0], ['exit', '✕', 'Exit', 0], ['more', GAME.more ? '▴' : '⋯', GAME.more ? 'Less' : 'More', 0]].filter(function (b) { return GAME.more || MAIN[b[0]]; }).map(function (b) {
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
+    ROAD.strip();
   }
   function moment(key) { try { window.dispatchEvent(new CustomEvent('sawa:moment', { detail: { key: key } })); } catch (e) { /* old browser */ } }
   function say(msg, ms) { var t = $('.sg-hint'); if (!t) return; t.textContent = msg; t.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(function () { t.classList.remove('on'); }, ms || 3200); }
@@ -418,6 +419,8 @@
           bs.play(bk + '_a'); bs.body.setSize(28, 14).setOffset(6, 24); bs.setDepth(bs.y); bs.boss = true; S.boss = bs;
           S.lights.push({ x: 64 * TS, y: 30 * TS, r: 0.8, c: 0xff5a5a });
         }
+        // the learning road: a camp for each of today's stations, between the east gate and the boss
+        S.camps = ROAD.data().stations.map(function (st) { var x = ROAD.x[st.k] * TS, y = ROAD.y(ROAD.x[st.k]) * TS, key = 'camp_' + st.k; if (!S.textures.exists(key)) addTex(S, key, drawCamp(st.k)); var sp = S.add.image(x, y, key).setOrigin(0.5, 1); sp.setDepth(y); S.lights.push({ x: x + 8, y: y - 4, r: 0.4, c: 0xffa040 }); return { k: st.k, spr: sp }; });
         // roaming monsters
         var mons = w.town.monsters;
         for (var m = 0; m < 8; m++) {
@@ -460,6 +463,7 @@
         S.events.on('shutdown', function () { S.scale.off('resize', S.fitZoom, S); Object.keys(S.labels).forEach(function (k) { S.labels[k].remove(); }); });
         say(w.town.icon + ' ' + w.town.name + ' — ' + (t === 1 ? 'the start of the Silk Road' : 'level ' + w.town.level), 3000);
         S.cool = S.now() + 4000; // a moment to look around before any monster comes over
+        S.time.delayedCall(3500, ROAD.intro);
       },
       now: function () { return this.game.loop.time; }, // the same clock update() gets, even right after a pause
       fitZoom: function () { var c = this.cameras.main, w = this.scale.width, h = this.scale.height; c.setZoom(Math.max(2, Math.min(4, Math.round(Math.min(w / (TS * 20), h / (TS * 12)) * 2) / 2))); },
@@ -486,11 +490,12 @@
         // monsters wander and chase
         var tired = H.world().stamina.left < 1;
         if (!S.busyAt || time - S.busyAt > 250) { S.busyAt = time; S.busy = busyNow(); }
+        S.safe = (S.camps || []).some(function (c) { return Math.hypot(pl.x - c.spr.x, pl.y - c.spr.y) < 56; }); // monsters never attack at a camp
         S.monsters.forEach(function (m) {
           if (!m.active) return;
           var dx = pl.x - m.x, dy = pl.y - m.y, dd = Math.hypot(dx, dy);
           if (m.flee > time) { m.setVelocity(-dx / dd * 40, -dy / dd * 40); m.setAlpha(0.6); }
-          else if (!tired && !S.busy && dd < 70 && S.cool < time) m.setVelocity(dx / dd * 34, dy / dd * 34);
+          else if (!tired && !S.busy && !S.safe && dd < 70 && S.cool < time) m.setVelocity(dx / dd * 34, dy / dd * 34);
           else { if (!m.wt || m.wt < time) { m.wt = time + 1500 + Math.random() * 2500; var a = Math.random() * 7; var back = Math.hypot(m.home.x - m.x, m.home.y - m.y) > 90; m.setVelocity(back ? (m.home.x - m.x) / 4 : Math.cos(a) * 18, back ? (m.home.y - m.y) / 4 : Math.sin(a) * 18); if (Math.random() < 0.4) m.setVelocity(0, 0); } }
           m.setDepth(m.y); if (!(m.flee > time)) m.setAlpha(tired ? 0.6 : 1); m.setFlipX(m.body.velocity.x < 0);
         });
@@ -498,12 +503,13 @@
         // what's near (for the action button)
         var near = null, best = 30;
         S.npcs.forEach(function (n) { var dn = Phaser.Math.Distance.Between(pl.x, pl.y, n.x, n.y); if (dn < best) { best = dn; near = { kind: 'npc', obj: n }; } });
+        (S.camps || []).forEach(function (c) { if (Phaser.Math.Distance.Between(pl.x, pl.y, c.spr.x, c.spr.y + 8) < 26) near = { kind: 'camp', obj: c }; });
         if (S.board && Phaser.Math.Distance.Between(pl.x, pl.y, S.board.x, S.board.y) < 28) near = { kind: 'board' };
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(pl.x, pl.y, n.spr.x, n.spr.y) < 20) near = { kind: 'note', obj: n }; });
         (S.hurt || []).forEach(function (h) { if (Phaser.Math.Distance.Between(pl.x, pl.y, h.spr.x, h.spr.y) < 22) near = { kind: 'hurt', obj: h }; });
         if (S.seraiSpr && Phaser.Math.Distance.Between(pl.x, pl.y, S.seraiSpr.x, S.seraiSpr.y + 4) < 34) near = { kind: 'serai' };
         Object.keys(S.others).forEach(function (id) { var o = S.others[id]; if (Phaser.Math.Distance.Between(pl.x, pl.y, o.spr.x, o.spr.y) < 24) near = { kind: 'player', obj: o }; });
-        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : near.kind === 'hurt' ? 'Help' : near.kind === 'serai' ? 'Build' : 'Meet'); } }
+        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : near.kind === 'hurt' ? 'Help' : near.kind === 'serai' ? 'Build' : near.kind === 'camp' ? 'Open' : 'Meet'); } }
         // others glide to their last position
         Object.keys(S.others).forEach(function (id) { var o = S.others[id], s = o.spr; var dx = o.tx - s.x, dy = o.ty - s.y, dd = Math.hypot(dx, dy); if (dd > 1) { var st = Math.min(dd, 1.4 * dt / 16); s.x += dx / dd * st; s.y += dy / dd * st; var dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); s.anims.play(s.texture.key + '_w' + dir, true); } else { s.anims.stop(); s.setFrame(o.d * 3); } s.setDepth(s.y); if (o.aura) o.aura.setPosition(s.x, s.y - 1).setDepth(s.y - 1); });
         // light and dark
@@ -536,6 +542,7 @@
         S.notes.forEach(function (n) { if (Math.abs(x - n.spr.x) < 9 && Math.abs(y - n.spr.y + 6) < 10) hit = { kind: 'note', obj: n }; });
         (S.hurt || []).forEach(function (h) { if (Math.abs(x - h.spr.x) < 14 && Math.abs(y - h.spr.y) < 10) hit = { kind: 'hurt', obj: h }; });
         if (S.seraiSpr && Math.abs(x - S.seraiSpr.x) < 30 && y < S.seraiSpr.y + 2 && y > S.seraiSpr.y - 50) hit = { kind: 'serai' };
+        (S.camps || []).forEach(function (c) { if (Math.abs(x - c.spr.x) < 12 && y < c.spr.y + 4 && y > c.spr.y - 30) hit = { kind: 'camp', obj: c }; });
         return hit;
       },
       tap: function (hit) { this.near = hit; this.interact(); },
@@ -546,6 +553,7 @@
         if (n.kind === 'hurt') return S.helpHurt(n.obj);
         if (n.kind === 'serai') return CARAVAN.show('build');
         if (n.kind === 'player') return S.meet(n.obj);
+        if (n.kind === 'camp') return Phaser.Math.Distance.Between(S.pl.x, S.pl.y, n.obj.spr.x, n.obj.spr.y) > 48 ? ROAD.goTo(n.obj.k, true) : ROAD.open(n.obj.k); // a far camp: go there first
         var w = H.world(), id = n.obj.npc, L = NPC[id];
         dialog.who = id;
         if (id === 'elder') {
@@ -576,7 +584,7 @@
         }
       },
       encounter: function (mo) {
-        var S = this, now = S.now(); if (S.frozen || S.busy || busyNow() || S.cool > now || mo.flee > now) return;
+        var S = this, now = S.now(); if (S.frozen || S.busy || S.safe || busyNow() || S.cool > now || mo.flee > now) return;
         var w = H.world();
         if (w.stamina.left < 1) { S.cool = now + 4000; S.pl.setVelocity(0); say('You are too tired to fight. Every step of today\'s plan gives you one more fight.'); return; }
         if (!w.ready) { S.cool = now + 4000; say('Battles open soon.'); return; }
@@ -612,9 +620,9 @@
       },
       // ---------------------------------------------------------- others (live and echoes)
       sync: function () {
-        var S = this; if (S.syncing) return; S.syncing = true;
-        H.api('/play/sync', { method: 'POST', body: { x: Math.round(S.pl.x), y: Math.round(S.pl.y), d: S.pl.dir } }).then(function (j) {
-          S.syncing = false; if (!running || !S.scene || !S.sys || !S.pl || !S.pl.active) return; // left or restarted meanwhile
+        var S = this; if (S.syncing) { S.again = true; return; } S.syncing = true; // a sync asked for meanwhile (a camp opened or closed) runs right after
+        H.api('/play/sync', { method: 'POST', body: { x: Math.round(S.pl.x), y: Math.round(S.pl.y), d: S.pl.dir, st: ROAD.cur || '' } }).then(function (j) {
+          S.syncing = false; if (S.again) { S.again = false; S.lastSync = 0; } if (!running || !S.scene || !S.sys || !S.pl || !S.pl.active) return; // left or restarted meanwhile
           var seen = {};
           j.live.concat(j.echoes).forEach(function (p) {
             seen[p.id] = 1; var o = S.others[p.id], live = p.ago <= 60;
@@ -626,18 +634,19 @@
           Object.keys(S.others).forEach(function (id) { if (!seen[id]) { S.others[id].spr.destroy(); if (S.others[id].aura) S.others[id].aura.destroy(); delete S.others[id]; } });
           j.bubbles.forEach(function (b) { if (S.seenB && S.seenB[b.id]) return; S.seenB = S.seenB || {}; S.seenB[b.id] = 1; var o = b.user === H.me().id ? { me: true } : S.others[b.user]; if (o) (o.me ? S : o).bubble = { text: b.text, until: Date.now() + 7000 }; });
           var n = j.live.length; var c = $('.sg-online'); if (c) c.textContent = n ? n + ' online here' : (j.echoes.length ? j.echoes.length + (j.echoes.length === 1 ? ' traveller was' : ' travellers were') + ' here today' : 'Only you here right now');
-        }, function () { S.syncing = false; });
+        }, function () { S.syncing = false; S.again = false; });
       },
       paintLabels: function () {
         var S = this, cam = S.cameras.main, v = cam.worldView, z = cam.zoom, lay = $('.sg-labels'); if (!lay) return;
         var r = ROOT.querySelector('.sg-cv').getBoundingClientRect(), k = r.width / S.scale.width, keep = {};
         function tag(id, x, y, html, cls) { keep[id] = 1; var e = S.labels[id]; if (!e) { e = S.labels[id] = el('div', 'sg-lb'); lay.appendChild(e); } if (e._h !== html) { e.innerHTML = '<div class="in">' + html + '</div>'; e._h = html; } e.className = 'sg-lb ' + (cls || ''); e.style.transform = 'translate(' + Math.round((x - v.x) * z * k) + 'px,' + Math.round((y - v.y) * z * k) + 'px)'; }
         var now = Date.now(), me = H.me();
-        Object.keys(S.others).forEach(function (id) { var o = S.others[id], p = o.p, s = o.spr; var ago = p.ago > 60 ? (p.ago < 3600 ? Math.round(p.ago / 60) + ' min ago' : Math.round(p.ago / 3600) + ' h ago') : ''; var ph = p.hero || {}; tag('o' + id, s.x, s.y - 27, '<span class="nm' + (p.wanted ? ' wanted' : '') + '"><em class="lvb">' + (ph.level || 1) + '</em>' + (p.wanted ? '⚠ ' : '') + esc(p.name.split(' ')[0]) + (ph.rank && ph.rank !== 'Bronze' ? ' <i class="rk ' + esc(ph.rank.toLowerCase()) + '">' + esc(ph.rank) + '</i>' : '') + '</span>' + (ago ? '<small>' + ago + '</small>' : ''), o.live ? '' : 'echo'); if (o.bubble && o.bubble.until > now) tag('b' + id, s.x, s.y - 40, '<span class="bub">' + esc(o.bubble.text) + '</span>', 'bubble'); if (o.emote && o.emote.until > now) tag('e' + id, s.x, s.y - 34, '<span class="emo">' + EMO[o.emote.e] + '</span>', 'bubble'); });
+        Object.keys(S.others).forEach(function (id) { var o = S.others[id], p = o.p, s = o.spr; var ago = p.ago > 60 ? (p.ago < 3600 ? Math.round(p.ago / 60) + ' min ago' : Math.round(p.ago / 3600) + ' h ago') : ''; var ph = p.hero || {}; tag('o' + id, s.x, s.y - 27, '<span class="nm' + (p.wanted ? ' wanted' : '') + '"><em class="lvb">' + (ph.level || 1) + '</em>' + (p.wanted ? '⚠ ' : '') + esc(p.name.split(' ')[0]) + (ph.rank && ph.rank !== 'Bronze' ? ' <i class="rk ' + esc(ph.rank.toLowerCase()) + '">' + esc(ph.rank) + '</i>' : '') + '</span>' + (p.st && ROAD.verb[p.st] ? '<small>' + ROAD.icon[p.st] + ' ' + ROAD.verb[p.st] + (ago ? ' · ' + ago : '') + '</small>' : ago ? '<small>' + ago + '</small>' : ''), o.live ? '' : 'echo'); if (o.bubble && o.bubble.until > now) tag('b' + id, s.x, s.y - 40, '<span class="bub">' + esc(o.bubble.text) + '</span>', 'bubble'); if (o.emote && o.emote.until > now) tag('e' + id, s.x, s.y - 34, '<span class="emo">' + EMO[o.emote.e] + '</span>', 'bubble'); });
         var mh = H.world().hero || {}; tag('me', S.pl.x, S.pl.y - 27, '<span class="nm me"><em class="lvb">' + (mh.level || 1) + '</em>' + esc(me.name.split(' ')[0]) + '</span><span class="tbar"><i style="width:' + ((mh.hp || 1) / (mh.hpMax || 1) * 100) + '%"></i></span>');
         if (S.bubble && S.bubble.until > now) tag('bme', S.pl.x, S.pl.y - 40, '<span class="bub">' + esc(S.bubble.text) + '</span>', 'bubble');
         if (S.emote && S.emote.until > now) tag('eme', S.pl.x, S.pl.y - 34, '<span class="emo">' + EMO[S.emote.e] + '</span>', 'bubble');
         S.npcs.forEach(function (n) { tag('n' + n.npc, n.x, n.y - 27, '<span class="nm npc">' + esc(NPC[n.npc][0]) + '</span>'); });
+        (S.camps || []).forEach(function (c) { var s = ROAD.st(c.k); if (!s || (s.state !== 'open' && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, c.spr.x, c.spr.y) > 220)) return; tag('rc' + c.k, c.spr.x, c.spr.y - 30, '<span class="nm camp ' + s.state + '">' + (s.state === 'done' ? '✓ ' : s.state === 'locked' ? '🔒 ' : '') + s.icon + ' ' + esc(s.name) + '</span>'); });
         if (S.board) { var cs = CARAVAN.s; tag('board', S.board.x, S.board.y - 30, '<span class="nm npc">🐫 Caravan board' + (cs && cs.badge ? ' <i class="sg-dotn">' + cs.badge + '</i>' : cs && cs.todo ? ' · ' + cs.todo + ' ?' : '') + '</span>'); }
         if (S.seraiSpr && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, S.seraiSpr.x, S.seraiSpr.y) < 140) tag('serai', S.seraiSpr.x, S.seraiSpr.y - 54, '<span class="nm npc">' + (S.seraiPct >= 100 ? '🏰 Caravanserai — built!' : '🏗 Caravanserai ' + S.seraiPct + '%') + '</span>');
         (S.hurt || []).forEach(function (h) { var c = h.c; tag('h' + c.id, h.spr.x, h.spr.y - 14, '<span class="nm hurt">' + (c.wound.fallen ? '💤 ' : '🩹 ') + esc(c.name.split(' ')[0]) + ' · ' + c.wound.days + 'd</span>'); });
@@ -1281,6 +1290,7 @@
 
   /* ================================================================ panels inside the game (chat, review cards, today's plan) */
   function panel(cls, title, html) {
+    ROAD.media();
     var p = $('.sg-panel'); p.className = 'sg-panel on ' + cls;
     p.innerHTML = '<div class="sg-pbox"><div class="sg-ph"><b>' + title + '</b><button class="sg-x" data-p="x" aria-label="Close">✕</button></div><div class="sg-pb">' + html + '</div></div>';
     p.querySelector('[data-p="x"]').onclick = closePanel;
@@ -1289,7 +1299,7 @@
   }
   function closePanel() {
     var p = $('.sg-panel'); if (p) { p.className = 'sg-panel'; p.innerHTML = ''; }
-    clearTimeout(CHAT.t); CHAT.open = false; LENS.close();
+    clearTimeout(CHAT.t); CHAT.open = false; LENS.close(); ROAD.media(); if (ROAD.cur) { ROAD.cur = ''; var ws = G && G.phaser && G.phaser.scene.getScene('World'); if (ws) ws.lastSync = 0; }
     var w = G.phaser && G.phaser.scene.getScene('World'); if (w) { w.frozen = false; w.cool = w.now() + 800; }
     if (H) H.refreshWorld().then(function () { hud(); }, function () {});
   }
@@ -1476,7 +1486,9 @@
     var c = REV.q[0];
     if (!c) {
       b.innerHTML = REV.head() + '<div class="sg-card"><p class="sg-cw">' + (REV.done ? '✓ ' + REV.done + ' card' + (REV.done > 1 ? 's' : '') + ' done' : 'No cards due right now') + '</p><p class="en">' + (REV.done ? 'Well done, traveller. Your plan step counts, and the words you review are the ones monsters attack with.' : 'Save new words — tap any word in the game and press “+ Learning”.') + '</p><div class="sg-opts"><button class="pri" data-p="x">Back to the road</button></div></div>';
-      b.querySelector('[data-p="x"]').onclick = closePanel; return;
+      b.querySelector('[data-p="x"]').onclick = closePanel;
+      if (ROAD.cur === 'cards') ROAD.finish('cards', b);
+      return;
     }
     b.innerHTML = REV.head() + '<p class="small">' + REV.q.length + ' left · ' + REV.done + ' done</p><div class="sg-card">' + REV.front(c) + '<div class="sg-back"></div></div><div class="sg-opts sg-ra"><button class="pri" data-r="flip">Show answer</button></div>';
     b.querySelector('[data-r="flip"]').onclick = function () {
@@ -1519,6 +1531,338 @@
       }).join('') + TODAY.replyRow() + '</ul>';
       b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'reply') CHAT.show(); else if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(x.dataset.to || (k === 'collect' ? 'scan' : k)); }; });
     }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+  };
+
+  /* ================================================================ the learning road: five camps between the east gate and the boss
+     📺 video → 🎵 song → 📖 story → 🃏 the day's cards → ✍️ write, once a day. Each camp opens a Sawa Lens feature here in the game
+     (Sawa Lens counts the study itself: XP, study minutes, the tracker log); finishing one opens the next. Monsters never attack at a camp. */
+  var ROAD = { cur: '', v: null, x: { video: 42, song: 46.5, story: 51, cards: 55.5, write: 60 }, verb: { video: 'watching', song: 'singing', story: 'reading', cards: 'reviewing', write: 'writing' } };
+  ROAD.icon = { video: '📺', song: '🎵', story: '📖', cards: '🃏', write: '✍️' };
+  /** Once: the Elder shows the new road (guidance inside the game). */
+  ROAD.intro = function () {
+    var r = ROAD.data(); if (!running || !r.total || busyNow()) return;
+    try { if (localStorage.getItem('sawaRoadIntro')) return; localStorage.setItem('sawaRoadIntro', '1'); } catch (e) { return; }
+    var nx = ROAD.st(r.next) || r.stations[0];
+    dialog.who = 'elder';
+    dialog('Elder Wen', 'Traveller, look east! Between our gate and the beast there are ' + r.total + ' camps now: ' + r.stations.map(function (x) { return x.icon + ' ' + x.name.toLowerCase(); }).join(', ') + '. Walk the road every day: finish a camp and the next one opens. All you study there counts by itself — no need to report it anywhere. The strip at the bottom takes you to any camp.', [{ label: nx.icon + ' Take me to the first camp', primary: true, run: function () { ROAD.goTo(nx.k, true); } }], '👴');
+  };
+  var CAMP_C = { video: '#c0392b', song: '#8e44ad', story: '#2e86c1', cards: '#c99a2e', write: '#239b56' };
+  var PROMPTS = ['Tell a traveller about your day yesterday. What did you do?', 'Describe your town or city to a traveller who has never been there.', 'What do you like to do at the weekend, and why?', 'Write about someone in your family. What are they like?', 'Where do you want to travel one day? Why there?', 'What is your favourite food, and how do you make it?', 'What did you learn on the road today? Use two of your new words.', 'Write a short message to a friend: invite them to do something with you this week.'];
+  function drawCamp(k) {
+    var c = cnv(24, 28), g = c.getContext('2d'), col = CAMP_C[k] || '#c98a2e';
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(2, 26, 20, 2);
+    g.fillStyle = col; g.beginPath(); g.moveTo(12, 7); g.lineTo(22, 26); g.lineTo(2, 26); g.closePath(); g.fill();
+    g.fillStyle = tone(col, -0.35); g.beginPath(); g.moveTo(12, 7); g.lineTo(22, 26); g.lineTo(16, 26); g.closePath(); g.fill();
+    g.fillStyle = '#2b2233'; g.beginPath(); g.moveTo(12, 15); g.lineTo(15.5, 26); g.lineTo(8.5, 26); g.closePath(); g.fill();
+    px(g, 11, 1, '#5a3a22', 1, 7); px(g, 12, 1, '#ffe39a', 6, 2); px(g, 12, 3, '#e7c873', 4, 1);
+    px(g, 19, 23, '#5a3a22', 4, 2); px(g, 20, 21, '#ff9a3a', 2, 2); px(g, 20, 20, '#ffe08a', 1, 1); // a small campfire
+    return c;
+  }
+  ROAD.data = function () { var r = H && H.lens && H.world() && H.world().road; return r && r.stations ? r : { stations: [], total: 0, done: 0, next: '' }; };
+  ROAD.st = function (k) { return ROAD.data().stations.filter(function (s) { return s.k === k; })[0]; };
+  ROAD.y = function (x) { return 19 + Math.round(Math.sin(Math.floor(x) / 5) * 2); }; // the road's top row there (see buildMap)
+  ROAD.scene = function () { return G && G.phaser && G.phaser.scene.getScene('World'); };
+  /** The strip at the bottom of the screen: today's camps, tap one to go there. */
+  ROAD.strip = function () {
+    if (!ROOT) return;
+    var r = ROAD.data(), box = $('.sg-road');
+    if (!box) { box = el('div', 'sg-road'); ROOT.insertBefore(box, $('.sg-battle')); }
+    box.classList.toggle('on', !!r.total);
+    if (!r.total) { box.innerHTML = ''; return; }
+    var b = H.world().town.boss;
+    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + '</small><div>' + r.stations.map(function (s) {
+      return '<button data-road="' + s.k + '" class="' + s.state + '" aria-label="' + esc(s.name) + ' camp: ' + s.state + '">' + s.icon + (s.state === 'done' ? '<i>✓</i>' : '') + '</button>';
+    }).join('') + '<button data-road="boss" class="boss" aria-label="The boss">' + esc(b.icon) + '</button></div>';
+  };
+  ROAD.tapStrip = function (k) {
+    if (GAME.cur || $('.sg-battle.on') || $('.sg-panel.on')) return;
+    if (k === 'boss') return ROAD.toBoss();
+    var s = ROAD.st(k); if (!s) return;
+    if (s.state === 'locked') return ROAD.open(k);
+    ROAD.goTo(k, true);
+  };
+  /** Walk (quickly) to a camp: the character stands at the camp, so other travellers see where you are. */
+  ROAD.goTo = function (k, open) {
+    var S = ROAD.scene(); if (!S || !S.pl) return;
+    closeDialog();
+    var x = ROAD.x[k] * TS, y = (ROAD.y(ROAD.x[k]) + 1.4) * TS;
+    S.cameras.main.fadeOut(180);
+    S.time.delayedCall(200, function () { S.pl.setPosition(x, y); S.pl.dir = 3; S.cameras.main.fadeIn(300); S.cool = S.now() + 3000; S.lastSync = 0; if (open) ROAD.open(k); });
+  };
+  ROAD.toBoss = function () {
+    var S = ROAD.scene(), b = H.world().town.boss; if (!S || !S.pl) return;
+    if (b.beaten && !b.rematch) return say('You defeated the ' + b.name + '. The road east is open!', 4000);
+    S.cameras.main.fadeOut(180);
+    S.time.delayedCall(200, function () { S.pl.setPosition(61 * TS, 27.5 * TS); S.pl.dir = 2; S.cameras.main.fadeIn(300); S.cool = S.now() + 3000; say('The ' + b.name + ' waits in its lair, just south-east of here.', 4000); });
+  };
+  ROAD.open = function (k) {
+    var s = ROAD.st(k); if (!s) return;
+    if (s.state === 'locked') {
+      var nx = ROAD.st(ROAD.data().next) || s;
+      return dialog('Road sign', 'The ' + s.icon + ' ' + s.name.toLowerCase() + ' camp opens after the ' + nx.icon + ' ' + nx.name.toLowerCase() + ' camp. One camp at a time, traveller!', [{ label: 'Take me to the ' + nx.name.toLowerCase() + ' camp', primary: true, run: function () { ROAD.goTo(nx.k, true); } }], '🪧');
+    }
+    ROAD.cur = k; var S = ROAD.scene(); if (S) S.lastSync = 0; // tell the others where you are now
+    ROAD[k](s);
+  };
+  /** Stop the video and the song (when the panel closes or changes). */
+  ROAD.media = function () {
+    var V = ROAD.v; if (V) { clearInterval(V.tm); try { if (V.p && V.p.destroy) V.p.destroy(); } catch (e) { /* gone */ } ROAD.v = null; }
+    if (ROOT) ROOT.querySelectorAll('.sg-panel audio').forEach(function (a) { try { a.pause(); } catch (e) { /* gone */ } });
+  };
+  ROAD.err = function (b) { return function (x) { if (b && b.isConnected) b.innerHTML = '<p class="sg-err">' + esc(x && x.message || 'Something went wrong. Try again.') + '</p>'; }; };
+  /** A camp finished: the next one opens (the server checks the order). The whole road: a bonus, a line in the feed, the share card. */
+  ROAD.finish = function (k, b) {
+    var s = ROAD.st(k);
+    if (!s || s.state === 'done') { if (b) ROAD.after(b, null); return Promise.resolve(null); }
+    return H.api('/world/road', { method: 'POST', body: { station: k } }).then(function (j) {
+      if (j.world) H.setWorld(j.world); hud(); SFX.quest();
+      var nx = ROAD.st(j.road.next);
+      say(j.complete ? '🎉 You walked the whole road today! +' + j.coins + ' 🪙 +1 ⚗' : '✓ ' + s.icon + ' ' + s.name + ' camp done! +' + j.coins + ' 🪙' + (nx ? ' · next: ' + nx.icon + ' ' + nx.name : ''), 5000);
+      if (b) ROAD.after(b, j);
+      return j;
+    }, function (x) { say(x.message, 4500); });
+  };
+  /** Under a finished camp: the way on (the next camp, or the boss and the share card when the road is done). */
+  ROAD.after = function (b, j) {
+    if (!b.isConnected || b.querySelector('.sg-ron')) return;
+    var r = ROAD.data(), nx = ROAD.st(r.next), d = el('div', 'sg-ron');
+    d.innerHTML = j && j.complete
+      ? '<b>🎉 You walked the whole road today!</b><p class="small">+' + j.coins + ' 🪙 +1 ⚗' + (j.xp ? ' +' + j.xp + ' XP' : '') + '. Your study counts by itself: the minutes are in your log already, no need to report them.</p><div class="sg-opts"><button class="pri" data-rn="boss">' + esc(H.world().town.boss.icon) + ' To the boss</button><button data-rn="share">📣 Share it on Skool</button></div>'
+      : nx ? '<p class="small">Next on your road:</p><div class="sg-opts"><button class="pri" data-rn="' + nx.k + '">' + nx.icon + ' ' + esc(nx.name) + ' camp →</button></div>'
+        : '<p class="small">✓ Today\'s road is done. Doing a camp again still counts as study.</p>';
+    b.appendChild(d);
+    d.querySelectorAll('[data-rn]').forEach(function (x) {
+      x.onclick = function () { var k = x.dataset.rn; if (k === 'share') return SHARE.show('I walked the whole learning road today'); closePanel(); if (k === 'boss') ROAD.toBoss(); else ROAD.goTo(k, true); };
+    });
+    d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  /** Words you can tap (the Lens word card), paragraph by paragraph. */
+  ROAD.paras = function (list) { return list.map(function (p) { return '<p>' + wrapWords(p) + '</p>'; }).join(''); };
+  ROAD.targets = function (b, targets, src, title) {
+    if (!targets || !targets.length) return '';
+    setTimeout(function () {
+      b.querySelectorAll('[data-tw]').forEach(function (x) {
+        x.onclick = function () { var t = targets[+x.dataset.tw]; x.disabled = true; H.lens.api('library/word', { body: { lemma: H.lens.lemmaOf(t.word), status: 'learning', sentence: (src.filter(function (p) { return p.toLowerCase().indexOf(t.word.toLowerCase()) >= 0; })[0] || '').slice(0, 600), title: title } }).then(function () { x.textContent = '✓'; say('“' + t.word + '” is now a review card.'); }, function (e) { x.disabled = false; say(e.message); }); };
+      });
+    }, 0);
+    return '<h4>New words</h4><ul class="sg-tw">' + targets.map(function (t, i) { return '<li><b dir="ltr">' + esc(t.word) + '</b><small dir="ltr">' + esc(t.en || '') + '</small><span dir="rtl">' + esc(t.ar || '') + '</span><button data-tw="' + i + '" aria-label="Add to review cards">＋</button></li>'; }).join('') + '</ul>';
+  };
+  /** Multiple-choice questions, one after another; done(right, total). */
+  ROAD.quiz = function (box, qs, done) {
+    var i = 0, right = 0;
+    (function one() {
+      if (i >= qs.length) return done(right, qs.length);
+      var q = qs[i];
+      box.innerHTML = '<p class="small">' + (i + 1) + ' / ' + qs.length + '</p><p><b>' + wrapWords(q.q, null, true) + '</b></p><div class="sg-vops">' + q.options.map(function (o, k) { return '<button data-k="' + k + '" dir="ltr">' + esc(o) + '</button>'; }).join('') + '</div>';
+      box.querySelectorAll('[data-k]').forEach(function (x) {
+        x.onclick = function () {
+          var ok = +x.dataset.k === +q.answer; if (ok) right++;
+          box.querySelectorAll('[data-k]').forEach(function (y) { y.disabled = true; if (+y.dataset.k === +q.answer) y.classList.add('ok'); });
+          if (!ok) x.classList.add('no');
+          if (ok) SFX.coin(); else SFX.blocked();
+          i++; setTimeout(one, ok ? 700 : 1600);
+        };
+      });
+    })();
+  };
+
+  /* -------- 📺 the video camp: Sherif's video quizzes (Sawa Lens lessons) in the official YouTube player */
+  ROAD.yt = function () {
+    if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+    return new Promise(function (ok, no) {
+      var prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () { if (prev) { try { prev(); } catch (e) { /* theirs */ } } ok(window.YT); };
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) { var sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = function () { no(new Error('The video player could not load. Check your internet and try again.')); }; document.head.appendChild(sc); }
+      var n = 0, w = setInterval(function () { if (window.YT && window.YT.Player) { clearInterval(w); ok(window.YT); } else if (++n > 60) { clearInterval(w); no(new Error('The video player could not load. Try again.')); } }, 250);
+    });
+  };
+  ROAD.video = function () {
+    var b = panel('sg-roadp sg-vidp', '📺 Video camp', '<p class="sg-wait">Loading the videos…</p>');
+    H.lens.api('videos').then(function (d) {
+      var list = d.lessons || [];
+      if (!list.length) { b.innerHTML = '<p>No videos at this camp yet. Sherif adds new ones often!</p>'; return; }
+      ROAD.watch(b, (list.filter(function (l) { return l.answered < l.total; })[0] || list[0]).id, list);
+    }, ROAD.err(b));
+  };
+  ROAD.watch = function (b, id, list) {
+    ROAD.media();
+    b.innerHTML = '<p class="sg-wait">Loading the video…</p>';
+    Promise.all([H.lens.api('video?id=' + id), ROAD.yt(), H.lens.lex()]).then(function (r) {
+      if (!b.isConnected) return;
+      var L = r[0], V = ROAD.v = { L: L, played: 0, last: 0, asking: null, tm: null, p: null, fresh: false, fin: false };
+      b.innerHTML = '<h4>' + esc(L.title || 'Video') + '</h4><div class="sg-yt"><div></div></div><div class="sg-qm"></div><div class="sg-vq"></div>'
+        + '<p class="small">The video stops for a few questions about the words you need. Missed words go to your review cards.</p>'
+        + (list.length > 1 ? '<details class="sg-more"><summary>Other videos</summary>' + list.map(function (l) { return l.id === L.id ? '' : '<button data-vid="' + l.id + '">' + esc(l.title || 'Video') + ' · ' + l.correct + '/' + l.total + '</button>'; }).join('') + '</details>' : '');
+      b.querySelectorAll('[data-vid]').forEach(function (x) { x.onclick = function () { ROAD.watch(b, +x.dataset.vid, list); }; });
+      ROAD.marks();
+      V.p = new window.YT.Player(b.querySelector('.sg-yt > div'), {
+        videoId: L.videoId, width: '100%', height: '100%',
+        playerVars: { playsinline: 1, rel: 0, modestbranding: 1, cc_load_policy: 1, cc_lang_pref: 'en' },
+        events: { onReady: function () { V.tm = setInterval(ROAD.tick, 300); } }
+      });
+    }, ROAD.err(b));
+  };
+  ROAD.marks = function () {
+    var V = ROAD.v, m = V && $('.sg-qm'); if (!m) return;
+    var qs = V.L.questions, A = V.L.answers;
+    m.innerHTML = qs.map(function (q) { var a = A[q.id]; return '<i class="' + (a ? (a.ok ? 'ok' : 'no') : '') + '">' + (a ? (a.ok ? '✓' : '✗') : '?') + '</i>'; }).join('') + '<small>' + Object.keys(A).filter(function (k) { return A[k].ok; }).length + '/' + qs.length + ' right</small>';
+  };
+  ROAD.tick = function () {
+    var V = ROAD.v; if (!V || !V.p || !V.p.getCurrentTime) return;
+    if (!$('.sg-vidp')) return ROAD.media();
+    var t = V.p.getCurrentTime() || 0, st = V.p.getPlayerState ? V.p.getPlayerState() : -1, dur = V.p.getDuration ? V.p.getDuration() : 0;
+    if (st === 1 && t > V.last && t - V.last < 2) V.played += t - V.last;
+    V.last = t;
+    var qs = V.L.questions, all = qs.every(function (q) { return V.L.answers[q.id]; });
+    // done: every question answered now, or most of the video watched (a quiz done on another day can still be watched again)
+    if (!V.fin && ((all && V.fresh) || V.played >= Math.min(150, (dur || 180) * 0.8) || (!qs.length && st === 0))) { V.fin = true; ROAD.finish('video', $('.sg-vidp .sg-pb')); }
+    if (V.asking || st !== 1) return;
+    var q = qs.filter(function (x) { return !V.L.answers[x.id] && x.t <= t; })[0];
+    if (q) { V.p.pauseVideo(); ROAD.ask(q); }
+  };
+  ROAD.ask = function (q) {
+    var V = ROAD.v, box = $('.sg-vq'); if (!box) return;
+    V.asking = q;
+    var opts = q.type === 'blank' ? '<div class="sg-typer"><input maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" placeholder="Type the word"><button class="pri" data-ok>Check</button></div>'
+      : '<div class="sg-vops">' + q.options.map(function (o, k) { return '<button data-k="' + k + '" dir="ltr">' + esc(o) + '</button>'; }).join('') + '</div>';
+    box.innerHTML = '<div class="sg-vcard"><p><b>' + wrapWords(q.q, null, true) + '</b></p>' + opts + '<div class="sg-vwhy"></div></div>';
+    var send = function (a, btn) {
+      box.querySelectorAll('button, input').forEach(function (x) { x.disabled = true; });
+      H.lens.api('video/answer', { body: { id: V.L.id, qid: q.id, a: a } }).then(function (r) {
+        V.L.answers[q.id] = { a: a, ok: r.ok }; V.fresh = true; ROAD.marks();
+        if (btn) btn.classList.add(r.ok ? 'ok' : 'no');
+        if (q.type !== 'blank') { var rb = box.querySelector('[data-k="' + r.answer + '"]'); if (rb) rb.classList.add('ok'); }
+        if (r.ok) SFX.coin(); else SFX.blocked();
+        var why = box.querySelector('.sg-vwhy');
+        why.innerHTML = (r.ok ? '<p class="ok">✓ Right! +5 XP</p>' : '<p>✗ ' + (q.type === 'blank' ? 'It is <b>' + esc(r.answer) + '</b>. ' : '') + (q.word ? 'This word goes to your review cards.' : '') + '</p>') + (r.why ? '<p>' + wrapWords(r.why) + '</p>' : '') + (r.why_ar ? '<p class="ar" dir="rtl">' + esc(r.why_ar) + '</p>' : '') + '<div class="sg-opts"><button class="pri" data-go>Continue the video ▶</button></div>';
+        why.querySelector('[data-go]').onclick = function () { box.innerHTML = ''; V.asking = null; try { V.p.playVideo(); } catch (e) { /* gone */ } };
+      }, function (x) { say(x.message); V.asking = null; box.innerHTML = ''; });
+    };
+    box.querySelectorAll('[data-k]').forEach(function (x) { x.onclick = function () { send(+x.dataset.k, x); }; });
+    var inp = box.querySelector('input');
+    if (inp) { inp.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') send(inp.value.trim()); }; box.querySelector('[data-ok]').onclick = function () { send(inp.value.trim()); }; setTimeout(function () { inp.focus(); }, 50); }
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  /* -------- 🎵 the song camp: "My songs" from Sawa Lens (the new words you saved, sung), with a fill-the-gaps game */
+  ROAD.song = function () {
+    var b = panel('sg-roadp sg-songp', '🎵 Song camp', '<p class="sg-wait">Loading your songs…</p>');
+    Promise.all([H.lens.api('songs'), H.lens.lex()]).then(function (res) {
+      var r = res[0], ready = r.songs.filter(function (s) { return s.status === 'ready' && s.audio; }), st = r.state || {};
+      var making = r.songs.filter(function (s) { return ['queued', 'writing', 'singing'].indexOf(s.status) >= 0; })[0];
+      if (ready.length) return ROAD.sing(b, ready[0], ready, st);
+      if (making) { b.innerHTML = '<p>✍️ Your song is being written and sung right now. It takes about a minute: walk around and come back to this camp.</p>'; return; }
+      if (st.can) {
+        b.innerHTML = '<p>You saved enough new words for a song! A singer sings your new words in simple English, slowly.</p><div class="sg-opts"><button class="pri" data-mk>🎵 Make my song</button></div><p class="sg-err"></p>';
+        b.querySelector('[data-mk]').onclick = function () { var x = this; x.disabled = true; H.lens.api('songs', { body: { style: (st.styles || ['pop'])[0], slow: 1 } }).then(function () { b.innerHTML = '<p>✍️ Your song is being written and sung. It takes about a minute: walk around and come back to this camp.</p>'; }, function (e) { x.disabled = false; b.querySelector('.sg-err').textContent = e.message; }); };
+        return;
+      }
+      b.innerHTML = '<p>' + ({ more: 'Save ' + Math.max(1, (st.need || 10) - (st.new || 0)) + ' more new words (tap any word in the game and press “+ Learning”) and your first song is ready to make.', today: 'One new song a day: come back tomorrow.', budget: 'New songs are paused until next month.', off: 'Songs are not switched on yet.' }[st.why] || 'No song here yet.') + '</p>';
+    }, ROAD.err(b));
+  };
+  ROAD.sing = function (b, s, ready, st) {
+    var lines = String(s.lyrics || '').split(/\n/).map(function (t) { return t.trim(); }).filter(function (t) { return t && !/^\[.*\]$/.test(t); });
+    b.innerHTML = '<h4>' + esc(s.title || 'Your song') + '</h4><audio controls preload="none" src="' + esc(s.audio) + '"></audio><p class="small">Listen, then sing along. Tap any word for its meaning.</p>'
+      + '<div class="sg-lyr">' + lines.map(function (t) { return '<p>' + wrapWords(t) + '</p>'; }).join('') + '</div>'
+      + '<div class="sg-opts"><button class="pri" data-gap>🎯 Fill the gaps</button>' + (ready.length > 1 ? '<button data-other>Another song</button>' : '') + (st && st.can ? '<button data-mk>🎵 Make a new song</button>' : '') + '</div><div class="sg-gapq"></div>';
+    var other = b.querySelector('[data-other]'); if (other) other.onclick = function () { ROAD.media(); ROAD.sing(b, ready[(ready.indexOf(s) + 1) % ready.length], ready, st); };
+    var mk = b.querySelector('[data-mk]'); if (mk) mk.onclick = function () { mk.disabled = true; H.lens.api('songs', { body: { style: (st.styles || ['pop'])[0], slow: 1 } }).then(function () { say('✍️ Your new song is being made: about a minute.', 4000); }, function (e) { mk.disabled = false; say(e.message); }); };
+    b.querySelector('[data-gap]').onclick = function () {
+      var words = (s.words || []).map(function (w) { return String(w.word || '').toLowerCase(); }).filter(Boolean), qs = [], used = {};
+      lines.forEach(function (t) {
+        if (qs.length >= 6) return;
+        var hit = (t.match(/[A-Za-z]+(?:['’][A-Za-z]+)?/g) || []).filter(function (w) { return words.indexOf(w.toLowerCase()) >= 0 && !used[w.toLowerCase()]; })[0];
+        if (!hit) return; used[hit.toLowerCase()] = 1;
+        var pool = words.filter(function (w) { return w !== hit.toLowerCase(); }).sort(function () { return Math.random() - 0.5; }).slice(0, 2);
+        ['road', 'light', 'friend', 'water'].forEach(function (w) { if (pool.length < 2 && w !== hit.toLowerCase()) pool.push(w); });
+        var opts = pool.concat([hit.toLowerCase()]).sort(function () { return Math.random() - 0.5; });
+        qs.push({ q: t.replace(new RegExp('\\b' + hit + '\\b'), '_____'), options: opts, answer: opts.indexOf(hit.toLowerCase()) });
+      });
+      var box = b.querySelector('.sg-gapq'); this.disabled = true;
+      if (!qs.length) { box.innerHTML = '<p>Sing it once more, and the camp is done!</p>'; return ROAD.finish('song', b); }
+      ROAD.quiz(box, qs, function (right, total) {
+        H.lens.api('songs/played', { body: { id: s.id, right: right, total: total } }).then(function (x) {
+          box.innerHTML = '<p><b>' + right + ' of ' + total + ' right' + (right === total ? ' — you know this song! 🎉' : '') + '</b>' + (x.xp ? ' · +' + x.xp + ' XP' : '') + '</p>';
+          ROAD.finish('song', b);
+        }, ROAD.err(box));
+      });
+    };
+  };
+
+  /* -------- 📖 the story camp: tonight's story from "Stories for you" (or the next chapter), and your own text at your level */
+  ROAD.story = function () {
+    var b = panel('sg-roadp sg-storyp', '📖 Story camp', '<p class="sg-wait">Choosing your story…</p>');
+    H.lens.api('readers').then(function (h) {
+      var sr = h.series && !h.series.tomorrow ? h.series : null;
+      var one = sr ? H.lens.api('readers/next', { body: { series: sr.id } }) : h.today ? H.lens.api('readers/' + h.today.id) : H.lens.api('readers/next', { body: {} });
+      return Promise.all([one, H.lens.lex()]).then(function (x) { if (b.isConnected) ROAD.read(b, x[0], h); });
+    }).catch(function (x) {
+      if (!b.isConnected) return;
+      b.innerHTML = '<p>' + esc(x.message) + '</p><div class="sg-opts"><button class="pri" data-ad>✨ Read your own text at your level</button></div>';
+      b.querySelector('[data-ad]').onclick = function () { ROAD.adapt(b); };
+    });
+  };
+  ROAD.read = function (b, r, h) {
+    var qs = r.questions || [];
+    b.innerHTML = '<p class="small">' + esc((r.cat && r.cat.emoji || '📖') + ' ' + (r.format === 'series' ? 'Chapter ' + r.chapter + ' of ' + r.of : r.cat && r.cat.name || 'Story')) + ' · ' + esc(r.level) + ' · ' + r.minutes + ' min' + (h && h.streak ? ' · 🔥 ' + h.streak + '-day reading streak' : '') + '</p>'
+      + '<h4>' + esc(r.title) + '</h4><div class="sg-read">' + ROAD.paras(r.paragraphs) + '</div>'
+      + ROAD.targets(b, r.targets, r.paragraphs, r.title)
+      + '<div class="sg-stq">' + (r.done ? '<p>✓ You read this one before.</p><div class="sg-opts"><button class="pri" data-fin>Done reading</button></div>' : '<div class="sg-opts"><button class="pri" data-fin>✓ I finished reading</button></div><p class="small">' + (qs.length ? qs.length + ' quick questions, then +10 XP (+5 for getting them right)' : '+10 XP') + '</p>') + '</div>'
+      + '<div class="sg-opts"><button data-ad>✨ Read your own text at your level</button></div>';
+    b.querySelector('[data-ad]').onclick = function () { ROAD.adapt(b); };
+    b.querySelector('[data-fin]').onclick = function () {
+      var box = b.querySelector('.sg-stq');
+      var end = function (right, total) {
+        H.lens.api('readers/done', { body: { id: r.id, right: right, total: total } }).then(function (x) {
+          box.innerHTML = '<p><b>' + (total ? right + ' of ' + total + ' right' + (right === total ? ' — great reading! 🎉' : '') : 'Well done! 🎉') + '</b>' + (x.xp ? ' · +' + x.xp + ' XP' : '') + (x.streak ? ' · 🔥 ' + x.streak + '-day reading streak' : '') + '</p>' + (x.nextChapter ? '<p class="small">Chapter ' + x.nextChapter + ' opens tomorrow.</p>' : '');
+          ROAD.finish('story', b);
+        }, ROAD.err(box));
+      };
+      if (r.done || !qs.length) return end(r.done ? r.score || 0 : 0, r.done ? qs.length : 0);
+      ROAD.quiz(box, qs, end);
+    };
+  };
+  /** Graded reading: paste any English text and it is rewritten at your level (Sawa Lens "Adapt to my level"). */
+  ROAD.adapt = function (b) {
+    b.innerHTML = '<h4>✨ Your own text, at your level</h4><p class="small">Paste an English text: a news story, a post, song lyrics. It is rewritten at your level with your Learning words, and you can tap every word.</p><textarea rows="6" dir="ltr" maxlength="3500" placeholder="Paste the English text here…"></textarea><p class="sg-err"></p><div class="sg-opts"><button class="pri" data-go>✨ Adapt to my level</button><button data-back>← Back to the story</button></div><div class="sg-adout"></div>';
+    var ta = b.querySelector('textarea'), er = b.querySelector('.sg-err'), go = b.querySelector('[data-go]');
+    ta.onkeydown = function (e) { e.stopPropagation(); };
+    b.querySelector('[data-back]').onclick = function () { ROAD.story(); };
+    go.onclick = function () {
+      var t = ta.value.trim(); er.textContent = '';
+      if ((t.match(/[A-Za-z]+/g) || []).length < 20) { er.textContent = 'Paste a longer English text (at least a few sentences).'; return; }
+      go.disabled = true; go.textContent = '✨ Rewriting…';
+      Promise.all([H.lens.api('adapt', { body: { text: t.split(/\s+/).slice(0, 550).join(' ') } }), H.lens.lex()]).then(function (x) {
+        var r = x[0], lv = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'][(r.levelNum || 2) - 1], out = b.querySelector('.sg-adout');
+        go.disabled = false; go.textContent = '✨ Adapt to my level';
+        out.innerHTML = '<p class="small">✨ Rewritten for ' + lv + '</p><div class="sg-read">' + ROAD.paras(r.paragraphs || []) + '</div>' + ROAD.targets(out, r.targets || [], r.paragraphs || [], 'My text');
+        out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, function (e) { go.disabled = false; go.textContent = '✨ Adapt to my level'; er.textContent = e.message; });
+    };
+  };
+
+  /* -------- 🃏 the cards camp: today's review cards (the same panel as the Cards menu; REV.card finishes the camp) */
+  ROAD.cards = function () { REV.show(); };
+
+  /* -------- ✍️ the writing camp: a few sentences, checked like the writing checker (on a phone, the keyboard's 🎤 turns speaking into text) */
+  ROAD.write = function () {
+    var day = Math.floor(Date.now() / 864e5), pr = PROMPTS[(day + H.world().at) % PROMPTS.length];
+    var b = panel('sg-roadp sg-writep', '✍️ Writing camp', '<p class="sg-wq">' + wrapWords(pr) + '</p><textarea rows="5" dir="ltr" maxlength="1500" placeholder="Write 3 to 5 sentences in English…"></textarea><p class="small">🎤 On a phone you can tap the microphone on your keyboard and speak instead of typing.</p><p class="sg-err"></p><div class="sg-opts"><button class="pri" data-wr>Check my English</button></div><div class="sg-wres"></div>');
+    var ta = b.querySelector('textarea'), er = b.querySelector('.sg-err'), go = b.querySelector('[data-wr]');
+    ta.onkeydown = function (e) { e.stopPropagation(); };
+    go.onclick = function () {
+      var t = ta.value.trim(); er.textContent = '';
+      if (/[؀-ۿ]/.test(t)) { er.textContent = 'Write in English here. Simple words and short sentences are fine!'; return; }
+      if ((t.match(/[A-Za-z]+/g) || []).length < 8) { er.textContent = 'Write a little more: at least two sentences.'; return; }
+      go.disabled = true; go.textContent = 'Checking…';
+      H.lens.api('write', { body: { text: t } }).then(function (j) {
+        var res = j.result || {}, errs = res.errors || [], out = b.querySelector('.sg-wres');
+        go.textContent = '✓ Checked'; ta.readOnly = true;
+        out.innerHTML = (res.praise ? '<p>' + wrapWords(res.praise) + '</p>' : '') + (errs.length ? '<h4>' + errs.length + ' thing' + (errs.length > 1 ? 's' : '') + ' to fix</h4><ul class="sg-fix">' + errs.map(function (e) { return '<li><span><s dir="ltr">' + esc(e.wrong) + '</s> → <b dir="ltr">' + esc(e.right) + '</b></span>' + (e.why ? '<small>' + esc(e.why) + '</small>' : '') + (e.why_ar ? '<small class="ar" dir="rtl">' + esc(e.why_ar) + '</small>' : '') + '</li>'; }).join('') + '</ul>' : '<p><b>No mistakes — great English! 🎉</b></p>')
+          + (res.tip ? '<p class="small">💡 ' + esc(res.tip) + '</p>' : '') + (j.xp ? '<p class="small">+' + j.xp + ' XP · your mistakes go to your skill tree, so practice finds them.</p>' : '');
+        ROAD.finish('write', b);
+      }, function (e) { go.disabled = false; go.textContent = 'Check my English'; er.textContent = e.message; });
+    };
   };
 
   /* -------- the caravan: help each other (at any time of day), build the caravanserai, guides for newcomers */
@@ -1609,6 +1953,7 @@
       ROOT.addEventListener('click', function (e) {
         var bh = e.target.closest('[data-bar]'); if (bh) { e.stopPropagation(); var x = BAR_HELP[bh.dataset.bar]; return dialog(x[0], x[1], [], '💡'); }
         var w = e.target.closest('.lw'); if (w) { e.stopPropagation(); return LENS.word(w); }
+        var rd = e.target.closest('[data-road]'); if (rd) { e.stopPropagation(); return ROAD.tapStrip(rd.dataset.road); }
         var sp = e.target.closest('[data-say]'); if (sp) { e.stopPropagation(); return VOICE.say(sp.dataset.say); }
         var b = e.target.closest('[data-g]'); if (b) GAME.menu(b.dataset.g);
       }, true);
@@ -1641,7 +1986,7 @@
     context: function () {
       if (!running) return null;
       var w = H.world() || {}, p = $('.sg-panel.on'), d = $('.sg-dlg.on b'), hr = w.hero || {};
-      var pn = p ? ({ 'sg-carp': 'caravan board', 'sg-chatp': 'chat', 'sg-revp': 'review cards', 'sg-todayp': 'today\'s plan', 'sg-ranksp': 'rankings', 'sg-journalp': 'journal', 'sg-reportp': 'weekly report', 'sg-sharep': 'share card' }[[].filter.call(p.classList, function (c) { return /^sg-.+p$/.test(c) && c !== 'sg-panel'; })[0]] || 'panel') : '';
+      var pn = p ? ({ 'sg-carp': 'caravan board', 'sg-chatp': 'chat', 'sg-revp': 'review cards', 'sg-todayp': 'today\'s plan', 'sg-ranksp': 'rankings', 'sg-journalp': 'journal', 'sg-reportp': 'weekly report', 'sg-sharep': 'share card', 'sg-roadp': 'road camp: ' + (ROAD.cur || '?') }[[].filter.call(p.classList, function (c) { return /^sg-.+p$/.test(c) && c !== 'sg-panel'; })[0]] || 'panel') : '';
       var modal = ROOT && ROOT.parentNode && ROOT.parentNode.querySelector('#modal'), mh = modal && modal.innerHTML ? (modal.querySelector('h2, h3') || {}).textContent : '';
       var area = GAME.cur ? (GAME.cur.kind === 'boss' ? 'boss battle' : GAME.cur.kind === 'pboss' ? 'party boss battle' : GAME.cur.kind === 'duel' ? 'shadow duel' : 'battle') : $('.sg-res') ? 'battle result' : pn || (mh ? 'panel: ' + mh.trim().slice(0, 30) : $('.sg-look') ? 'character creator' : d ? 'talking to ' + d.textContent : $('.sg-word.on') ? 'word popup' : 'map');
       return { area: area, town: (w.town || {}).name, battle: GAME.cur || undefined, level: hr.level, hp: hr.hp, stamina: w.stamina ? w.stamina.left + '/' + w.stamina.max : '' };

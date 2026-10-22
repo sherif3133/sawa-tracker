@@ -1081,3 +1081,48 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .new-thing { border: 2px solid var(--fg); }
 .new-thing h3 { margin: 2px 0 4px; }
 .new-thing .row { gap: 8px; margin-top: 8px; }
+
+/* ---- the learning road (game.js ROAD): the camp strip, camp labels and the camp panels */
+.sg-road { position: absolute; left: 8px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: none; gap: 3px; padding: 5px 7px 6px; background: rgba(20, 25, 58, .86); border: 2px solid #e7c873; border-radius: 12px; box-shadow: 0 3px 0 rgba(0, 0, 0, .35); max-width: calc(100% - 110px); }
+.sg-road.on { display: grid; }
+.sg-root:has(.sg-battle.on) .sg-road { display: none; }
+.sg-road small { font: 600 10px/1.2 var(--body); color: #ffe39a; }
+.sg-road div { display: flex; gap: 4px; flex-wrap: wrap; }
+.sg-road button { position: relative; width: 38px; height: 38px; border-radius: 10px; border: 2px solid #8f86c9; background: #2b3168; font-size: 19px; line-height: 1; padding: 0; }
+.sg-road button.open { border-color: #ffe39a; background: #4a3f8a; animation: sg-pulse 1.4s ease-in-out infinite; }
+.sg-road button.locked { opacity: .45; }
+.sg-road button.done { background: #2f6a4a; border-color: #7fe08f; }
+.sg-road button.boss { border-color: #ff8a8a; background: #5a2333; }
+.sg-road button i { position: absolute; right: -4px; top: -4px; font: 700 10px/14px var(--body); font-style: normal; width: 14px; height: 14px; border-radius: 50%; background: #7fe08f; color: #14193a; }
+@keyframes sg-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 227, 154, .7); } 50% { box-shadow: 0 0 0 5px rgba(255, 227, 154, 0); } }
+@media (pointer: fine) { .sg-road { bottom: 60px; } }
+.sg-lb .nm.camp { color: #fff; background: rgba(20, 25, 58, .8); border-radius: 6px; padding: 2px 5px; font-size: 11px; }
+.sg-lb .nm.camp.open { color: #2b2233; background: #ffe39a; animation: sg-bob 1.2s ease-in-out infinite; }
+.sg-lb .nm.camp.done { color: #bff5c8; }
+.sg-lb .nm.camp.locked { opacity: .75; }
+@keyframes sg-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.sg-roadp .sg-pbox { max-height: 100%; }
+.sg-roadp h4 { margin: 0; font: 600 17px Georgia, serif; color: #ffe39a; }
+.sg-yt { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; overflow: hidden; }
+.sg-yt iframe, .sg-yt > div { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.sg-qm { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.sg-qm i { font-style: normal; font-size: 11px; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 50%; background: #2b3168; border: 1px solid #8f86c9; }
+.sg-qm i.ok { background: #2f6a4a; border-color: #7fe08f; } .sg-qm i.no { background: #6a2f3a; border-color: #ff8a8a; }
+.sg-vcard { background: #fffaf0; color: #2b2233; border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.sg-vcard .small, .sg-vcard small { color: #6b5f7a; } .sg-vcard .ok { color: #2f7a4f; font-weight: 700; } .sg-vcard .lw { border-bottom-color: #a8763f; }
+.sg-vops { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
+.sg-pb .sg-vops button { text-align: left; min-height: 44px; font-size: 15px; }
+.sg-pb .sg-vops button.ok { background: #2f7a4f; border-color: #7fe08f; color: #fff; } .sg-pb .sg-vops button.no { background: #8a2f3a; border-color: #ff8a8a; color: #fff; }
+.sg-read, .sg-lyr { display: grid; gap: 8px; font: 17px/1.6 Georgia, serif; color: #f6ecd4; }
+.sg-lyr p { text-align: center; }
+.sg-roadp audio { width: 100%; }
+.sg-tw { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sg-tw li { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: center; background: #2b3168; border-radius: 8px; padding: 6px 8px; }
+.sg-tw li span { grid-column: 1 / 3; font-size: 14px; } .sg-tw li button { grid-row: 1 / 3; grid-column: 3; min-width: 40px; min-height: 40px; }
+.sg-fix { margin: 0; padding-left: 18px; display: grid; gap: 6px; } .sg-fix li { display: grid; gap: 2px; } .sg-fix li > span { font-size: 15px; } .sg-fix s { color: #ff9a9a; } .sg-fix b { color: #9ff0b0; }
+.sg-wq { font: 17px/1.5 Georgia, serif; color: #ffe39a; }
+.sg-ron { display: grid; gap: 6px; border-top: 1px dashed rgba(231, 200, 115, .5); padding-top: 10px; }
+.sg-ron b { color: #ffe39a; }
+.sg-more summary { cursor: pointer; color: #d8cfb8; font-size: 13px; padding: 4px 0; }
+.sg-more button { display: block; width: 100%; text-align: left; margin-top: 4px; }
+.sg-err { color: #ff9a9a; }

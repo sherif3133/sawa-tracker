@@ -125,6 +125,7 @@ final class Sawa_Tracker_Play {
 			'at'  => time(),
 			'em'  => $me['em'] ?? '',
 			'emt' => (int) ( $me['emt'] ?? 0 ),
+			'st'  => substr( sanitize_key( (string) $r->get_param( 'st' ) ), 0, 12 ), // the road camp they are at (📖 reading…)
 		);
 		Sawa_Tracker_Game::set( $uid, 'wpos', $pos );
 		$rows   = $wpdb->get_results( $wpdb->prepare( "SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s AND user_id <> %d", 'sawa_wpos', $uid ), ARRAY_A ); // phpcs:ignore
@@ -143,6 +144,7 @@ final class Sawa_Tracker_Play {
 				'ago'    => time() - (int) $p['at'],
 				'wanted' => in_array( (int) $row['user_id'], $wanted, true ),
 				'emote'  => time() - (int) ( $p['emt'] ?? 0 ) < 8 ? (string) $p['em'] : '',
+				'st'     => (string) ( $p['st'] ?? '' ),
 			);
 			if ( $a['ago'] <= self::LIVE_SECS ) {
 				$live[] = $a;

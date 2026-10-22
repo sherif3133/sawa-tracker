@@ -2,6 +2,14 @@
 
 Built on 22 Oct 2026: the reply goal is an optional step in the app's Today plan (Sawa Lens `today_plan`), and chat English is checked automatically: messages queue per learner (`sawa_lens_chatq`), an hourly job checks each learner once a day in one batch (cap 150 a day, switch in Sawa Lens settings), errors go to the error log with source "chat", right uses pay the improvement bonus (`record_uses`), and the learner gets a private `chat_review` notification. Chat XP per message and the per-skill trends were already in place (`class-xp.php`, `Sawa_Lens_Skills::trends`). Also built: the weekly best helper in the chat (most counted replies, 5+; feed shout-out, weekly report, 30 coins + elixir + 30 XP + the title Helper of the Week) and voice notes in the daily check (up to two a day transcribed, saved on the message, and checked as speaking, source "voice").
 
+## Learning in the Silk Road: the learning road (phase 1 built 22 Oct 2026)
+
+Goal (Sherif): learners study inside the game instead of going to YouTube, then the web app, then reporting on Skool. They get a sense of progress and see where everyone is.
+
+- **Phase 1 (built, 2.11.0):** five camps between each town's east gate and its boss: 📺 video → 🎵 song → 📖 story → 🃏 review cards → ✍️ write, once a day (`class-road.php`, `ROAD` in `game.js`). Each camp opens the Sawa Lens feature as a panel in the game: video quizzes (YouTube IFrame player), My songs (fill the gaps), Stories for you (plus "Adapt to my level" for your own text), the day's cards, and the writing checker. Finishing a camp opens the next, and Sawa Lens counts the study (XP, minutes, tracker log). The whole road gives +25 coins, an elixir, 20 XP and a feed line. Characters stand at their camp and others see "📖 reading" over them (`st` in `/play/sync`). Monsters never attack at a camp.
+- **Phase 2 (planned):** a curated video and song library. The admin adds YouTube videos and songs with a transcript (their own captions or a pasted transcript) and a quiz, prepared once. Students get a tap-able transcript in sync with the official player, on phones without the extension.
+- **Phase 3 (planned):** weekly or seasonal chapters across towns, group challenges at camps, and an admin map showing where every student is.
+
 ## Reply goal in the app's Today plan (built 22 Oct 2026)
 
 The daily reply goal (`Sawa_Tracker_Replies::goal()`) shows in the chat, the game chat and the game's Today panel. The Today plan in `/app` comes from Sawa Lens (`today` endpoint), so adding it there as a plan step needs a change in `sawa-lens`: read the goal from the tracker and add a "Reply to 10 messages" step that links to the chat. Also possible later: @mentions in threads, and a weekly "best helper in the chat" shout-out.

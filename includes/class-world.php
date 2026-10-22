@@ -254,6 +254,7 @@ final class Sawa_Tracker_World {
 			'party'    => Sawa_Tracker_Party::of( $uid ),
 			'event'    => 2 === self::xp_mult() ? 'Double XP weekend: fights give twice the XP!' : '',
 			'ready'    => (bool) apply_filters( 'sawa_tracker_battle_ready', false ),
+			'road'     => Sawa_Tracker_Road::state( $uid ), // today's learning road (camps on the way to the boss)
 		);
 	}
 
