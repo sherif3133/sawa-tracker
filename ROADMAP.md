@@ -2,6 +2,15 @@
 
 Built on 22 Oct 2026: the reply goal is an optional step in the app's Today plan (Sawa Lens `today_plan`), and chat English is checked automatically: messages queue per learner (`sawa_lens_chatq`), an hourly job checks each learner once a day in one batch (cap 150 a day, switch in Sawa Lens settings), errors go to the error log with source "chat", right uses pay the improvement bonus (`record_uses`), and the learner gets a private `chat_review` notification. Chat XP per message and the per-skill trends were already in place (`class-xp.php`, `Sawa_Lens_Skills::trends`). Also built: the weekly best helper in the chat (most counted replies, 5+; feed shout-out, weekly report, 30 coins + elixir + 30 XP + the title Helper of the Week) and voice notes in the daily check (up to two a day transcribed, saved on the message, and checked as speaking, source "voice").
 
+## Comeback mode: Wounds without shame (planned 22 Oct 2026)
+
+Part of comeback mode from the learner research (see `../sawa-lens/ROADMAP.md`, "From the learner research"). Learners say missed days make them feel guilty, avoid tracking because it "reminds me of my weakness", and then restart from zero somewhere else. Wounds (`class-wounds.php`) currently take a quarter of the hero's health for each missed day, fell the hero after 4, and cost the clan a fight each day. That risks feeding the same guilt.
+
+- Keep the clan's care (heals and revives are good: people checking on each other), but make the way back the loud part. The first study day after a gap fully heals the hero, gives a "the caravan waited for you" welcome, and has the clan's hero-revive count as a shared win.
+- Soften the clan penalty: no fewer fights for the others, or only after a longer absence. The others should feel "let's bring them back", not "they are slowing us down".
+- Show the hero's total days on the road next to the wound, so a gap never looks like everything is lost.
+- Decide the exact numbers with Sherif after he tries it.
+
 ## Learning in the Silk Road: the learning road (phase 1 built 22 Oct 2026)
 
 Goal (Sherif): learners study inside the game instead of going to YouTube, then the web app, then reporting on Skool. They get a sense of progress and see where everyone is.
