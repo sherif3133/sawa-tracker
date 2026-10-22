@@ -174,6 +174,15 @@ final class Sawa_Tracker_Feedback {
 		}
 		$t = self::t();
 		if ( isset( $_POST['sawa_fb_nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['sawa_fb_nonce'] ), 'sawa_fb' ) ) {
+			if ( isset( $_POST['summarize'] ) ) { // an AI summary of the last 7 days (Sawa Lens does the AI call)
+				$notes = $wpdb->get_results( $wpdb->prepare( "SELECT kind, body, area, target FROM $t WHERE kind <> 'error' AND created_at >= %s ORDER BY id DESC LIMIT 300", gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - 7 * DAY_IN_SECONDS ) ), ARRAY_A ); // phpcs:ignore
+				$sum   = apply_filters( 'sawa_tracker_feedback_summary', new WP_Error( 'off', 'The AI summary needs the Sawa Lens plugin.' ), $notes );
+				if ( is_wp_error( $sum ) ) {
+					echo '<div class="error"><p>' . esc_html( $sum->get_error_message() ) . '</p></div>';
+				} else {
+					update_option( 'sawa_tr_fb_summary', $sum + array( 'at' => current_time( 'mysql' ), 'n' => count( $notes ) ), false );
+				}
+			}
 			if ( isset( $_POST['beta'] ) ) {
 				update_option( 'sawa_tr_beta', '1' === $_POST['beta'] ? '1' : '0', false );
 			}
@@ -211,6 +220,15 @@ final class Sawa_Tracker_Feedback {
 		echo '<form method="post" style="margin:8px 0">' . wp_nonce_field( 'sawa_fb', 'sawa_fb_nonce', true, false ) . '<label><b>Feedback button for students:</b> <select name="beta"><option value="1"' . selected( self::on(), true, false ) . '>On (beta)</option><option value="0"' . selected( self::on(), false, false ) . '>Off</option></select></label> <button class="button">Save</button></form>';
 		echo '<p>' . implode( ' · ', array_map( function ( $k ) use ( $link ) { return '<a href="' . $link( array( 'kind' => $k['kind'] ) ) . '">' . esc_html( self::KINDS[ $k['kind'] ][0] . ' ' . self::KINDS[ $k['kind'] ][1] ) . ': <b>' . (int) $k['n'] . '</b></a>'; }, array_filter( (array) $kinds, function ( $k ) { return isset( self::KINDS[ $k['kind'] ] ) && 'error' !== $k['kind']; } ) ) ) . ' · <a href="' . $link( array( 'kind' => 'error' ) ) . '">⚠️ script errors: ' . $errs . '</a></p>';
 		echo '<p>Period: ' . implode( ' · ', array_map( function ( $d ) use ( $link, $f ) { return ( (int) $f['days'] === $d ? '<b>' : '' ) . '<a href="' . $link( array( 'days' => $d ) ) . '">' . ( $d ? 'last ' . $d . ' days' : 'all time' ) . '</a>' . ( (int) $f['days'] === $d ? '</b>' : '' ); }, array( 0, 1, 7, 30 ) ) ) . ' · <a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sawa_tr_fb_csv' ), 'sawa_fb_csv' ) ) . '">Download CSV</a>' . ( array_filter( $f ) ? ' · <a href="' . esc_url( $base ) . '">Clear filters</a>' : '' ) . '</p>';
+		$sum = get_option( 'sawa_tr_fb_summary' );
+		echo '<form method="post" style="margin:10px 0">' . wp_nonce_field( 'sawa_fb', 'sawa_fb_nonce', true, false ) . '<button class="button" name="summarize" value="1">✨ Sum up the last 7 days with AI</button> <span class="description">Translates the Arabic notes and groups everything into themes (one AI call).</span></form>';
+		if ( is_array( $sum ) ) {
+			echo '<div class="card" style="max-width:980px;padding:12px 16px"><h2 style="margin-top:0">AI summary <small style="font-weight:400">(' . esc_html( $sum['at'] ) . ', ' . (int) $sum['n'] . ' notes)</small></h2><p>' . esc_html( $sum['summary'] ) . '</p>' . ( $sum['first'] ? '<p><b>Fix first:</b> ' . esc_html( $sum['first'] ) . '</p>' : '' ) . '<ol>';
+			foreach ( (array) $sum['themes'] as $th ) {
+				echo '<li><b>' . esc_html( ( 'praise' === ( $th['kind'] ?? '' ) ? '👍 ' : ( 'idea' === ( $th['kind'] ?? '' ) ? '💡 ' : '😕 ' ) ) . ( $th['title'] ?? '' ) ) . '</b> · ' . (int) ( $th['count'] ?? 0 ) . ' notes' . ( ! empty( $th['screens'] ) ? ' · ' . esc_html( implode( ', ', (array) $th['screens'] ) ) : '' ) . '<br><i>“' . esc_html( $th['example'] ?? '' ) . '”</i>' . ( ! empty( $th['fix'] ) ? '<br>→ ' . esc_html( $th['fix'] ) : '' ) . '</li>';
+			}
+			echo '</ol></div>';
+		}
 		if ( $grid ) {
 			$cols = array_diff( array_keys( self::KINDS ), array( 'error' ) );
 			echo '<h2>Where the feedback is</h2><table class="widefat striped" style="max-width:980px"><thead><tr><th>Screen</th>' . implode( '', array_map( function ( $k ) { return '<th title="' . esc_attr( self::KINDS[ $k ][1] ) . '">' . self::KINDS[ $k ][0] . '</th>'; }, $cols ) ) . '<th>All</th></tr></thead><tbody>';

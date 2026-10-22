@@ -992,13 +992,14 @@
       case 'coop_won': return name(e.who) + (d.won ? ' beat the ' + esc(d.foe) + ' with your help! +20 XP +15 🪙 🏆' : ' fought the ' + esc(d.foe) + ' with your help, but it got away. Maybe next time!');
       case 'clan_heal': return name(e.who) + ' healed your hero (+' + d.pct + '% health) 💚 Study today and you are fully back!';
       case 'clan_revive': return name(e.who) + (d.back ? ' revived your hero! You are back on your feet ✨ Study today so you don\'t fall again.' : ' tried to revive your hero ✨ One more clanmate is needed — or study today.');
+      case 'chat_review': return '📝 We checked your chat English (' + d.msgs + ' message' + (d.msgs === 1 ? '' : 's') + '): ' + (d.errors ? d.errors + ' thing' + (d.errors === 1 ? '' : 's') + ' to fix' + (d.focus ? ', mostly <b dir="ltr">' + esc(d.focus) + '</b>' : '') + '. See them in Learn → Progress.' : 'no mistakes — great English!') + (d.good ? ' ' + d.good + ' points used well ✨' : '');
       case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
       case 'reply': return name(e.who) + ' replied to your message' + (d.voice ? ' with a voice note' : d.sticker ? ' with ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' did something';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', feedback_fixed: 'check', feedback_planned: 'pen' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];

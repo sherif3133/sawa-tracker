@@ -1,10 +1,12 @@
 # Sawa Tracker – planned features
 
-## Reply goal in the app's Today plan (planned, not built)
+Built on 22 Oct 2026: the reply goal is an optional step in the app's Today plan (Sawa Lens `today_plan`), and chat English is checked automatically: messages queue per learner (`sawa_lens_chatq`), an hourly job checks each learner once a day in one batch (cap 150 a day, switch in Sawa Lens settings), errors go to the error log with source "chat", right uses pay the improvement bonus (`record_uses`), and the learner gets a private `chat_review` notification. Chat XP per message and the per-skill trends were already in place (`class-xp.php`, `Sawa_Lens_Skills::trends`). Still open: a weekly "best helper in the chat" shout-out, and voice messages feeding the speaking check.
+
+## Reply goal in the app's Today plan (built 22 Oct 2026)
 
 The daily reply goal (`Sawa_Tracker_Replies::goal()`) shows in the chat, the game chat and the game's Today panel. The Today plan in `/app` comes from Sawa Lens (`today` endpoint), so adding it there as a plan step needs a change in `sawa-lens`: read the goal from the tracker and add a "Reply to 10 messages" step that links to the chat. Also possible later: @mentions in threads, and a weekly "best helper in the chat" shout-out.
 
-## Chat XP: farm skill points by writing English (planned, not built)
+## Chat XP: farm skill points by writing English (built 22 Oct 2026)
 
 Requested by Sherif, 21 Oct 2026. Part of the skill tree ecosystem (Sawa Lens plugin: skill tree, writing checker, practice).
 
