@@ -48,3 +48,9 @@ After changing any Arabic text in `app.js`:
 - **Reward:** 5 coins for the first feedback of the day.
 - **Admin page:** counts per screen × reaction, filters, CSV (with a BOM for Arabic in Excel). Setting **Planned** or **Fixed** with a reply notifies the student.
 - **Wounds** (`includes/class-wounds.php`): every full day without studying (5+ minutes) takes a quarter of a hero's health; after 4 days the hero falls and can't fight. Studying ends the wound. Clanmates can help a little with mana: a heal (+10%, +25% from a Healer, two a day) or a revive for a fallen hero (two clanmates; a Healer's counts twice). While a clanmate is hurt for 2+ days or fallen, everyone else in the clan has one fight less a day (two at most). Hurt clanmates lie at the inn in the game, and the Today card says who. Clanmates gone for more than 14 days count as away (no penalty).
+- **Coins to spend before gear:** healing tea at the inn (25 coins, +40% health, 3 a day; it can't heal a wound) and gifts to the caravanserai (30 coins = 10 bricks, 3 a week).
+- **Elite rematches** (the endgame): a beaten town boss comes back stronger once a week (harder questions, 1.5× health, bigger rewards, the title "Champion of <town>").
+- **The caravanserai in town:** a building near the market that grows in five stages with the week's progress; tap it to see the materials.
+- **The weekly boss's shield:** study minutes do half damage until enough different students (a quarter of the members, 3–10) win a battle on the Silk Road that week.
+- **Today's new thing:** one feature a day on Home (opened by stage), with a button to try it; it stops after the list.
+- Titles come faster at first (levels 3, 5, 8, 12…), and fights never ask the same question twice; saved phrases make questions too (Sawa Lens).

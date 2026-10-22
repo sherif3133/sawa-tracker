@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Sawa_Tracker_Hero {
 
 	const MAX_LEVEL = 50;
-	const TITLES    = array( 1 => 'Traveller', 5 => 'Wanderer', 10 => 'Caravan Guard', 15 => 'Silk Merchant', 20 => 'Desert Knight', 25 => 'Road Master', 30 => 'Sultan of Words', 40 => 'Legend of the Road' );
+	const TITLES    = array( 1 => 'Traveller', 3 => 'Wanderer', 5 => 'Pathfinder', 8 => 'Caravan Guard', 12 => 'Silk Merchant', 16 => 'Desert Knight', 20 => 'Road Master', 25 => 'Word Collector', 30 => 'Sultan of Words', 40 => 'Legend of the Road' ); // new titles come fast at first
 	const RANKS     = array( 0 => 'Bronze', 1050 => 'Silver', 1150 => 'Gold', 1300 => 'Platinum', 1450 => 'Diamond', 1650 => 'Legend' );
 	/** Mana for studying: [per action, daily cap]. */
 	const MANA_FOR  = array( 'card' => array( 2, 60 ), 'practice' => array( 10, 40 ), 'use' => array( 3, 30 ), 'plan' => array( 8, 32 ), 'perfect' => array( 15, 15 ), 'scan' => array( 5, 15 ), 'saved' => array( 1, 20 ) );

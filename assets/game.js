@@ -244,6 +244,20 @@
     if (kind === 'gate') { c = cnv(16, 48); g = c.getContext('2d'); px(g, 2, 0, '#1e1620', 12, 48); px(g, 3, 1, th.trim, 10, 46); for (var y = 4; y < 46; y += 6) px(g, 3, y, tone(th.trim, -0.3), 10, 1); return c; }
     return cnv(1, 1);
   }
+  /** The caravanserai the whole community builds this week, drawn at its stage (0–4). */
+  function drawSerai(th, stage) {
+    var c = cnv(64, 52), g = c.getContext('2d'), out = '#1e1620', wall = th.wall || '#c4864f', body = th.bodyC || '#e9dcc0', roof = th.roofC || '#b85a36', wood = '#8a5a32';
+    ell(g, 32, 49, 30, 3, 'rgba(0,0,0,.25)');
+    if (stage === 0) { for (var i = 0; i < 7; i++) { px(g, 6 + i * 8, 42 + (i % 2) * 2, out, 7, 5); px(g, 7 + i * 8, 43 + (i % 2) * 2, '#a89574', 5, 3); } px(g, 28, 30, wood, 2, 14); px(g, 22, 26, '#f6ecd4', 14, 6); px(g, 23, 27, '#e2513a', 12, 1); return c; }
+    var h = [0, 10, 20, 26, 26][stage];
+    px(g, 4, 47 - h, out, 56, h + 2); px(g, 5, 48 - h, body, 54, h); for (var y = 48 - h; y < 48; y += 4) px(g, 5, y, wall, 54, 1);
+    if (stage >= 2) { px(g, 26, 34, out, 12, 14); px(g, 27, 35, '#5b3a22', 10, 13); }
+    if (stage === 2) { for (var x = 4; x <= 58; x += 9) px(g, x, 12, wood, 2, 36); px(g, 4, 18, wood, 56, 2); px(g, 4, 30, wood, 56, 2); }
+    if (stage >= 3) { px(g, 2, 20, out, 60, 4); px(g, 3, 21, roof, 58, 2); for (var k = 0; k < 4; k++) { px(g, 8 + k * 14, 26, out, 6, 6); px(g, 9 + k * 14, 27, '#ffd36b', 4, 4); } }
+    if (stage === 3) { px(g, 44, 6, wood, 2, 16); px(g, 30, 6, wood, 16, 2); }
+    if (stage === 4) { px(g, 26, 6, out, 12, 16); px(g, 27, 7, roof, 10, 14); px(g, 31, 0, out, 2, 8); px(g, 33, 1, '#e2513a', 7, 4); [10, 50].forEach(function (x) { px(g, x, 8, out, 2, 14); px(g, x + 2, 9, '#e7c873', 6, 4); }); }
+    return c;
+  }
   function lightTex(scene) {
     if (scene.textures.exists('light')) return;
     var c = cnv(128, 128), g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -386,9 +400,18 @@
         npc('smith', 12, 31.2, { skin: 3, hair: 0, hairc: 0, outfit: 5 }, 'hunter'); npc('crier', 14.5, 23, { skin: 0, hair: 2, hairc: 2, outfit: 3 }, 'trader');
         S.hurt = (w.clanHurt || []).slice(0, 4).map(function (c, k) { var key = ensureChar(S, c.avatar || { look: {} }); var sp = S.add.sprite((5.2 + k * 1.5) * TS, 19.4 * TS, key, 0).setOrigin(0.5, 0.5).setAngle(90).setAlpha(c.wound.fallen ? 0.55 : 0.9); sp.setDepth(sp.y); return { spr: sp, c: c }; });
         if (w.reached <= t) npc('guard', 37.5, 18.4, { skin: 4, hair: 0, hairc: 0, outfit: 1 }, 'thief');
+        // the caravanserai the community builds this week (it grows as the week goes on)
+        S.serai = function (pct) {
+          var st = pct >= 100 ? 4 : pct >= 75 ? 3 : pct >= 45 ? 2 : pct >= 15 ? 1 : 0, key = 'serai' + t + '_' + st;
+          if (!S.textures.exists(key)) addTex(S, key, drawSerai(th, st));
+          if (!S.seraiSpr) { S.seraiSpr = S.add.image(30.5 * TS, 24.6 * TS, key).setOrigin(0.5, 1); S.seraiSpr.setDepth(S.seraiSpr.y); solid(30.5 * TS, 24.6 * TS - 8, 54, 14); }
+          else S.seraiSpr.setTexture(key);
+          S.seraiPct = pct;
+        };
+        if (CARAVAN.s) S.serai(CARAVAN.s.project.pct);
         // the boss of the town, in its lair east of the pond
         var b = w.town.boss;
-        if (!b.beaten) {
+        if (!b.beaten || b.rematch) { // a beaten boss comes back stronger once a week
           var bk = ensureMonster(S, b.name, 40), bs = S.physics.add.sprite(64 * TS, 31 * TS, bk, 0).setOrigin(0.5, 1).setScale(1.25).setImmovable(true);
           bs.play(bk + '_a'); bs.body.setSize(28, 14).setOffset(6, 24); bs.setDepth(bs.y); bs.boss = true; S.boss = bs;
           S.lights.push({ x: 64 * TS, y: 30 * TS, r: 0.8, c: 0xff5a5a });
@@ -476,8 +499,9 @@
         if (S.board && Phaser.Math.Distance.Between(pl.x, pl.y, S.board.x, S.board.y) < 28) near = { kind: 'board' };
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(pl.x, pl.y, n.spr.x, n.spr.y) < 20) near = { kind: 'note', obj: n }; });
         (S.hurt || []).forEach(function (h) { if (Phaser.Math.Distance.Between(pl.x, pl.y, h.spr.x, h.spr.y) < 22) near = { kind: 'hurt', obj: h }; });
+        if (S.seraiSpr && Phaser.Math.Distance.Between(pl.x, pl.y, S.seraiSpr.x, S.seraiSpr.y + 4) < 34) near = { kind: 'serai' };
         Object.keys(S.others).forEach(function (id) { var o = S.others[id]; if (Phaser.Math.Distance.Between(pl.x, pl.y, o.spr.x, o.spr.y) < 24) near = { kind: 'player', obj: o }; });
-        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : near.kind === 'hurt' ? 'Help' : 'Meet'); } }
+        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : near.kind === 'hurt' ? 'Help' : near.kind === 'serai' ? 'Build' : 'Meet'); } }
         // others glide to their last position
         Object.keys(S.others).forEach(function (id) { var o = S.others[id], s = o.spr; var dx = o.tx - s.x, dy = o.ty - s.y, dd = Math.hypot(dx, dy); if (dd > 1) { var st = Math.min(dd, 1.4 * dt / 16); s.x += dx / dd * st; s.y += dy / dd * st; var dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); s.anims.play(s.texture.key + '_w' + dir, true); } else { s.anims.stop(); s.setFrame(o.d * 3); } s.setDepth(s.y); if (o.aura) o.aura.setPosition(s.x, s.y - 1).setDepth(s.y - 1); });
         // light and dark
@@ -509,6 +533,7 @@
         S.npcs.forEach(function (n) { if (Math.abs(x - n.x) < 10 && y < n.y + 2 && y > n.y - 26 && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, n.x, n.y) < 60) hit = { kind: 'npc', obj: n }; });
         S.notes.forEach(function (n) { if (Math.abs(x - n.spr.x) < 9 && Math.abs(y - n.spr.y + 6) < 10) hit = { kind: 'note', obj: n }; });
         (S.hurt || []).forEach(function (h) { if (Math.abs(x - h.spr.x) < 14 && Math.abs(y - h.spr.y) < 10) hit = { kind: 'hurt', obj: h }; });
+        if (S.seraiSpr && Math.abs(x - S.seraiSpr.x) < 30 && y < S.seraiSpr.y + 2 && y > S.seraiSpr.y - 50) hit = { kind: 'serai' };
         return hit;
       },
       tap: function (hit) { this.near = hit; this.interact(); },
@@ -517,6 +542,7 @@
         if (n.kind === 'board') return CARAVAN.show();
         if (n.kind === 'note') return S.readNote(n.obj);
         if (n.kind === 'hurt') return S.helpHurt(n.obj);
+        if (n.kind === 'serai') return CARAVAN.show('build');
         if (n.kind === 'player') return S.meet(n.obj);
         var w = H.world(), id = n.obj.npc, L = NPC[id];
         dialog.who = id;
@@ -528,7 +554,7 @@
             : cur.go === 'caravan' ? [{ label: 'Open the caravan board', primary: true, run: function () { CARAVAN.show('help'); } }] : cur.go === 'review' ? [{ label: 'Review cards now', primary: true, run: function () { REV.show(); } }] : cur.go === 'chat' ? [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }] : cur.go === 'today' ? [{ label: 'Today\'s plan', primary: true, run: function () { TODAY.show(); } }] : cur.go && cur.go !== 'map' ? [{ label: 'Show me where', primary: true, run: function () { H.go(cur.go); } }] : [];
           return dialog(L[0], L[2] + ' ' + txt, btns.concat([{ label: 'All quests', run: function () { H.panel('quests'); } }]), L[1]);
         }
-        if (id === 'inn') return dialog(L[0], L[2], [{ label: 'Review my cards', primary: true, run: function () { REV.show(); } }, { label: 'Today\'s plan', run: function () { TODAY.show(); } }], L[1]);
+        if (id === 'inn') return dialog(L[0], L[2] + ' Or have a cup of healing tea: 25 coins.', [{ label: 'Review my cards', primary: true, run: function () { REV.show(); } }, { label: '🍵 Healing tea (25 🪙)', run: function () { H.api('/world/tea', { method: 'POST' }).then(function (j) { if (j.world) H.setWorld(j.world); hud(); SFX.heal(); say('🍵 Ahh, warm tea! +40% health. ' + j.left + (j.left === 1 ? ' cup' : ' cups') + ' left today.', 4000); }, function (x) { say(x.message, 4000); }); } }, { label: 'Today\'s plan', run: function () { TODAY.show(); } }], L[1]);
         if (id === 'smith') return H.stage() >= 4 ? dialog(L[0], L[2], [{ label: 'Open the forge', primary: true, run: function () { H.panel('forge'); } }], L[1]) : dialog(L[0], 'Come back when you are ready to carry a weapon. (Jobs and gear open at stage 4.)', [], L[1]);
         if (id === 'crier') return dialog(L[0], L[2] + ' And if a word is hard, ask the caravan — someone will explain it.', [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }, { label: '🐫 Caravan board', run: function () { CARAVAN.show(); } }], L[1]);
         if (id === 'guard') return dialog(L[0], L[2] + ' Speak with Elder Wen to learn how.', [], L[1]);
@@ -548,6 +574,7 @@
       bossTouch: function () {
         var S = this, w = H.world(), b = w.town.boss; if (S.frozen || busyNow() || S.cool > S.now()) return; S.cool = S.now() + 2500;
         dialog.who = 'boss';
+        if (b.beaten) return dialog(b.name, 'The ' + b.name + ' is back — stronger than before! An elite rematch: harder English, more health, bigger rewards' + (w.titles.indexOf('Champion of ' + w.town.name) < 0 ? ', and the title Champion of ' + w.town.name : '') + '. Once a week.', [{ label: '⚔ Elite rematch', primary: true, run: function () { S.frozen = true; G.battle('/world/rematch', {}, S.boss); } }, { label: '📣 Call for help', run: function () { CARAVAN.call('boss', 0, b.name); } }], b.icon);
         if (!b.ready) return dialog(b.name, 'The ' + b.name + ' looks down at you. You are not ready. (Finish Elder Wen\'s tasks first.)', [], b.icon);
         if (!b.tries) return dialog(b.name, 'The ' + b.name + ' is resting. Come back tomorrow.', [], b.icon);
         var cs = CARAVAN.s, mc = cs && cs.myCall && !cs.myCall.used && cs.myCall.foe.name === b.name ? cs.myCall : null;
@@ -559,7 +586,7 @@
         if (r && r.won && S.fighting) { var m = S.fighting; S.tweens.add({ targets: m, alpha: 0, scale: 1.6, duration: 300, onComplete: function () { m.disableBody(true, true); S.time.delayedCall(25000, function () { if (m.scene) m.enableBody(true, m.home.x, m.home.y, true, true).setAlpha(1).setScale(1); }); } }); }
         S.fighting = null; hud();
         if (r && r.ko) { S.cameras.main.fadeOut(250); S.time.delayedCall(300, function () { S.pl.setPosition(11.5 * TS, 17.6 * TS); S.cameras.main.fadeIn(400); say('You wake up at the inn. Review cards here to heal faster.', 5000); }); }
-        if (r && r.kind === 'boss' && r.won) S.time.delayedCall(600, function () { S.scene.restart({ spawn: 'east' }); });
+        if (r && (r.kind === 'boss' || r.kind === 'elite') && r.won) S.time.delayedCall(600, function () { S.scene.restart({ spawn: r.kind === 'boss' ? 'east' : null }); });
       },
       leave: function (to, spawn) {
         var S = this, w = H.world(); if (S.leaving) return;
@@ -596,8 +623,9 @@
         if (S.emote && S.emote.until > now) tag('eme', S.pl.x, S.pl.y - 34, '<span class="emo">' + EMO[S.emote.e] + '</span>', 'bubble');
         S.npcs.forEach(function (n) { tag('n' + n.npc, n.x, n.y - 27, '<span class="nm npc">' + esc(NPC[n.npc][0]) + '</span>'); });
         if (S.board) { var cs = CARAVAN.s; tag('board', S.board.x, S.board.y - 30, '<span class="nm npc">🐫 Caravan board' + (cs && cs.badge ? ' <i class="sg-dotn">' + cs.badge + '</i>' : cs && cs.todo ? ' · ' + cs.todo + ' ?' : '') + '</span>'); }
+        if (S.seraiSpr && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, S.seraiSpr.x, S.seraiSpr.y) < 140) tag('serai', S.seraiSpr.x, S.seraiSpr.y - 54, '<span class="nm npc">' + (S.seraiPct >= 100 ? '🏰 Caravanserai — built!' : '🏗 Caravanserai ' + S.seraiPct + '%') + '</span>');
         (S.hurt || []).forEach(function (h) { var c = h.c; tag('h' + c.id, h.spr.x, h.spr.y - 14, '<span class="nm hurt">' + (c.wound.fallen ? '💤 ' : '🩹 ') + esc(c.name.split(' ')[0]) + ' · ' + c.wound.days + 'd</span>'); });
-        if (S.boss) tag('boss', S.boss.x, S.boss.y - 52, '<span class="nm boss">' + esc(H.world().town.boss.name) + '</span>');
+        if (S.boss) tag('boss', S.boss.x, S.boss.y - 52, '<span class="nm boss">' + (H.world().town.boss.beaten ? '⭐ Elite ' : '') + esc(H.world().town.boss.name) + '</span>');
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(S.pl.x, S.pl.y, n.spr.x, n.spr.y) < 80) tag('t' + n.id, n.spr.x, n.spr.y - 18, '<span class="nt">✍ ' + esc(n.by.split(' ')[0]) + '</span>'); });
         Object.keys(S.labels).forEach(function (id) { if (!keep[id]) { S.labels[id].remove(); delete S.labels[id]; } });
       },
@@ -853,9 +881,9 @@
             + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
             + (function () { var miss = (r.review || []).filter(function (x) { return !x.ok; }).slice(0, 4); return miss.length ? '<div class="sg-miss"><small>Learn from it:</small>' + miss.map(function (x) { return '<p>✗ ' + wrapWords(x.q, null, true) + ' → <b>' + wrapWords(x.right) + '</b>' + (x.why ? '<br><small>' + esc(x.why) + '</small>' : '') + '</p>'; }).join('') + '</div>' : ''; })()
             + (r.missedWords ? '<p class="small">📇 ' + r.missedWords + ' word' + (r.missedWords > 1 ? 's' : '') + ' you missed will come back in your review cards today.</p>' : '')
-            + ((r.title || leveled) ? '<button data-share="1">📣 Share it</button> ' : '') + (!r.won && !sup && (r.kind === 'boss' || r.kind === 'monster') && !(CARAVAN.s && CARAVAN.s.myCall && !CARAVAN.s.myCall.used) ? '<button data-callhelp="1">📣 Call for help</button> ' : '') + '<button class="pri" data-x="1">Continue</button></div>';
+            + ((r.title || leveled) ? '<button data-share="1">📣 Share it</button> ' : '') + (!r.won && !sup && (r.kind === 'boss' || r.kind === 'elite' || r.kind === 'monster') && !(CARAVAN.s && CARAVAN.s.myCall && !CARAVAN.s.myCall.used) ? '<button data-callhelp="1">📣 Call for help</button> ' : '') + '<button class="pri" data-x="1">Continue</button></div>';
           box.querySelector('[data-x]').onclick = function () { close(r); };
-          var ch = box.querySelector('[data-callhelp]'); if (ch) ch.onclick = function () { ch.disabled = true; var w = H.world(), mi = w.town.monsters.map(function (m) { return m.name; }).indexOf(r.foe.name); CARAVAN.call(r.kind === 'boss' ? 'boss' : 'monster', Math.max(0, mi), r.foe.name); };
+          var ch = box.querySelector('[data-callhelp]'); if (ch) ch.onclick = function () { ch.disabled = true; var w = H.world(), mi = w.town.monsters.map(function (m) { return m.name; }).indexOf(r.foe.name); CARAVAN.call(r.kind === 'boss' || r.kind === 'elite' ? 'boss' : 'monster', Math.max(0, mi), r.foe.name); };
           var sb = box.querySelector('[data-share]'); if (sb) sb.onclick = function () { close(r); SHARE.show(r.title ? 'I became ' + r.title : 'I reached level ' + r.hero.level); };
           G.keyPick = function () { close(r); };
         }, function (x) { say(x.message); close(null); });
@@ -1478,7 +1506,7 @@
 
   /* -------- the caravan: help each other (at any time of day), build the caravanserai, guides for newcomers */
   var CARAVAN = { s: null, tab: 'help' };
-  CARAVAN.load = function () { return H.api('/coop').then(function (j) { CARAVAN.s = j; if (ROOT) { hud(); CARAVAN.thanks(j.thanks || []); } return j; }); };
+  CARAVAN.load = function () { return H.api('/coop').then(function (j) { CARAVAN.s = j; if (ROOT) { hud(); CARAVAN.thanks(j.thanks || []); var w = G && G.phaser && G.phaser.scene.getScene('World'); if (w && w.serai && j.project && w.seraiPct !== j.project.pct) w.serai(j.project.pct); } return j; }); };
   CARAVAN.thanks = function (list) {
     var seen; try { seen = JSON.parse(localStorage.getItem('sawaThanks') || '{}'); } catch (e) { seen = {}; }
     var fresh = list.filter(function (t) { return !seen[t.id]; }); if (!fresh.length) return;
@@ -1521,7 +1549,7 @@
       var p = s.project;
       html += '<div class="sg-build"><div class="sg-buildbar"><i style="width:' + p.pct + '%"></i><span>' + p.pct + '%</span></div><p class="small">The whole community builds <b>' + esc(p.name) + '</b> this week. It needs all three materials — and battles won together only come from calls for help. Everyone who brings something gets <b>' + esc(p.reward) + '</b>' + (p.done ? '. <b>Built! 🎉</b>' : ' when it is finished.') + ' ' + p.builders + ' builder' + (p.builders === 1 ? '' : 's') + ' so far.</p>'
         + p.materials.map(function (m) { return '<div class="sg-mat"><b>' + m.icon + ' ' + esc(m.name) + '</b><small>from ' + esc(m.from) + '</small><div class="sg-buildbar"><i style="width:' + Math.round(m.have / m.goal * 100) + '%"></i><span>' + m.have + ' / ' + m.goal + '</span></div><small>' + (m.top.length ? m.top.map(function (t) { return esc(t.name) + ' ' + t.n; }).join(' · ') : 'Nobody yet — be the first!') + '</small></div>'; }).join('')
-        + '<p class="small">You this week: 🧱 ' + s.myWeek.bricks + ' · 🏮 ' + s.myWeek.lanterns + ' · ⚔ ' + s.myWeek.lessons + '</p></div>';
+        + '<p class="small">You this week: 🧱 ' + s.myWeek.bricks + ' · 🏮 ' + s.myWeek.lanterns + ' · ⚔ ' + s.myWeek.lessons + '</p>' + (s.donate && s.donate.left && !p.done ? '<div class="sg-opts"><button data-donate="1">🪙 Give ' + s.donate.coins + ' coins = 10 bricks (' + s.donate.left + ' left this week)</button></div>' : '') + '</div>';
     } else {
       var pr = s.pair, row = function (q) { var w = q.with, seen = w.seen == null ? '' : w.seen < 120 ? ' · playing now' : ' · played ' + CARAVAN.ago(Date.now() / 1000 - w.seen); return '<div class="sg-ask"><div class="sg-askh">' + (w.avatar ? '<img src="' + esc(w.avatar) + '" alt="">' : '') + '<b>' + esc(w.name) + '</b><small>' + (q.role === 'newcomer' ? 'your guide' : 'new on the road') + ' · Lv ' + w.level + ' · ' + esc(w.town) + seen + '</small></div><ul class="sg-plan">' + q.steps.map(function (st) { return '<li class="' + (st.done ? 'done' : '') + '"><span>' + (st.done ? '✓' : '○') + '</span><div><b>' + esc(st.text) + '</b><small>' + (st.key === 'days' ? q.days + ' / 3 · ' : '') + '+' + st.coins + ' 🪙 each</small></div></li>'; }).join('') + '</ul><small>' + q.daysLeft + ' days left together.</small>' + '' + '</div>'; };
       html += pr ? row(pr) : '';
@@ -1535,21 +1563,13 @@
     var post = function (path, body, btn, then) { if (btn) btn.disabled = true; H.api(path, { method: 'POST', body: body }).then(function (j) { CARAVAN.s = j; hud(); CARAVAN.paint(); if (then) then(j); }, function (x) { if (btn) btn.disabled = false; say(x.message, 4500); }); };
     b.querySelectorAll('[data-help]').forEach(function (x) { x.onclick = function () { closePanel(); var w = G.phaser.scene.getScene('World'); w.frozen = true; G.battle('/coop/help', { id: x.dataset.help }, null); }; });
     b.querySelectorAll('[data-call]').forEach(function (x) { x.onclick = function () { var m = b.querySelector('.sg-callmsg'); post('/coop/call', { kind: x.dataset.call, m: +(x.dataset.m || 0), msg: m ? m.value.trim() : '' }, x, function () { SFX.quest(); say('📣 Your call is on the board. Your clan has been told!', 4500); }); }; });
+    b.querySelectorAll('[data-donate]').forEach(function (x) { x.onclick = function () { post('/coop/donate', {}, x, function () { SFX.coin(); say('🧱 +10 bricks for the caravanserai. Thank you!', 3500); }); }; });
     b.querySelectorAll('[data-cancel]').forEach(function (x) { x.onclick = function () { post('/coop/call/cancel', {}, x); }; });
     b.querySelectorAll('[data-guide]').forEach(function (x) { x.onclick = function () { post('/coop/guide', { on: +x.dataset.guide }, x); }; });
   };
   /** Ask the caravan about a word (from the word popup) or a question for one student (from their echo). */
   CARAVAN.call = function (kind, m, foe) {
     H.api('/coop/call', { method: 'POST', body: { kind: kind, m: m || 0 } }).then(function (j) { CARAVAN.s = j; hud(); SFX.quest(); say('📣 You called the caravan for help against the ' + foe + '. Your clan has been told!', 5000); }, function (x) { say(x.message, 4500); });
-  };
-  CARAVAN.askWord = function (lemma, sentence, src) {
-    return H.api('/coop/ask', { method: 'POST', body: { kind: 'word', lemma: lemma, ctx: sentence && sentence !== lemma ? sentence.slice(0, 240) : '', src: src || 'Silk Road · ' + H.world().town.name } }).then(function (j) { CARAVAN.s = j; hud(); say('🙋 Asked! Travellers will explain “' + lemma + '” when they play. You get a notification.', 5000); }, function (x) { say(x.message, 4500); });
-  };
-  CARAVAN.askTo = function (uid, name) {
-    inputBox('Ask ' + name + ' (English, short is fine)', 'Can you help me with the past tense?', function (v, err, done) {
-      if (H.needsTr(v)) return err('Ask in English — short and simple is fine.');
-      H.api('/coop/ask', { method: 'POST', body: { kind: 'other', q: v, to: uid } }).then(function (j) { CARAVAN.s = j; done(); hud(); say(name + ' will see your question next time they play.', 4500); }, function (x) { err(x.message); });
-    });
   };
   /** One feature at a time: the caravan is introduced on a later day, not in the first-day welcome. */
   CARAVAN.intro = function () {

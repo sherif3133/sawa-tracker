@@ -415,7 +415,7 @@
     var left = Math.max(0, b.hp - b.damage), days = Math.max(0, Math.round((new Date(b.ends + 'T23:59:59') - Date.now()) / 86400000));
     return '<section class="card"><h3>🌍 World boss: ' + esc(bossName(b.name)) + '</h3>'
       + (b.defeated ? '<p class="note">🏆 Defeated this week! Everyone who studied got +9 🪙. A new one comes ' + (days ? 'in ' + days + ' day' + (days > 1 ? 's' : '') : 'tomorrow') + '.</p>'
-        : bar(left, b.hp, 'var(--red)') + '<p class="small muted">' + left + ' / ' + b.hp + ' HP · ' + b.fighters + (b.fighters === 1 ? ' student' : ' students') + ' fighting · every minute anyone studies this week is a hit. Ends ' + (days ? 'in ' + days + ' day' + (days > 1 ? 's' : '') : 'today') + '.</p>')
+        : bar(left, b.hp, 'var(--red)') + '<p class="small muted">' + left + ' / ' + b.hp + ' HP · ' + b.fighters + (b.fighters === 1 ? ' student' : ' students') + ' fighting · every minute anyone studies this week is a hit. Ends ' + (days ? 'in ' + days + ' day' + (days > 1 ? 's' : '') : 'today') + '.</p>' + (b.shield && b.shield.up ? '<p class="small">🛡 Shielded: study only does half damage until ' + b.shield.need + ' students win a battle on the Silk Road this week (' + b.shield.have + '/' + b.shield.need + ').</p>' : b.shield ? '<p class="small">🛡 The shield is broken — every study minute is a full hit!</p>' : ''))
       + '</section>';
   }
   function sherifQuest() {
@@ -636,8 +636,35 @@
     $('#app').innerHTML = header()
       + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>Welcome, ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="Today ' + s.todayMinutes + ' of ' + s.goal + ' minutes"><span><b>' + s.todayMinutes + '</b> of ' + s.goal + ' min</span></div></section>'
-      + statCards(s) + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
+      + newThingCard() + statCards(s) + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
     loadHero(); paintBoard(); // your stats and the leaderboard come first on Home
+  }
+  /* ------------------------------------------------------------ one new thing a day (guidance inside the app, never all at once) */
+  // [key, stage it opens, title, what to try, button, where it goes]
+  var NEW_THINGS = [
+    ['review', 1, '🃏 Review cards', 'Every word you save becomes a card. Five minutes a day, and the app shows each card just before you forget it.', 'Review now', 'review'],
+    ['read', 1, '📖 Read a text', 'Paste any English text (or a PDF): tap a word for its meaning, save the ones you want to learn.', 'Read a text', 'read'],
+    ['lens', 1, '🔎 Language Lens on YouTube', 'On a computer, add Language Lens to Chrome: hover any word in a video for its meaning, and save it with one click.', 'See how', 'start'],
+    ['write', 3, '✍ Check your writing', 'Write three sentences about your day. You get every correction, and your mistakes open points in your skill tree.', 'Write', 'write'],
+    ['skills', 3, '🌳 Your skill tree', 'Each grammar point you get wrong opens here. Practise it, and it turns green when you master it.', 'Open the tree', 'skills'],
+    ['world', 3, '🐫 The Silk Road', 'Walk the road with the other students. Monsters attack with your own words — every fight is a quick review.', 'Enter the world', 'w-open'],
+    ['caravan', 3, '📣 Call for help', 'Stuck on a boss? Call the caravan: other students fight for you, and their roles help in your next battle. Help them too!', 'Enter the world', 'w-open'],
+    ['clan', 3, '🛡 Your clan', 'If you don\'t study, your hero gets hurt — and your clan has fewer fights. Heal hurt clanmates at the inn, and send them a message.', 'See your clan', 'community'],
+    ['chat', 1, '💬 The community chat', 'Write in English (or in Arabic — it is translated for you to check). Every English message earns XP, and replies count for your daily goal.', 'Open the chat', 'chat'],
+    ['beta', 1, '💬 Beta feedback', 'Something confusing, boring or great? Tap the Beta button on any screen, then “Point at it”. Every note is read.', '', ''],
+    ['speak', 4, '🎙 Speak', 'Talk for a minute and get the text of what you said, with corrections.', 'Speak', 'write'],
+    ['party', 5, '⚔ Parties', 'Play with 2–4 friends: a party chat, a 48-hour party boss and live battles on the words you are all learning.', 'Enter the world', 'w-open']
+  ];
+  function newThing() {
+    var today = new Date().toISOString().slice(0, 10), first = lsGet('sawaNewFirst');
+    if (!first) { first = today; lsSet('sawaNewFirst', today); }
+    if (lsGet('sawaNewSeen') === today) return null;
+    var open = NEW_THINGS.filter(function (x) { return x[1] <= stage(); }), n = Math.round((new Date(today) - new Date(first)) / 864e5);
+    return n < NEW_THINGS.length && open.length ? open[Math.min(n, open.length - 1)] : null; // a new one each day, then they stop
+  }
+  function newThingCard() {
+    var x = newThing(); if (!x) return '';
+    return '<section class="card new-thing" dir="ltr"><span class="eyebrow">Today\'s new thing</span><h3>' + x[2] + '</h3><p class="small">' + x[3] + '</p><div class="row">' + (x[4] ? '<button class="btn primary sm-btn" data-act="new-go" data-go="' + x[5] + '">' + esc(x[4]) + '</button>' : '') + '<button class="btn ghost sm-btn" data-act="new-ok">Got it</button></div></section>';
   }
   /* ------------------------------------------------------------ the Silk Road character on the Today screen */
   function gameScript() { return window.SawaGame ? Promise.resolve() : new Promise(function (ok, bad) { var sc = document.createElement('script'); sc.src = cfg.game; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); }); }
@@ -655,7 +682,8 @@
     var h = d.hero, img = window.SawaGame.portrait(d.avatar, 5).toDataURL(), open = d.skills.filter(function (k) { return k.open; }).length, st4 = stage() >= 4;
     var gear = d.gear.map(function (g, i) { var ic = ['⚔', '🛡', '📿'][i]; return '<div class="hc-slot' + (g.grade ? ' g' + g.grade : '') + '"><span>' + ic + '</span><b>' + esc(g.name || g.slot) + '</b><small>' + (g.grade ? '+' + g.bonus + '% ' + esc(g.stat) : st4 ? 'Empty · buy it at the forge' : 'Opens at stage 4') + '</small></div>'; }).join('');
     var skills = d.skills.map(function (k) { return '<li class="' + (k.open ? 'open' : '') + '"><span>' + (k.open ? (k.kind === 'mana' ? '💧' : k.on ? '✦' : '✓') : '🔒') + '</span><div><b>' + esc(k.name) + (k.cost ? ' <small>💧' + k.cost + '</small>' : '') + '</b><small>' + esc(k.text) + (k.open ? '' : ' · ' + (k.kind === 'mana' ? 'opens at level 2' : 'needs ' + esc(k.need))) + '</small></div></li>'; }).join('');
-    var next = [d.next ? 'Lv ' + d.next.level + ': the title <b>' + esc(d.next.title) + '</b>' : '', d.aura.level ? 'Lv ' + d.aura.level + ': a ' + ({ 10: 'silver', 20: 'gold', 30: 'jade' }[d.aura.level]) + ' aura everyone sees' : ''].filter(Boolean).join(' · ');
+    var auraTxt = d.aura.level ? 'a ' + ({ 10: 'silver', 20: 'gold', 30: 'jade' }[d.aura.level]) + ' aura everyone sees' : '';
+    var next = d.next && d.aura.level === d.next.level ? 'Lv ' + d.next.level + ': the title <b>' + esc(d.next.title) + '</b> and ' + auraTxt : [d.next ? 'Lv ' + d.next.level + ': the title <b>' + esc(d.next.title) + '</b>' : '', d.aura.level ? 'Lv ' + d.aura.level + ': ' + auraTxt : ''].filter(Boolean).join(' · ');
     el.innerHTML = '<section class="card hc"><div class="hc-top"><div class="hc-fig' + (h.aura ? ' aura-' + h.aura : '') + '"><img src="' + img + '" alt="Your character"><em>' + h.level + '</em></div>'
       + '<div class="hc-info"><b>' + esc(d.avatar.name) + '</b><small>' + (function () { var r = (d.roles || []).filter(function (x) { return x.id === d.avatar.role; })[0]; return r ? r.icon + ' ' + esc(r.name) + ' · ' : ''; })() + esc(h.title) + (d.job ? ' · ' + d.job.icon + ' ' + esc(d.job.name) : '') + ' · ' + d.town.icon + ' ' + esc(d.town.name) + ' (' + esc(d.town.level) + ')</small>'
       + hcBar('xp', h.xp - h.xpFrom, h.xpNext - h.xpFrom, 'Lv ' + h.level + ' · ' + (h.xpNext - h.xp) + ' XP to Lv ' + (h.level + 1)) + hcBar('hp', h.hp, h.hpMax, '❤ ' + h.hp + '/' + h.hpMax) + hcBar('mp', h.mana, h.manaMax, '💧 ' + h.mana + '/' + h.manaMax)
@@ -768,7 +796,8 @@
       + (b.defeated
         ? '<p class="win">Defeated. Everyone who fought got +9 🪙 and the Boss Slayer badge. The next boss comes ' + (daysLeft ? 'in ' + daysLeft + ' days' : 'tomorrow') + '.</p>'
         : '<div class="bar boss-hp"><i style="width:' + pct + '%"></i><em dir="ltr">' + left.toLocaleString(LOC) + ' / ' + b.hp.toLocaleString(LOC) + ' HP</em></div>'
-          + '<p class="muted small">Every study minute from anyone = a hit. ' + b.fighters + ' fighting · ' + (daysLeft ? 'Left: ' + daysLeft + ' days' : 'Last day!') + '</p>')
+          + '<p class="muted small">Every study minute from anyone = a hit. ' + b.fighters + ' fighting · ' + (daysLeft ? 'Left: ' + daysLeft + ' days' : 'Last day!') + '</p>'
+          + (b.shield ? (b.shield.up ? '<p class="small boss-shield">🛡 The boss has a shield: hits only do half damage until ' + b.shield.need + ' students win a battle on the Silk Road this week (' + b.shield.have + '/' + b.shield.need + ').</p>' : '<p class="small boss-shield">🛡 The shield is broken! Every study minute is a full hit now.</p>') : ''))
       + '</div></div>' + (top ? '<div class="boss-top5"><span class="eyebrow">Top hitters this week (minutes)</span><ol>' + top + '</ol></div>' : '') + '</section>';
   }
 
@@ -1884,6 +1913,8 @@
       case 'sr-wanted': srWanted(el); break;
       case 'sr-hunt': closeModal(); raidBattle(0, +el.dataset.ev); break;
       case 'w-open': if (cfg.game) startGame(); else openWorld('map'); break;
+      case 'new-ok': lsSet('sawaNewSeen', new Date().toISOString().slice(0, 10)); var nt = el.closest('.new-thing'); if (nt) nt.remove(); break;
+      case 'new-go': lsSet('sawaNewSeen', new Date().toISOString().slice(0, 10)); if (el.dataset.go === 'w-open') { if (cfg.game) startGame(); else openWorld('map'); } else if (el.dataset.go === 'community' || el.dataset.go === 'chat') emit({ view: el.dataset.go, go: el.dataset.go }); else emit({ go: el.dataset.go }); break;
       case 'w-list': openWorld('map'); break;
       case 'w-help': worldHelp(); break;
       case 'w-tour': worldTour(+(el.dataset.i || 0)); break;

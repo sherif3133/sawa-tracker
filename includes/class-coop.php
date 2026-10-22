@@ -55,14 +55,11 @@ final class Sawa_Tracker_Coop {
 	public static function routes() {
 		$routes = array(
 			array( '/coop', 'GET', 'state_rest' ),
-			array( '/coop/ask', 'POST', 'ask' ),
-			array( '/coop/answer', 'POST', 'answer' ),
-			array( '/coop/helped', 'POST', 'helped' ),
-			array( '/coop/close', 'POST', 'close' ),
 			array( '/coop/guide', 'POST', 'guide' ),
 			array( '/coop/call', 'POST', 'call' ),
 			array( '/coop/call/cancel', 'POST', 'call_cancel' ),
 			array( '/coop/help', 'POST', 'help' ),
+			array( '/coop/donate', 'POST', 'donate' ),
 		);
 		foreach ( $routes as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
@@ -328,8 +325,8 @@ final class Sawa_Tracker_Coop {
 		if ( self::my_call( $uid ) ) {
 			return new WP_Error( 'coop', 'You already have a call for help open. Fight that battle first — or cancel it.', array( 'status' => 400 ) );
 		}
-		if ( 'boss' === $kind && in_array( (int) $w['at'], $w['beaten'], true ) ) {
-			return new WP_Error( 'coop', 'You already beat this boss!', array( 'status' => 400 ) );
+		if ( 'boss' === $kind && in_array( (int) $w['at'], $w['beaten'], true ) && ( $w['elite'][ (int) $w['at'] ] ?? '' ) === Sawa_Tracker_Game::week_start() ) {
+			return new WP_Error( 'coop', 'You already fought this boss this week!', array( 'status' => 400 ) );
 		}
 		$m    = $t[3][ min( 2, max( 0, (int) $r->get_param( 'm' ) ) ) ];
 		$foe  = 'boss' === $kind ? array( 'name' => $t[4][0], 'icon' => $t[4][1], 'kind' => 'boss' ) : array( 'name' => $m[0], 'icon' => $m[1], 'kind' => 'monster' );
@@ -465,6 +462,25 @@ final class Sawa_Tracker_Coop {
 	}
 
 	/* ------------------------------------------------------------------ the caravanserai (weekly) */
+
+	const DONATE_COINS = 30;
+	const DONATE_WEEK  = 3;
+
+	/** Coins for the caravanserai: 30 coins buy 10 bricks (three times a week). */
+	public static function donate() {
+		$uid = self::uid();
+		$c   = self::mine_wk( $uid );
+		if ( (int) ( $c['donated'] ?? 0 ) >= self::DONATE_WEEK ) {
+			return new WP_Error( 'coop', 'You gave 3 times this week — thank you! Battles bring more bricks.', array( 'status' => 400 ) );
+		}
+		if ( Sawa_Tracker_Raids::coins( $uid ) < self::DONATE_COINS ) {
+			return new WP_Error( 'coop', 'A gift costs 30 coins.', array( 'status' => 400 ) );
+		}
+		Sawa_Tracker_Raids::add_coins( $uid, -self::DONATE_COINS );
+		self::bump( $uid, 'donated', 1 );
+		self::bump( $uid, 'bricks', 10 );
+		return self::state( $uid );
+	}
 
 	/** This student's materials this week. $weekly false: an all-time counter. */
 	private static function mine_wk( $uid ) {
@@ -746,17 +762,17 @@ final class Sawa_Tracker_Coop {
 		}
 		$c    = self::mine_wk( $uid );
 		$calls = array();
-		foreach ( array_reverse( self::calls() ) as $c ) {
-			if ( (int) $c['uid'] !== $uid && empty( $c['used'] ) && time() < (int) $c['ends'] && count( $calls ) < 12 ) {
-				$calls[] = self::call_out( $c, $uid );
+		foreach ( array_reverse( self::calls() ) as $cl ) {
+			if ( (int) $cl['uid'] !== $uid && empty( $cl['used'] ) && time() < (int) $cl['ends'] && count( $calls ) < 12 ) {
+				$calls[] = self::call_out( $cl, $uid );
 			}
 		}
 		usort( $calls, function ( $a, $b ) { return array( $a['helped'] || $a['full'], ! $a['mate'], -$a['at'] ) <=> array( $b['helped'] || $b['full'], ! $b['mate'], -$b['at'] ); } );
 		$mine_call = self::my_call( $uid );
 		$last      = null;
-		foreach ( array_reverse( self::calls() ) as $c ) {
-			if ( (int) $c['uid'] === $uid ) {
-				$last = $c;
+		foreach ( array_reverse( self::calls() ) as $cl ) {
+			if ( (int) $cl['uid'] === $uid ) {
+				$last = $cl;
 				break;
 			}
 		}
@@ -771,7 +787,8 @@ final class Sawa_Tracker_Coop {
 			'todo'    => count( array_filter( $calls, function ( $c ) { return ! $c['helped'] && ! $c['full']; } ) ),
 			'newAnswers' => $new,
 			'project' => self::project(),
-			'myWeek'  => array( 'bricks' => (int) ( $c['bricks'] ?? 0 ), 'lanterns' => (int) ( $c['lanterns'] ?? 0 ), 'lessons' => (int) ( $c['lessons'] ?? 0 ) ),
+			'myWeek'  => array( 'bricks' => (int) ( $c['bricks'] ?? 0 ), 'lanterns' => (int) ( $c['lanterns'] ?? 0 ), 'lessons' => (int) ( $c['lessons'] ?? 0 ), 'donated' => (int) ( $c['donated'] ?? 0 ) ),
+			'donate'  => array( 'coins' => self::DONATE_COINS, 'left' => max( 0, self::DONATE_WEEK - (int) ( $c['donated'] ?? 0 ) ) ),
 			'helpedAll' => (int) Sawa_Tracker_Game::m( $uid, 'coop_helpedAll', 0 ),
 			'thanks'  => array_slice( $thanks, -5 ),
 			'pair'    => $pair && time() < (int) $pair['ends'] + 7 * DAY_IN_SECONDS ? self::pair_out( $pair, $uid ) : null,

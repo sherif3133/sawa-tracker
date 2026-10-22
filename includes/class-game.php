@@ -793,6 +793,10 @@ final class Sawa_Tracker_Game {
 		global $wpdb;
 		$end    = self::add_days( $week, 6 );
 		$damage = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COALESCE(SUM(minutes),0) FROM ' . self::table( 'logs' ) . ' WHERE day BETWEEN %s AND %s', $week, $end ) ); // phpcs:ignore
+		$shield = self::boss_shield( $week );
+		if ( $shield['up'] ) {
+			$damage = (int) floor( $damage / 2 ); // shielded: study minutes do half damage until enough students fight together
+		}
 		$top    = $wpdb->get_results( $wpdb->prepare( 'SELECT user_id, SUM(minutes) AS m FROM ' . self::table( 'logs' ) . ' WHERE day BETWEEN %s AND %s GROUP BY user_id ORDER BY m DESC LIMIT 5', $week, $end ), ARRAY_A ); // phpcs:ignore
 		$fighters = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(DISTINCT user_id) FROM ' . self::table( 'logs' ) . ' WHERE day BETWEEN %s AND %s', $week, $end ) ); // phpcs:ignore
 		return array(
@@ -803,6 +807,7 @@ final class Sawa_Tracker_Game {
 			'defeated' => (string) $b['defeated'],
 			'ends'     => $end,
 			'fighters' => $fighters,
+			'shield'   => $shield,
 			'top'      => array_map(
 				function ( $r ) {
 					return self::person( (int) $r['user_id'] ) + array( 'minutes' => (int) $r['m'] );
@@ -810,6 +815,29 @@ final class Sawa_Tracker_Game {
 				$top
 			),
 		);
+	}
+
+	/**
+	 * The weekly boss has a shield: study minutes only do half damage until enough different students have won a
+	 * battle on the Silk Road this week (a quarter of the members, 3 to 10). One student alone can't break it.
+	 */
+	public static function boss_shield( $week = null ) {
+		$week = $week ? $week : self::week_start();
+		$f    = get_option( 'sawa_tr_boss_fighters', array() );
+		$have = is_array( $f ) && ( $f['week'] ?? '' ) === $week ? count( (array) $f['ids'] ) : 0;
+		$need = max( 3, min( 10, (int) ceil( count( self::member_ids() ) / 4 ) ) );
+		return array( 'need' => $need, 'have' => min( $have, $need ), 'up' => $have < $need );
+	}
+
+	/** A student won a battle on the Silk Road this week: one more name against the boss's shield. */
+	public static function boss_fighter( $uid ) {
+		$week = self::week_start();
+		$f    = get_option( 'sawa_tr_boss_fighters', array() );
+		$f    = is_array( $f ) && ( $f['week'] ?? '' ) === $week ? $f : array( 'week' => $week, 'ids' => array() );
+		if ( ! in_array( (int) $uid, $f['ids'], true ) ) {
+			$f['ids'][] = (int) $uid;
+			update_option( 'sawa_tr_boss_fighters', $f, false );
+		}
 	}
 
 	private static function boss_hit( $minutes ) {

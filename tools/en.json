@@ -542,7 +542,10 @@
   "<input class=\"lp-q\" maxlength=\"300\" placeholder=\"اكتب اسم الفيديو أو الأغنية، أو الصق لينك\" dir=\"auto\" autocomplete=\"off\"><div class=\"lp-res\" role=\"listbox\"></div></div>": "<input class=\"lp-q\" maxlength=\"300\" placeholder=\"Type the video or song name, or paste a link\" dir=\"auto\" autocomplete=\"off\"><div class=\"lp-res\" role=\"listbox\"></div></div>",
   "\" aria-label=\"شيل\">×</button></span>": "\" aria-label=\"Remove\">×</button></span>",
   "<p class=\"muted small\">بيدوّر…</p>": "<p class=\"muted small\">Searching…</p>",
-  "<p class=\"muted small\">ملقيناش حاجة. جرّب اسم تاني أو الصق اللينك.</p>": "<p class=\"muted small\">Nothing found. Try another name or paste the link.</p>"
+  "<p class=\"muted small\">ملقيناش حاجة. جرّب اسم تاني أو الصق اللينك.</p>": "<p class=\"muted small\">Nothing found. Try another name or paste the link.</p>",
+  "<p class=\"small boss-shield\">🛡 الوحش عليه درع: الضربات نصها بس، لحد ما ": "<p class=\"small boss-shield\">🛡 The boss has a shield: hits only do half damage until ",
+  " طلاب يكسبوا معركة في طريق الحرير الأسبوع ده (": " students win a battle on the Silk Road this week (",
+  "<p class=\"small boss-shield\">🛡 الدرع اتكسر! كل دقيقة مذاكرة بقت ضربة كاملة.</p>": "<p class=\"small boss-shield\">🛡 The shield is broken! Every study minute is a full hit now.</p>"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

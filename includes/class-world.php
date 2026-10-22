@@ -77,7 +77,7 @@ final class Sawa_Tracker_World {
 	}
 
 	public static function routes() {
-		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/flee', 'POST', 'flee' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
+		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/flee', 'POST', 'flee' ), array( '/world/tea', 'POST', 'tea' ), array( '/world/rematch', 'POST', 'rematch' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
 		}
 	}
@@ -230,7 +230,7 @@ final class Sawa_Tracker_World {
 				'icon'     => $town[1],
 				'level'    => $town[2],
 				'monsters' => array_map( function ( $m ) use ( $t ) { return array( 'name' => $m[0], 'icon' => $m[1], 'hp' => self::monster_hp( $t ) ); }, $town[3] ),
-				'boss'     => array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => self::boss_hp( $t ), 'ready' => 2 === $st['step'], 'beaten' => in_array( $t, $w['beaten'], true ), 'tries' => max( 0, self::BOSS_TRIES - (int) $w['f']['boss'] ), 'questions' => self::QUESTIONS['boss'] ),
+				'boss'     => array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => self::boss_hp( $t ), 'ready' => 2 === $st['step'], 'beaten' => in_array( $t, $w['beaten'], true ), 'tries' => max( 0, self::BOSS_TRIES - (int) $w['f']['boss'] ), 'questions' => self::QUESTIONS['boss'], 'rematch' => in_array( $t, $w['beaten'], true ) && ( $w['elite'][ $t ] ?? '' ) !== Sawa_Tracker_Game::week_start() ),
 				'people'   => self::people_at( $t, $uid ),
 				'room'     => self::town_room( $t ),
 			),
@@ -330,7 +330,7 @@ final class Sawa_Tracker_World {
 	 * choose, listen and choose, type the missing word, put the words in order. Everything is decided here. */
 
 	/** How many questions a battle has at most. */
-	const QUESTIONS = array( 'monster' => 8, 'boss' => 10, 'pboss' => 6, 'duel' => 7, 'support' => 4 );
+	const QUESTIONS = array( 'monster' => 8, 'boss' => 10, 'elite' => 10, 'pboss' => 6, 'duel' => 7, 'support' => 4 );
 
 	/** Turns some questions into other types, so fights are not always "choose an answer". */
 	private static function vary( $qs ) {
@@ -567,6 +567,59 @@ final class Sawa_Tracker_World {
 		return $out + array( 'combo' => $st['combo'], 'foeHp' => $b['foe']['hp'], 'hp' => $b['me']['hp'], 'phase' => $st['phase'], 'done' => $st['done'] );
 	}
 
+	/**
+	 * After the road: a beaten town boss comes back stronger once a week (an elite rematch): harder questions,
+	 * more health, bigger rewards, and the title "Champion of <town>" the first time.
+	 */
+	public static function rematch() {
+		$uid  = self::uid();
+		$w    = self::get( $uid );
+		$t    = $w['at'];
+		$town = self::TOWNS[ $t ];
+		if ( ! in_array( $t, $w['beaten'], true ) ) {
+			return new WP_Error( 'boss', 'Beat this town\'s boss first.', array( 'status' => 400 ) );
+		}
+		if ( ( $w['elite'][ $t ] ?? '' ) === Sawa_Tracker_Game::week_start() ) {
+			return new WP_Error( 'boss', 'The elite ' . $town[4][0] . ' is resting. It comes back next week!', array( 'status' => 400 ) );
+		}
+		if ( Sawa_Tracker_Wounds::of( $uid )['fallen'] || Sawa_Tracker_Hero::hp( $uid ) < 0.15 * Sawa_Tracker_Hero::max_hp( $uid ) ) {
+			return new WP_Error( 'hp', 'You are too hurt for an elite fight. Rest at the inn first.', array( 'status' => 400 ) );
+		}
+		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, self::QUESTIONS['elite'], array( 'level' => min( 3.7, self::LEVELS[ $t ] + 0.35 ) ) );
+		if ( count( $qs ) < 5 ) {
+			return new WP_Error( 'battle', 'Battles are not ready yet.', array( 'status' => 503 ) );
+		}
+		$w['elite'][ $t ] = Sawa_Tracker_Game::week_start();
+		self::save( $uid, $w );
+		$foe     = array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => (int) round( 1.5 * self::boss_hp( $t ) ), 'atk' => (int) round( 1.25 * ( 14 + 4 * $t ) ), 'boss' => true, 'elite' => true );
+		$support = class_exists( 'Sawa_Tracker_Coop' ) ? Sawa_Tracker_Coop::support_for( $uid, $foe['name'] ) : null;
+		return self::battle_start( $uid, 'elite', $qs, $foe, array( 'town' => $t, 'support' => $support ) );
+	}
+
+	const TEA_COINS = 25;
+	const TEA_DAY   = 3;
+
+	/** Healing tea at the inn: coins buy back 40% of your health (three cups a day; it can't heal a wound). */
+	public static function tea() {
+		$uid = self::uid();
+		$d   = Sawa_Tracker_Game::m( $uid, 'tea', array() );
+		$n   = is_array( $d ) && ( $d['day'] ?? '' ) === Sawa_Tracker_Game::today() ? (int) $d['n'] : 0;
+		$max = Sawa_Tracker_Hero::max_hp( $uid );
+		if ( $n >= self::TEA_DAY ) {
+			return new WP_Error( 'tea', 'Three cups a day is enough! Review cards to heal more.', array( 'status' => 400 ) );
+		}
+		if ( Sawa_Tracker_Hero::hp( $uid ) >= Sawa_Tracker_Wounds::cap( $uid, $max ) ) {
+			return new WP_Error( 'tea', Sawa_Tracker_Wounds::of( $uid )['level'] ? 'Tea can\'t heal a wound. Study today to heal it!' : 'Your health is full.', array( 'status' => 400 ) );
+		}
+		if ( Sawa_Tracker_Raids::coins( $uid ) < self::TEA_COINS ) {
+			return new WP_Error( 'tea', 'A cup costs 25 coins.', array( 'status' => 400 ) );
+		}
+		Sawa_Tracker_Raids::add_coins( $uid, -self::TEA_COINS );
+		Sawa_Tracker_Game::set( $uid, 'tea', array( 'day' => Sawa_Tracker_Game::today(), 'n' => $n + 1 ) );
+		Sawa_Tracker_Hero::set_hp( $uid, Sawa_Tracker_Hero::hp( $uid ) + (int) round( 0.4 * $max ) );
+		return array( 'hero' => Sawa_Tracker_Hero::sheet( $uid ), 'left' => self::TEA_DAY - $n - 1, 'world' => self::state( $uid ) );
+	}
+
 	/** Leave a battle at any time. No rewards; leaving before the second question gives the fight back. */
 	public static function flee( WP_REST_Request $r ) {
 		$uid = self::uid();
@@ -683,6 +736,9 @@ final class Sawa_Tracker_World {
 		$t     = (int) ( $b['meta']['town'] ?? self::at( $uid ) );
 		$bonus = self::party_near( $uid, $t ) ? 1.2 : 1;
 		$out['partyBonus'] = $bonus > 1;
+		if ( $won && in_array( $b['kind'], array( 'monster', 'boss', 'elite', 'pboss', 'support' ), true ) ) {
+			Sawa_Tracker_Game::boss_fighter( $uid ); // breaks the weekly boss's shield together
+		}
 		if ( ! empty( $b['meta']['support']['call'] ) ) {
 			Sawa_Tracker_Coop::support_done( $uid, $b['meta']['support']['call'], $won );
 			$out['allies'] = count( $b['meta']['support']['allies'] );
@@ -710,6 +766,19 @@ final class Sawa_Tracker_World {
 				self::progress( $uid, 'boss' );
 				Sawa_Tracker_Game::event( $uid, 'town', null, array( 'boss' => $foe['name'], 'town' => self::TOWNS[ $t ][0], 'next' => $out['next'] ) );
 			}
+		} elseif ( 'elite' === $b['kind'] && $won ) {
+			$out['coins']   = Sawa_Tracker_Raids::add_coins( $uid, (int) round( 25 * $t * $bonus ) );
+			$out['elixirs'] = 1;
+			Sawa_Tracker_RPG::add_elixirs( $uid, 1 );
+			$out['xp']      = Sawa_Tracker_XP::award( $uid, ( 40 + 5 * $t ) * self::xp_mult(), 'elite', false );
+			$w              = self::get( $uid );
+			$champ          = 'Champion of ' . self::TOWNS[ $t ][0];
+			if ( ! in_array( $champ, $w['titles'], true ) ) {
+				$w['titles'][] = $champ;
+				self::save( $uid, $w );
+				$out['title']  = $champ;
+			}
+			Sawa_Tracker_Game::event( $uid, 'town', null, array( 'boss' => 'elite ' . $foe['name'], 'town' => self::TOWNS[ $t ][0], 'next' => '' ) );
 		} elseif ( 'monster' === $b['kind'] ) {
 			if ( $won ) {
 				$out['coins'] = Sawa_Tracker_Raids::add_coins( $uid, (int) round( ( 3 + $t + ( $st['best'] >= 5 ? 3 : 0 ) ) * $bonus ) );
