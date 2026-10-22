@@ -921,6 +921,7 @@
         if (GAME.needRebuild) { GAME.needRebuild = false; setTimeout(rebuild, 300); } $('.sg-labels').style.visibility = ''; world.afterBattle(r);
         if (r && r.kind === 'pboss') H.refreshParty();
       }
+      if (b.kind === 'monster' && !b.foe.shadow && b.questions.length) return ACTION.run(b, scene, box, end, close);
       q();
     },
     levelUp: function (hr) {
@@ -1541,7 +1542,8 @@
   ROAD.icon = { video: '📺', song: '🎵', story: '📖', cards: '🃏', write: '✍️', reels: '📱', web: '📰' };
   /** Once: the Elder shows the new road (guidance inside the game). */
   ROAD.intro = function () {
-    var r = ROAD.data(); if (!running || !r.total || busyNow()) return;
+    var r = ROAD.data(); if (!running || !r.total) return;
+    if (busyNow()) { ROAD.introT = (ROAD.introT || 0) + 1; if (ROAD.introT < 30) setTimeout(ROAD.intro, 5000); return; } // try again when the screen is free
     try { if (localStorage.getItem('sawaRoadIntro')) return; localStorage.setItem('sawaRoadIntro', '1'); } catch (e) { return; }
     var nx = ROAD.st(r.next) || r.stations[0];
     dialog.who = 'elder';
@@ -1572,7 +1574,7 @@
     if (!r.total) { box.innerHTML = ''; return; }
     var b = H.world().town.boss;
     var ch = r.chapter;
-    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + (ch ? ' · 📜 ' + ch.days + '/7 days' : '') + '</small><div>' + (ch ? '<button data-road="chapter" class="ch" aria-label="This week\'s chapter">📜</button>' : '') + r.stations.filter(function (s) { return !s.bonus; }).map(function (s) {
+    box.innerHTML = '<small>' + (r.complete ? '✓ Today\'s road is done!' : 'Today\'s road · ' + r.done + '/' + r.total) + (ch ? ' · 📜 ' + ch.days + '/7 days' : '') + '</small><div>' + (ch ? '<button data-road="chapter" class="ch" aria-label="This week\'s chapter">📜</button><button data-road="band" class="ch" aria-label="The 500 most common words">📚</button>' : '') + r.stations.filter(function (s) { return !s.bonus; }).map(function (s) {
       return '<button data-road="' + s.k + '" class="' + s.state + '" aria-label="' + esc(s.name) + ' camp: ' + s.state + '">' + s.icon + (s.state === 'done' ? '<i>✓</i>' : '') + '</button>';
     }).join('') + '<button data-road="boss" class="boss" aria-label="The boss">' + esc(b.icon) + '</button></div>'
       + (r.stations.some(function (s) { return s.bonus; }) ? '<div class="bonus"><small>Bonus</small>' + r.stations.filter(function (s) { return s.bonus; }).map(function (s) { return '<button data-road="' + s.k + '" class="' + s.state + '" aria-label="' + esc(s.name) + ' camp (bonus)">' + s.icon + (s.state === 'done' ? '<i>✓</i>' : '') + '</button>'; }).join('') + '<button data-road="radio" class="radio' + (RADIO.a ? ' done' : '') + '" aria-label="Radio">📻</button></div>' : '');
@@ -1582,6 +1584,7 @@
     var S0 = ROAD.scene(); if (S0 && S0.frozen && $('.sg-dlg.on')) return; // a monster is asking “Fight it?”
     if (k === 'boss') return ROAD.toBoss();
     if (k === 'chapter') return ROAD.chapter();
+    if (k === 'band') return ROAD.band();
     if (k === 'radio') return RADIO.show();
     var s = ROAD.st(k); if (!s) return;
     if (s.state === 'locked') return ROAD.open(k);
@@ -1634,7 +1637,7 @@
     return H.api('/world/road', { method: 'POST', body: { station: k } }).then(function (j) {
       if (j.world) H.setWorld(j.world); hud(); SFX.quest();
       var nx = ROAD.st(j.road.next);
-      say(j.complete ? '🎉 You walked the whole road today! +' + j.coins + ' 🪙 +1 ⚗' : '✓ ' + s.icon + ' ' + s.name + ' camp done! +' + j.coins + ' 🪙' + (nx ? ' · next: ' + nx.icon + ' ' + nx.name : ''), 5000);
+      say(j.complete ? '🎉 You walked the whole road today! +' + j.coins + ' 🪙 +1 ⚗' : '✓ ' + s.icon + ' ' + s.name + ' camp done! +' + j.coins + ' 🪙 +1 ⚔' + (nx ? ' · next: ' + nx.icon + ' ' + nx.name : ''), 5000);
       if (b) ROAD.after(b, j);
       return j;
     }, function (x) { say(x.message, 4500); });
@@ -2056,6 +2059,171 @@
     if (!keep && RADIO.music && running) { RADIO.music = false; MUSIC.start(); }
   };
 
+
+  /* ================================================================ ⚔ action fights (the roaming monsters)
+     About 80% game: move (stick / WASD), stay out of the red marks, hit when the gold ring is small (combos hit harder),
+     one role move. About 20% English: every 4 good hits a power word; right fires your ultimate, wrong costs nothing.
+     The server starts and ends the fight like a quiz fight (stamina, rewards, missed words back in today's review). */
+  var ACTION = { roles: { guardian: ['🛡', 'Shield'], healer: ['💚', 'Heal'], mage: ['🔮', 'Blast'], trickster: ['💨', 'Dash'] } };
+  ACTION.run = function (b, scene, box, end, close) {
+    var Wd = 240, Ht = 150, f = b.foe, me = b.me, t = H.world().at || 1, th = THEMES[t] || THEMES[1], role = ACTION.roles[(H.avatar() || {}).role] ? H.avatar().role : 'guardian';
+    var S = { hx: 120, hy: 122, fx: 120, fy: 48, dir: 3, step: 0, hp: me.hp, hpMax: me.hpMax, foe: f.hp, foeMax: f.hpMax || f.hp, combo: 0, best: 0, dealt: 0, time: 0, ring: 0, cd: 0, sp: 0, shield: 0, inv: 0, zones: [], next: 2.2, hits: 0, pi: 0, paused: false, over: false, pops: [], flash: 0, keys: {}, stick: { x: 0, y: 0 }, leave: 0 };
+    var every = Math.max(1.25, 2.5 - 0.2 * t), tele = Math.max(0.55, 1.05 - 0.08 * t), hurt = Math.max(3, Math.round(f.atk * (1 - (me.armor || 0)) * (me.soft ? 0.75 : 1)));
+    GAME.cur = { kind: 'action', foe: f.name };
+    scene.el.style.display = 'none';
+    box.innerHTML = '<div class="sg-bp sg-actp"><button class="sg-leave" data-leave aria-label="Leave the fight">🏃 Leave</button><div class="sg-ahud"></div><canvas class="sg-afield" width="' + Wd + '" height="' + Ht + '"></canvas>'
+      + '<p class="small sg-ahelp">' + (TOUCH ? 'Move with the stick · ⚔ when the gold ring is small · stay out of the red!' : 'Move: WASD or arrows · Space: hit when the gold ring is small · E: ' + ACTION.roles[role][1] + ' · stay out of the red!') + '</p>'
+      + '<div class="sg-actl"><div class="sg-astick"><i></i></div><div class="sg-abtn"><button data-a="sp">' + ACTION.roles[role][0] + '<small>' + ACTION.roles[role][1] + '</small></button><button data-a="hit" class="pri">⚔<small>Hit</small></button></div></div><div class="sg-apow"></div></div>';
+    var cv = box.querySelector('canvas'), g = cv.getContext('2d'), hud = box.querySelector('.sg-ahud'), pow = box.querySelector('.sg-apow');
+    g.imageSmoothingEnabled = false;
+    var hero = drawChar(H.avatar()), mon = drawMonster(f.name, 24), bg = cnv(Wd, Ht), bgc = bg.getContext('2d'), R = rng(t * 13);
+    bgc.fillStyle = th.ground[0]; bgc.fillRect(0, 0, Wd, Ht); bgc.fillStyle = th.ground[2]; for (var i = 0; i < 140; i++) bgc.fillRect(R() * Wd, R() * Ht, 2, 1);
+    bgc.fillStyle = 'rgba(0,0,0,.12)'; bgc.fillRect(0, 0, Wd, 8);
+    function bar(cls, v, max, label) { return '<div class="sg-hpb ' + cls + '"><i style="width:' + Math.max(0, v / max * 100) + '%"></i><span>' + label + '</span></div>'; }
+    function paintHud() {
+      var h = '<div class="sg-duo"><div class="sg-side"><b>' + esc(H.me().name.split(' ')[0]) + '</b>' + bar('me', S.hp, S.hpMax, '❤ ' + Math.max(0, Math.round(S.hp)) + '/' + S.hpMax) + '</div><div class="sg-combo' + (S.combo >= 3 ? ' hot' : '') + '">' + (S.combo >= 2 ? '×' + S.combo + '<small>combo</small>' : '') + '</div><div class="sg-side foe"><b>' + esc(f.icon + ' ' + f.name) + '</b>' + bar('', S.foe, S.foeMax, '❤ ' + Math.max(0, Math.round(S.foe)) + '/' + S.foeMax) + '</div></div>';
+      if (hud._h !== h) { hud.innerHTML = h; hud._h = h; }
+    }
+    function pop(x, y, txt, col) { S.pops.push({ x: x, y: y, txt: txt, col: col || '#fff', t: 1 }); }
+    function hit() {
+      if (S.paused || S.over || S.cd > 0) return; S.cd = 0.35;
+      var d = Math.hypot(S.hx - S.fx, S.hy - S.fy);
+      if (d > 54) { pop(S.hx, S.hy - 26, 'Too far!', '#ffe39a'); return; }
+      var r = 30 - 22 * S.ring, q = r <= 13 ? 1.6 : r <= 19 ? 1 : 0.4;
+      if (q < 1) S.combo = 0; else { S.combo++; S.best = Math.max(S.best, S.combo); S.hits++; }
+      var dmg = Math.round(me.atk * q * (S.combo >= 5 ? 1.5 : S.combo >= 3 ? 1.25 : 1));
+      S.foe -= dmg; S.dealt += dmg; S.flash = 0.12;
+      pop(S.fx, S.fy - 22, (q > 1.5 ? 'Perfect! ' : q < 1 ? 'Weak ' : '') + '-' + dmg, q > 1.5 ? '#ffe39a' : '#fff');
+      SFX.slash(); if (q > 1.5) VOICE.bark(S.combo >= 3 ? 'combo' : 'hit');
+      if (S.foe <= 0) return finish(true);
+      if (q >= 1 && S.hits % 4 === 0 && S.pi < Math.min(3, b.questions.length)) setTimeout(power, 350);
+    }
+    function special() {
+      if (S.paused || S.over || S.sp > 0) return; S.sp = 8;
+      if (role === 'guardian') { S.shield = 3; pop(S.hx, S.hy - 26, '🛡 Shield!', '#9fd8ff'); SFX.sparkle(); }
+      else if (role === 'healer') { S.hp = Math.min(S.hpMax, S.hp + Math.round(S.hpMax * 0.25)); pop(S.hx, S.hy - 26, '💚 +' + Math.round(S.hpMax * 0.25), '#9ff0b0'); SFX.heal(); }
+      else if (role === 'mage') { var dm = 2 * me.atk; S.foe -= dm; S.dealt += dm; S.flash = 0.2; pop(S.fx, S.fy - 22, '🔮 -' + dm, '#d9a6ff'); SFX.power(); if (S.foe <= 0) return finish(true); }
+      else { var dx = S.stick.x || (S.keys.l ? -1 : S.keys.r ? 1 : 0), dy = S.stick.y || (S.keys.u ? -1 : S.keys.d ? 1 : 0); if (!dx && !dy) { dx = S.hx < S.fx ? -1 : 1; } var n = Math.hypot(dx, dy) || 1; S.hx += dx / n * 60; S.hy += dy / n * 60; S.inv = 0.7; pop(S.hx, S.hy - 26, '💨 Dash!', '#fff'); SFX.sparkle(); }
+    }
+    /** A power word: the game stops, one English question; right = the ultimate attack. */
+    function power() {
+      if (S.over) return;
+      var i = S.pi, q = b.questions[i]; if (!q) return;
+      S.paused = true; S.pi++;
+      var body = q.type === 'type' ? '<div class="sg-typer"><input maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" placeholder="' + Array((q.len || 4) + 1).join('_ ') + '"><button class="pri" data-ok>Check</button></div>'
+        : q.type === 'order' ? '<div class="sg-line" data-line></div><div class="sg-chips">' + q.tokens.map(function (x, k) { return '<button data-tok="' + k + '">' + esc(x) + '</button>'; }).join('') + '</div><div class="sg-opts"><button class="pri" data-ok>Check</button></div>'
+          : '<div class="sg-vops">' + q.options.map(function (o, k) { return '<button data-k="' + k + '" dir="ltr">' + esc(o) + '</button>'; }).join('') + '</div>';
+      pow.innerHTML = '<div class="sg-pbox2"><p class="sg-pw">⚡ Power word! Right answer = your ultimate attack.</p>' + (q.type === 'listen' ? '<p><button class="sg-bigsay" data-say="' + esc(q.say) + '">🔊</button> ' + esc(q.q) + '</p>' : '<p><b>' + wrapWords(q.q, null, true) + '</b></p>') + body + '<div class="sg-pwhy"></div></div>';
+      pow.classList.add('on');
+      if (q.type === 'listen') setTimeout(function () { VOICE.say(q.say); }, 300);
+      var send = function (ans, btn) {
+        pow.querySelectorAll('button, input').forEach(function (x) { x.disabled = true; });
+        H.api('/world/power', { method: 'POST', body: Object.assign({ battle: b.battle, i: i }, ans) }).then(function (r) {
+          if (btn) btn.classList.add(r.correct ? 'ok' : 'no');
+          var why = pow.querySelector('.sg-pwhy');
+          if (r.correct) { why.innerHTML = '<p class="ok">✓ ULTIMATE!</p>'; SFX.power(); }
+          else { why.innerHTML = '<p>✗ It is <b>' + esc(r.right) + '</b>' + (r.why ? ' — ' + wrapWords(r.why) : '') + '. No ultimate this time, no damage either.</p>'; SFX.blocked(); }
+          setTimeout(function () {
+            pow.classList.remove('on'); pow.innerHTML = ''; S.paused = false;
+            if (r.correct) { var dm = 3 * me.atk; S.foe -= dm; S.dealt += dm; S.flash = 0.35; pop(S.fx, S.fy - 24, '⚡ ULTIMATE -' + dm, '#ffe39a'); SFX.scream(mobKind(f), true); if (S.foe <= 0) finish(true); }
+          }, r.correct ? 900 : 2600);
+        }, function (x) { say(x.message); pow.classList.remove('on'); S.paused = false; });
+      };
+      pow.querySelectorAll('[data-k]').forEach(function (x) { x.onclick = function () { send({ choice: +x.dataset.k }, x); }; });
+      var inp = pow.querySelector('input'); if (inp) { inp.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') send({ text: inp.value }); }; pow.querySelector('[data-ok]').onclick = function () { send({ text: inp.value }); }; setTimeout(function () { inp.focus(); }, 50); }
+      if (q.type === 'order') { var picked = [], line = pow.querySelector('[data-line]'), paint = function () { line.innerHTML = picked.map(function (k) { return '<span>' + esc(q.tokens[k]) + '</span>'; }).join(' ') || '<small>Tap the words in order</small>'; pow.querySelectorAll('[data-tok]').forEach(function (c) { c.disabled = picked.indexOf(+c.dataset.tok) >= 0; }); }; pow.querySelectorAll('[data-tok]').forEach(function (c) { c.onclick = function () { picked.push(+c.dataset.tok); paint(); }; }); pow.querySelector('[data-ok]').onclick = function () { send({ text: picked.map(function (k) { return q.tokens[k]; }).join(' ') }); }; paint(); }
+    }
+    function attack() {
+      var p = Math.random(), z = [];
+      if (p < 0.4) z.push({ c: 1, x: S.hx, y: S.hy, r: 22 });
+      else if (p < 0.7) z.push({ c: 0, x: 0, y: S.hy - 11, w: Wd, h: 22 });
+      else [-34, 0, 34].forEach(function (o) { z.push({ c: 1, x: S.hx + o + (Math.random() - 0.5) * 16, y: S.hy + (Math.random() - 0.5) * 20, r: 15 }); });
+      z.forEach(function (x) { x.t = tele + (z.length > 1 ? 0.15 : 0); x.full = x.t; S.zones.push(x); });
+    }
+    function inside(z) { return z.c ? Math.hypot(S.hx - z.x, S.hy - 6 - z.y) < z.r + 4 : S.hy - 6 > z.y && S.hy - 6 < z.y + z.h; }
+    function update(dt) {
+      S.time += dt; S.cd = Math.max(0, S.cd - dt); S.sp = Math.max(0, S.sp - dt); S.shield = Math.max(0, S.shield - dt); S.inv = Math.max(0, S.inv - dt); S.flash = Math.max(0, S.flash - dt);
+      var vx = S.stick.x + (S.keys.r ? 1 : 0) - (S.keys.l ? 1 : 0), vy = S.stick.y + (S.keys.d ? 1 : 0) - (S.keys.u ? 1 : 0), n = Math.hypot(vx, vy);
+      if (n > 0.15) { if (n > 1) { vx /= n; vy /= n; } S.hx += vx * 84 * dt; S.hy += vy * 84 * dt; S.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 1 : 2) : (vy < 0 ? 3 : 0); S.step = (S.step + dt * 8) % 3; } else S.step = 0;
+      S.hx = Math.max(10, Math.min(Wd - 10, S.hx)); S.hy = Math.max(40, Math.min(Ht - 4, S.hy));
+      // the monster keeps close, but not too close
+      var tx = S.hx + Math.sin(S.time * 0.8) * 30, ty = Math.max(30, Math.min(Ht - 50, S.hy - 46)), k = Math.min(1, dt * 1.1);
+      S.fx += (tx - S.fx) * k; S.fy += (ty - S.fy) * k;
+      S.ring = (S.ring + dt / 1.1) % 1;
+      S.next -= dt; if (S.next <= 0) { S.next = every * (0.8 + Math.random() * 0.4); attack(); }
+      S.zones = S.zones.filter(function (z) {
+        z.t -= dt; if (z.t > 0) return true;
+        if (inside(z) && S.inv <= 0) {
+          if (S.shield > 0) { pop(S.hx, S.hy - 26, '🛡 Blocked', '#9fd8ff'); SFX.blocked(); }
+          else { S.hp -= hurt; S.combo = 0; pop(S.hx, S.hy - 26, '-' + hurt, '#ff8a8a'); SFX.hurt(); VOICE.bark('hurt'); S.inv = 0.6; if (S.hp <= 0) { if (me.noKo) S.hp = 1; finish(false); } }
+        }
+        return false;
+      });
+      S.pops = S.pops.filter(function (p) { p.t -= dt; p.y -= 18 * dt; return p.t > 0; });
+      if (S.time > 100) finish(false); // the monster runs off
+    }
+    function draw() {
+      g.drawImage(bg, 0, 0);
+      S.zones.forEach(function (z) { var a = 0.25 + 0.5 * (1 - z.t / z.full); g.fillStyle = 'rgba(226,60,50,' + a + ')'; g.strokeStyle = 'rgba(255,120,110,.9)'; if (z.c) { g.beginPath(); g.arc(z.x, z.y, z.r, 0, 7); g.fill(); g.stroke(); } else { g.fillRect(z.x, z.y, z.w, z.h); g.strokeRect(z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1); } });
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(S.fx, S.fy + 2, 11, 3, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(S.hx, S.hy, 7, 2.5, 0, 0, 7); g.fill();
+      g.drawImage(mon, (Math.floor(S.time * 2.4) % 2) * 24, 0, 24, 24, Math.round(S.fx - 12), Math.round(S.fy - 22), 24, 24);
+      if (S.flash > 0) { g.fillStyle = 'rgba(255,255,255,' + S.flash * 3 + ')'; g.fillRect(S.fx - 12, S.fy - 22, 24, 24); }
+      var near = Math.hypot(S.hx - S.fx, S.hy - S.fy) <= 54, rr = 30 - 22 * S.ring;
+      g.strokeStyle = near ? 'rgba(130,230,150,.9)' : 'rgba(255,255,255,.35)'; g.setLineDash([2, 2]); g.beginPath(); g.arc(S.fx, S.fy - 10, 13, 0, 7); g.stroke(); g.setLineDash([]);
+      g.strokeStyle = rr <= 13 ? '#ffe39a' : 'rgba(231,200,115,.85)'; g.lineWidth = rr <= 13 ? 2 : 1; g.beginPath(); g.arc(S.fx, S.fy - 10, rr, 0, 7); g.stroke(); g.lineWidth = 1;
+      if (!(S.inv > 0 && Math.floor(S.time * 20) % 2)) g.drawImage(hero, (S.dir * 3 + Math.floor(S.step)) * 16, 0, 16, 24, Math.round(S.hx - 8), Math.round(S.hy - 24), 16, 24);
+      if (S.shield > 0) { g.strokeStyle = 'rgba(159,216,255,.9)'; g.beginPath(); g.arc(S.hx, S.hy - 12, 13, 0, 7); g.stroke(); }
+      g.textAlign = 'center'; g.font = 'bold 9px sans-serif';
+      S.pops.forEach(function (p) { g.globalAlpha = Math.min(1, p.t * 2); g.fillStyle = '#000'; g.fillText(p.txt, p.x + 1, p.y + 1); g.fillStyle = p.col; g.fillText(p.txt, p.x, p.y); g.globalAlpha = 1; });
+      var sb = box.querySelector('[data-a="sp"]'); if (sb) { var off = S.sp > 0; if (sb.disabled !== off) sb.disabled = off; }
+      paintHud();
+    }
+    var last = 0, raf = 0;
+    function frame(ts) { if (S.over) return; var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts; if (!S.paused) update(dt); if (!S.over) draw(); raf = requestAnimationFrame(frame); }
+    // input: keys, the stick, the buttons
+    var map = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'd', s: 'd', S: 'd' };
+    function kd(e) { if (S.over || e.target.tagName === 'INPUT') return; if (map[e.key]) { S.keys[map[e.key]] = true; e.preventDefault(); } else if (e.key === ' ') { e.preventDefault(); hit(); } else if (e.key === 'e' || e.key === 'E') special(); }
+    function ku(e) { if (map[e.key]) S.keys[map[e.key]] = false; }
+    window.addEventListener('keydown', kd, true); window.addEventListener('keyup', ku, true);
+    var st = box.querySelector('.sg-astick'), knob = st.firstChild, sid = null;
+    function stick(e) { var r = st.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), m = r.width / 2, d = Math.hypot(dx, dy); if (d > m) { dx = dx / d * m; dy = dy / d * m; } S.stick = { x: dx / m, y: dy / m }; knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; }
+    st.addEventListener('pointerdown', function (e) { sid = e.pointerId; try { st.setPointerCapture(sid); } catch (x) { /* old browser */ } stick(e); e.preventDefault(); });
+    st.addEventListener('pointermove', function (e) { if (e.pointerId === sid) stick(e); });
+    var up = function (e) { if (e.pointerId === sid) { sid = null; S.stick = { x: 0, y: 0 }; knob.style.transform = ''; } };
+    st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+    box.querySelector('[data-a="hit"]').addEventListener('pointerdown', function (e) { e.preventDefault(); hit(); });
+    box.querySelector('[data-a="sp"]').addEventListener('pointerdown', function (e) { e.preventDefault(); special(); });
+    box.querySelector('[data-leave]').onclick = function () {
+      var lb = this;
+      if (Date.now() > S.leave) { S.leave = Date.now() + 4000; lb.textContent = 'Tap again to leave'; setTimeout(function () { if (Date.now() > S.leave) lb.textContent = '🏃 Leave'; }, 4100); return; }
+      stop(); H.api('/world/flee', { method: 'POST', body: { battle: b.battle } }).then(function (r) { if (r.world) H.setWorld(r.world); close({ kind: b.kind, fled: true, won: false }); say(r.refund ? 'You left the fight. The fight was given back.' : 'You left the fight.', 4000); }, function () { close({ kind: b.kind, fled: true, won: false }); });
+    };
+    function stop() { S.over = true; cancelAnimationFrame(raf); window.removeEventListener('keydown', kd, true); window.removeEventListener('keyup', ku, true); scene.el.style.display = ''; ACTION.cur = null; }
+    function finish(won) {
+      if (S.over) return; draw(); stop();
+      if (won) pop(S.fx, S.fy - 24, 'Victory!', '#ffe39a');
+      H.api('/world/action', { method: 'POST', body: { battle: b.battle, won: won ? 1 : 0, hp: Math.max(0, Math.round(S.hp)), dealt: S.dealt, best: S.best } }).then(function () { end(); }, function () { end(); });
+    }
+    ACTION.cur = { S: S, hit: hit, special: special, power: power, finish: finish }; // for tests
+    paintHud(); raf = requestAnimationFrame(frame);
+    SFX.growl(f.name);
+  };
+
+  /* -------- 📚 the 500 most common words (band 1 of the word storyline): your real vocabulary, and 10 new ones a day */
+  ROAD.band = function () {
+    var b = panel('sg-roadp sg-bandp', '📚 The 500 most common words', '<p class="sg-wait">Counting your words…</p>');
+    Promise.all([H.lens.api('band'), H.lens.lex()]).then(function (r) {
+      var d = r[0], pct = Math.round(100 * d.known / Math.max(1, d.to));
+      b.innerHTML = '<p>These 500 words are about half of everything people say in English. Know them, and every video, song and story gets easier.</p>'
+        + '<h4>' + d.known + ' of ' + d.to + ' words you know</h4><div class="sg-gbar"><i style="width:' + pct + '%"></i></div>'
+        + '<p class="small">' + d.fromLevel + ' easy ones for your level (' + esc(d.level) + ') · ' + (d.known - d.fromLevel) + ' you marked as known or remember long-term · ' + d.learning + ' in your review cards now</p>'
+        + (d.today.length ? '<h4>Today\'s 10 words</h4><ul class="sg-tw">' + d.today.map(function (w, i) { var m = H.lens.meanings(H.lens.lemmaOf(w))[0] || {}; return '<li><b dir="ltr">' + esc(w) + ' <button class="sg-say" data-say="' + esc(w) + '" aria-label="Listen">🔊</button></b><small dir="ltr">' + esc(m.en || m.pos || '') + '</small><span dir="rtl">' + esc(m.ar || '') + '</span><button data-bw="' + i + '" aria-label="Add to review cards">＋</button></li>'; }).join('') + '</ul><div class="sg-opts"><button class="pri" data-ball>＋ Add all 10 to my cards</button></div><p class="small">Cards you add come back in your reviews, and monsters attack with them.</p>' : '<p><b>🎉 You know all 500!</b> The next 500 come soon.</p>');
+      var add = function (x) { var w = d.today[+x.dataset.bw]; x.disabled = true; return H.lens.api('library/word', { body: { lemma: w, status: 'learning', sentence: '', title: 'Silk Road · the 500 most common words' } }).then(function () { x.textContent = '✓'; }, function (e) { x.disabled = false; say(e.message); }); };
+      b.querySelectorAll('[data-bw]').forEach(function (x) { x.onclick = function () { add(x).then(function () { say('“' + d.today[+x.dataset.bw] + '” is now a review card.'); }); }; });
+      var all = b.querySelector('[data-ball]'); if (all) all.onclick = function () { all.disabled = true; Promise.all([].map.call(b.querySelectorAll('[data-bw]:not(:disabled)'), add)).then(function () { all.textContent = '✓ Added'; say('10 new review cards. They come back in your reviews!', 4000); }); };
+    }, ROAD.err(b));
+  };
+
   /* -------- the caravan: help each other (at any time of day), build the caravanserai, guides for newcomers */
   var CARAVAN = { s: null, tab: 'help' };
   CARAVAN.load = function () { return H.api('/coop').then(function (j) { CARAVAN.s = j; if (ROOT) { hud(); CARAVAN.thanks(j.thanks || []); var w = G && G.phaser && G.phaser.scene.getScene('World'); if (w && w.serai && j.project && w.seraiPct !== j.project.pct) w.serai(j.project.pct); } return j; }); };
@@ -2174,6 +2342,7 @@
     battle: function (path, body) { if (!running) return false; var w = GAME.phaser.scene.getScene('World'); w.frozen = true; GAME.battle(path, body, null); return true; },
     hud: function () { if (running) hud(); },
     scene: function () { return GAME.phaser && GAME.phaser.scene.getScene('World'); }, // for tests
+    action: function () { return ACTION.cur; }, // for tests: the running action fight
     /** Where the student is, for beta feedback: a short area name plus details. */
     context: function () {
       if (!running) return null;

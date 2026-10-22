@@ -1165,3 +1165,23 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .sg-cap .t { flex: 1; min-width: 0; max-height: 4.2em; overflow: hidden; }
 .sg-cap .c { display: flex; gap: 4px; } .sg-cap button { background: none; border: 1px solid rgba(255, 255, 255, .4); color: #fff; border-radius: 8px; width: 34px; height: 34px; font-size: 14px; padding: 0; }
 @media (pointer: fine) { .sg-cap { bottom: 120px; } }
+/* ⚔ action fights (monsters) and 📚 the 500 most common words */
+.sg-actp { background: rgba(20, 25, 58, .94); border: 2px solid #e7c873; border-radius: 12px; }
+.sg-afield { display: block; width: 100%; aspect-ratio: 240 / 150; max-height: 42vh; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 8px; touch-action: none; }
+.sg-ahelp { text-align: center; margin: 0; }
+.sg-actl { display: flex; justify-content: space-between; align-items: center; gap: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sg-astick { position: relative; width: 104px; height: 104px; border-radius: 50%; background: rgba(255, 255, 255, .08); border: 2px solid rgba(231, 200, 115, .5); touch-action: none; flex: none; }
+.sg-astick i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(231, 200, 115, .75); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.sg-abtn { display: flex; gap: 10px; align-items: center; }
+.sg-abtn button { width: 70px; height: 70px; border-radius: 50%; border: 3px solid #8f86c9; background: #2b3168; color: #fff; font-size: 24px; line-height: 1; display: grid; place-items: center; align-content: center; touch-action: none; }
+.sg-abtn button small { font: 700 10px var(--body); }
+.sg-abtn button.pri { width: 84px; height: 84px; background: #e2513a; border-color: #ffe39a; font-size: 30px; }
+.sg-abtn button:disabled { opacity: .45; }
+.sg-apow { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10, 8, 20, .55); border-radius: 12px; padding: 10px; z-index: 3; }
+.sg-apow.on { display: flex; }
+.sg-pbox2 { width: min(520px, 100%); background: #fffaf0; color: #2b2233; border: 3px solid #ffe39a; border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.sg-pbox2 .sg-pw { font: 800 14px var(--body); color: #b0510f; margin: 0; } .sg-pbox2 p { margin: 0; } .sg-pbox2 .ok { color: #2f7a4f; font-weight: 800; }
+.sg-pbox2 .sg-vops button { text-align: left; min-height: 44px; font-size: 15px; background: #2b3168; color: #f6ecd4; border: 2px solid #8f86c9; border-radius: 8px; padding: 6px 10px; }
+.sg-pbox2 .sg-vops button.ok { background: #2f7a4f; color: #fff; } .sg-pbox2 .sg-vops button.no { background: #8a2f3a; color: #fff; }
+.sg-pbox2 .lw { border-bottom-color: #a8763f; }
+.sg-tw li b .sg-say { background: none; border: 0; font-size: 13px; padding: 0 2px; }

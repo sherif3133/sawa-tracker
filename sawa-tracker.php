@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Sawa Tracker
  * Description:       A game-like study tracker for Sawa English learners: streaks, habit health, levels, classes and skills, a weekly community boss, badges, a live feed and a leaderboard. Put [sawa_tracker] on a page.
- * Version:           2.14.0
+ * Version:           2.15.0
  * Author:            Sawa English
  * Requires at least: 6.0
  * Requires PHP:      7.4
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SAWA_TR_VER', '2.14.0' );
+define( 'SAWA_TR_VER', '2.15.0' );
 define( 'SAWA_TR_DB', 8 );
 define( 'SAWA_TR_FILE', __FILE__ );
 define( 'SAWA_TR_URL', plugin_dir_url( __FILE__ ) );
@@ -29,6 +29,7 @@ require_once SAWA_TR_DIR . 'includes/class-raids.php';
 require_once SAWA_TR_DIR . 'includes/class-rpg.php';
 require_once SAWA_TR_DIR . 'includes/class-world.php';
 require_once SAWA_TR_DIR . 'includes/class-road.php';
+require_once SAWA_TR_DIR . 'includes/class-action.php';
 require_once SAWA_TR_DIR . 'includes/class-party.php';
 require_once SAWA_TR_DIR . 'includes/class-play.php';
 require_once SAWA_TR_DIR . 'includes/class-hero.php';
@@ -57,6 +58,7 @@ add_action(
 		Sawa_Tracker_Raids::init();
 		Sawa_Tracker_World::init();
 		Sawa_Tracker_Road::init();
+		Sawa_Tracker_Action::init();
 		Sawa_Tracker_Party::init();
 		Sawa_Tracker_Play::init();
 		Sawa_Tracker_Hero::init();

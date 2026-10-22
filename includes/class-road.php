@@ -74,6 +74,11 @@ final class Sawa_Tracker_Road {
 		return array_keys( array_filter( $on ) );
 	}
 
+	/** Camps finished today (each one gives one more ⚔ fight). */
+	public static function camps_today( $uid ) {
+		return count( self::today_done( $uid ) );
+	}
+
 	private static function today_done( $uid ) {
 		$r = Sawa_Tracker_Game::m( $uid, 'road', array() );
 		return is_array( $r ) && ( $r['day'] ?? '' ) === Sawa_Tracker_Game::today() ? (array) ( $r['done'] ?? array() ) : array();

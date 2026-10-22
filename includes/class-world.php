@@ -160,6 +160,7 @@ final class Sawa_Tracker_World {
 		$plan  = get_user_meta( $uid, 'sawa_lens_plan', true );
 		$today = is_array( $plan ) && ( $plan['day'] ?? '' ) === Sawa_Tracker_Game::today();
 		$max   = self::STAMINA + ( $today ? count( (array) ( $plan['items'] ?? array() ) ) + ( empty( $plan['bonus'] ) ? 0 : 1 ) : 0 );
+		$max  += class_exists( 'Sawa_Tracker_Road' ) ? Sawa_Tracker_Road::camps_today( $uid ) : 0; // every camp finished today: one more fight
 		$down = Sawa_Tracker_Wounds::penalty( $uid ); // hurt clanmates slow everyone down
 		return array( 'left' => max( 0, $max - $down - (int) $w['f']['used'] ), 'max' => $max - $down, 'clanDown' => $down );
 	}
