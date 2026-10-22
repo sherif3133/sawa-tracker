@@ -34,3 +34,7 @@ more XP for making progress on the points AI feedback highlighted. Chatting in E
 
 **Hooks needed:** an action in `Sawa_Tracker_Social::send()` (e.g. `sawa_tracker_message_sent`) that Sawa Lens
 listens to. Sawa Lens queues the text for analysis and awards XP back via a tracker filter or API.
+
+## Silk Road: camp stories from "Stories for you" (planned 22 Oct 2026)
+
+Sawa Lens 0.18.0 has "Stories for you" (beta): short graded readers about each learner's quiz interests, including chapter series that open one chapter a day (`app/readers`, `app/readers/next` with `{series}`, `app/readers/done`). Idea for the game: at a caravan camp, a merchant NPC tells "a story by the fire", which opens the learner's next chapter (or today's story) in the reader. Finishing it in the game gives a small in-game reward on top of the reader XP (for example 1 elixir or coins), once a day. Needs: an NPC/camp interaction in the world, a call to `SawaLens.api('readers/next', …)`, and opening the reader view (or an in-game page that reuses its quick check). Only for players in the readers beta (`SAWA_LENS.readers`).
