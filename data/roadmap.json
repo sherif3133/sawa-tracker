@@ -1360,7 +1360,31 @@
 			"date": "2026-10-22",
 			"file": "sawa-tracker includes/class-board.php, assets/board.js",
 			"audience": "all"
+		},
+		{
+			"id": "tracker-cs-lists-admin",
+			"app": "tracker",
+			"group": "Behind the scenes (for Sherif)",
+			"title": "CS lists in wp-admin (Sawa Tracker → CS lists): joined today / this week, day 3 with no study, 5 and 10 days without activity, on a 7-day run, day 30. Names to copy and a CSV for each list",
+			"status": "progress",
+			"note": "Built locally, waiting for Sherif's review and release. 'Joined' is the account date until the Skool join date is stored (Priority #3).",
+			"ver": "Sawa Tracker 2.16.0",
+			"date": "2026-10-22",
+			"file": "sawa-tracker includes/class-cs.php",
+			"audience": "admin"
+		},
+		{
+			"id": "lens-ai-cost-meter",
+			"app": "lens",
+			"group": "Behind the scenes (for Sherif)",
+			"title": "AI cost meter (admin page Video quizzes → AI cost): every AI call logged with feature, student, model, tokens and estimated $; month total, $ per active student, top 10 students, daily trend, editable price table, and an optional monthly budget that pauses the non-essential AI features when reached",
+			"status": "progress",
+			"note": "Built locally, waiting for Sherif's review and release. No budget is set by default, so nothing changes until he sets one.",
+			"ver": "Sawa Lens 0.23.0",
+			"date": "2026-10-22",
+			"file": "sawa-lens includes/class-cost.php, class-ai.php",
+			"audience": "admin"
 		}
 	],
-	"versions": "Sawa Lens 0.21.2 · Sawa Tracker 2.15.0 · Language Lens 0.6.2 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.23.0 · Sawa Tracker 2.16.0 · Language Lens 0.6.2 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
 }

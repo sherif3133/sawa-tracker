@@ -213,6 +213,7 @@ final class Sawa_Tracker_Admin {
 			'requests'   => 'Access requests',
 			'daily'      => 'Daily post & quest',
 			'students'   => 'Students',
+			'cslists'    => 'CS lists',
 			'clans'      => 'Clans',
 			'notes'      => 'Notes for the teacher',
 			'moderation' => 'Chat moderation' . ( $open_reports ? " ($open_reports)" : '' ),
@@ -284,6 +285,10 @@ final class Sawa_Tracker_Admin {
 			echo '<td><button class="button button-primary" name="one" value="approve:' . (int) $id . '">Approve</button> <button class="button" name="one" value="deny:' . (int) $id . '">Decline</button></td></tr>';
 		}
 		echo '</tbody></table></form>';
+	}
+
+	private static function tab_cslists() {
+		Sawa_Tracker_CS::render();
 	}
 
 	private static function tab_students() {
