@@ -964,3 +964,12 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .sg-roles button span { margin-right: 4px; }
 .sg-roles button.on { background: #e7c873; color: #2b2233; border-color: #fff1c4; }
 .sg-roled { margin: 6px 0 0; }
+/* Computers: Play in two columns (the Silk Road on the left; the clan and the live feed on the right) */
+@media (min-width: 1100px) {
+  :host(.emb) #app:has(> #world-card) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 20px; align-items: start; }
+  :host(.emb) #app:has(> #world-card) > * { grid-column: 1; margin-top: 0; }
+  :host(.emb) #app:has(> #world-card) > .emb-bar { grid-column: 1 / -1; }
+  :host(.emb) #app:has(> #world-card) > #view, :host(.emb) #app:has(> #world-card) > .feed { grid-column: 2; }
+  :host(.emb) #app:has(> #world-card) > #view { grid-row: 2 / span 2; }
+  :host(.emb) #app:has(> #world-card) > .feed { grid-row: 4 / span 6; }
+}
