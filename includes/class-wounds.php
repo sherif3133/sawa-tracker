@@ -9,7 +9,8 @@
  *   tenth of the health (a quarter from a Healer), at most two heals a day. A fallen hero needs two revives from
  *   different clanmates (a Healer's revive counts twice) and comes back at half health.
  * - While a clanmate is badly hurt (2+ days) or fallen, everyone else in the clan has one fight less a day (two
- *   with two or more hurt clanmates). Nobody progresses as fast when someone is missing.
+ *   with two or more hurt clanmates). Nobody progresses as fast when someone is missing. Clanmates gone for more than
+ *   two weeks count as away and don't slow the clan down.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -25,6 +26,7 @@ final class Sawa_Tracker_Wounds {
 	const HEALS_DAY   = 2;
 	const HEAL_MANA   = 20;
 	const REVIVE_MANA = 30;
+	const AWAY_DAYS   = 14; // after two weeks without studying a clanmate counts as away
 
 	private static $cache = array();
 
@@ -100,7 +102,7 @@ final class Sawa_Tracker_Wounds {
 				continue;
 			}
 			$w = self::of( (int) $m );
-			if ( $w['level'] < 1 ) {
+			if ( $w['level'] < 1 || $w['days'] > self::AWAY_DAYS ) { // gone for weeks: away, not hurting the clan
 				continue;
 			}
 			$c     = self::care( (int) $m );
