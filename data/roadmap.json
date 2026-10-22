@@ -586,6 +586,18 @@
 			"audience": "all"
 		},
 		{
+			"id": "tracker-action-fights",
+			"app": "tracker",
+			"group": "Battles",
+			"title": "Action fights: move with the stick (or WASD), dodge the red marks, hit when the gold ring is small for combos, use your role's move; every 4 good hits a power word fires your ultimate (a wrong answer costs nothing); each camp finished today gives one more fight",
+			"status": "live",
+			"note": "",
+			"ver": "2.15.0",
+			"date": "2026-10-22",
+			"file": "includes/class-action.php, assets/game.js",
+			"audience": "all"
+		},
+		{
 			"id": "tracker-five-camps-between-each-town-s",
 			"app": "tracker",
 			"group": "Learning road (study inside the game)",
@@ -679,6 +691,18 @@
 			"ver": "2.13.0 (+ Lens 0.21.0)",
 			"date": "2026-10-22",
 			"file": "assets/game.js, sawa-lens includes/class-radio.php",
+			"audience": "all"
+		},
+		{
+			"id": "tracker-500-common-words",
+			"app": "tracker",
+			"group": "Learning road (study inside the game)",
+			"title": "📚 On the road strip: how many of the 500 most common English words you know, and 10 new ones a day to add to your cards",
+			"status": "live",
+			"note": "",
+			"ver": "2.15.0",
+			"date": "2026-10-22",
+			"file": "includes/class-road.php",
 			"audience": "all"
 		},
 		{
@@ -1210,24 +1234,10 @@
 			"audience": "all"
 		},
 		{
-			"id": "tracker-learning-path-in-the-silk-road",
+			"id": "tracker-storyline-3000-words",
 			"app": "tracker",
 			"group": "",
-			"title": "Learning path in the Silk Road, next parts",
-			"desc": "a video and song library, and fights redesigned around a storyline (reels, reading and radio are live)",
-			"status": "progress",
-			"note": "",
-			"ver": "",
-			"date": "2026-10-22",
-			"file": "",
-			"audience": "all"
-		},
-		{
-			"id": "tracker-fights-redesigned",
-			"app": "tracker",
-			"group": "",
-			"title": "Fights redesigned",
-			"desc": "about 80% game, with a storyline around the 3,000 most frequent words",
+			"title": "A storyline around the 3,000 most frequent words",
 			"status": "progress",
 			"note": "",
 			"ver": "",
@@ -1352,5 +1362,5 @@
 			"audience": "all"
 		}
 	],
-	"versions": "Sawa Lens 0.21.2 · Sawa Tracker 2.14.0 · Language Lens 0.6.2 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.21.2 · Sawa Tracker 2.15.0 · Language Lens 0.6.2 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
 }
