@@ -633,8 +633,8 @@
     $('#app').innerHTML = header()
       + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>أهلًا يا ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="النهارده ' + s.todayMinutes + ' من ' + s.goal + ' دقيقة"><span><b>' + s.todayMinutes + '</b>من ' + s.goal + ' د</span></div></section>'
-      + '<div id="hero-card" dir="ltr"></div>' + statCards(s) + questCard() + boardCard();
-    loadHero(); paintBoard(); // the leaderboard lives on the home screen
+      + statCards(s) + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
+    loadHero(); paintBoard(); // your stats and the leaderboard come first on Home
   }
   /* ------------------------------------------------------------ the Silk Road character on the Today screen */
   function gameScript() { return window.SawaGame ? Promise.resolve() : new Promise(function (ok, bad) { var sc = document.createElement('script'); sc.src = cfg.game; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); }); }
@@ -877,8 +877,9 @@
       + '<div class="lens-bars" title="آخر ١٤ يوم">' + x.days.map(function (d, i) { return '<i' + (i === x.days.length - 1 ? ' class="now"' : '') + '><b style="height:' + Math.round(d / max * 100) + '%"></b></i>'; }).join('') + '</div>'
       + '<p class="small muted">اكتب بالإنجليزي في الشات أو ابعت رسايل صوتية عشان تجمع XP. لو اتحسنت في غلطة كانت بتتكرر منك، بتاخد XP زيادة.</p></section>';
   }
-  function boardCard() {
-    return '<section class="card board"><div class="card-h"><h3>' + ico('trophy') + ' الترتيب</h3><span class="muted small" id="b-total"></span></div>'
+  /** compact: the short version on Home (top 5, "show more" opens the rest). */
+  function boardCard(compact) {
+    return '<section class="card board' + (compact ? ' compact' : '') + '"><div class="card-h"><h3>' + ico('trophy') + ' الترتيب</h3><span class="muted small" id="b-total"></span></div>'
       + '<div class="seg small-seg" role="tablist" aria-label="الترتيب">'
       + [['consistency', 'الاستمرارية'], ['week', 'الأسبوع ده'], ['all', 'من الأول'], ['xp', 'XP الأسبوع']].map(function (t) { return '<button data-act="board-tab" data-tab="' + t[0] + '" aria-pressed="' + (S.board.tab === t[0]) + '">' + t[1] + '</button>'; }).join('')
       + '</div><ol class="rows" id="b-rows"><li class="muted small pad">بيحمّل…</li></ol><div id="b-me"></div></section>';
@@ -896,11 +897,11 @@
   }
   function paintBoard() {
     var el = $('#b-rows'); if (!el) return;
-    var b = S.board;
+    var b = S.board, lim = $('.board.compact') ? 5 : 15;
     if (!b.rows.length) { el.innerHTML = '<li class="muted small pad">' + (b.loaded ? 'لسه محدش في الترتيب. سجّل نشاط وكن الأول!' : 'بيحمّل…') + '</li>'; return; }
-    el.innerHTML = b.rows.slice(0, b.showAll ? 100 : 15).map(boardRow).join('') + (b.rows.length > 15 && !b.showAll ? '<li class="pad"><button class="btn ghost wide" data-act="board-more">اعرض أول ' + Math.min(100, b.rows.length) + '</button></li>' : '');
+    el.innerHTML = b.rows.slice(0, b.showAll ? 100 : lim).map(boardRow).join('') + (b.rows.length > lim && !b.showAll ? '<li class="pad"><button class="btn ghost wide" data-act="board-more">اعرض أول ' + Math.min(100, b.rows.length) + '</button></li>' : '');
     $('#b-total').textContent = b.total + ' طالب';
-    var visible = b.rows.slice(0, b.showAll ? 100 : 15).some(function (r) { return r.id === S.data.me.id; });
+    var visible = b.rows.slice(0, b.showAll ? 100 : lim).some(function (r) { return r.id === S.data.me.id; });
     $('#b-me').innerHTML = b.me && !visible ? '<ol class="rows pinned">' + boardRow(b.me) + '</ol>' : '';
   }
   function loadBoard() {
@@ -951,13 +952,16 @@
       case 'coop_pair': return '🧭 You and ' + name(e.who) + ' finished: ' + esc(d.step) + ' · +' + d.coins + ' 🪙';
       case 'feedback_fixed': return '🛠 Thanks to your beta feedback' + (d.text ? ' (<span dir="auto">"' + esc(d.text) + '"</span>)' : '') + ', we changed it!' + (d.reply ? ' <span dir="auto">' + esc(d.reply) + '</span>' : '');
       case 'feedback_planned': return '📝 Your beta feedback' + (d.text ? ' (<span dir="auto">"' + esc(d.text) + '"</span>)' : '') + ' is on our list.' + (d.reply ? ' <span dir="auto">' + esc(d.reply) + '</span>' : '');
+      case 'coop_call': return name(e.who) + ' needs help against the ' + esc(d.icon || '') + ' ' + esc(d.foe) + '! Answer the call on the caravan board ⚔';
+      case 'coop_support': return name(e.who) + ' answered your call and will fight the ' + esc(d.foe) + ' with you ⚔';
+      case 'coop_won': return name(e.who) + (d.won ? ' beat the ' + esc(d.foe) + ' with your help! +20 XP +15 🪙 🏆' : ' fought the ' + esc(d.foe) + ' with your help, but it got away. Maybe next time!');
       case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
       case 'reply': return name(e.who) + ' رد على رسالتك' + (d.voice ? ' برسالة صوتية' : d.sticker ? ' بـ ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', feedback_fixed: 'check', feedback_planned: 'pen' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];

@@ -41,7 +41,7 @@ final class Sawa_Tracker_World {
 		'practice' => array( 'practice', 1, 'Finish a skill-tree practice set' ),
 		'use'      => array( 'use', 3, 'Write or speak English 3 times' ),
 		'plan'     => array( 'plan', 3, 'Finish 3 steps of today\'s plan' ),
-		'answer'   => array( 'answer', 1, 'Answer a traveller\'s question on the caravan board' ),
+		'answer'   => array( 'answer', 1, 'Answer a call for help on the caravan board' ),
 	);
 	const DAILY_FIGHT  = array(
 		'monster' => array( 'monster', 3, 'Defeat 3 monsters' ),
@@ -55,7 +55,7 @@ final class Sawa_Tracker_World {
 		'perfect'  => array( 'perfect', 3, 'Have 3 perfect days' ),
 		'mastered' => array( 'mastered', 1, 'Master a skill point' ),
 		'share'    => array( 'share', 1, 'Share your Silk Road card in the Skool community' ),
-		'helped'   => array( 'helped', 2, 'Help 2 travellers (they tap “This helped”)' ),
+		'helped'   => array( 'helped', 2, 'Help 2 travellers win a battle' ),
 		'reply'    => array( 'reply', 25, 'Reply to 25 messages from other travellers in the chat' ),
 	);
 	/** Where the app takes the student to do a quest step. */
@@ -325,7 +325,7 @@ final class Sawa_Tracker_World {
 	 * choose, listen and choose, type the missing word, put the words in order. Everything is decided here. */
 
 	/** How many questions a battle has at most. */
-	const QUESTIONS = array( 'monster' => 8, 'boss' => 10, 'pboss' => 6, 'duel' => 7 );
+	const QUESTIONS = array( 'monster' => 8, 'boss' => 10, 'pboss' => 6, 'duel' => 7, 'support' => 4 );
 
 	/** Turns some questions into other types, so fights are not always "choose an answer". */
 	private static function vary( $qs ) {
@@ -395,6 +395,9 @@ final class Sawa_Tracker_World {
 		$me['noKo']   = 1 === $t;
 		$me['styles'] = Sawa_Tracker_Combat::my_styles( $uid );
 		$state = array( 'picks' => array(), 'combo' => 0, 'best' => 0, 'dealt' => 0, 'taken' => 0, 'right' => 0, 'power' => false, 'used' => array(), 'sw' => false, 'phase' => 1, 'done' => false );
+		if ( ! empty( $meta['support'] ) ) { // allies from a call for help
+			Sawa_Tracker_Combat::apply_support( $foe, $me, $state, $meta['support'] );
+		}
 		set_transient( 'sawa_tr_wb_' . $id, array( 'uid' => $uid, 'kind' => $kind, 'qs' => $qs, 'foe' => $foe, 'me' => $me, 'st' => $state, 'meta' => $meta, 'secs' => $secs, 't' => time() ), 20 * MINUTE_IN_SECONDS );
 		$skills = array();
 		foreach ( Sawa_Tracker_Hero::SKILLS as $sid => $s ) {
@@ -468,7 +471,7 @@ final class Sawa_Tracker_World {
 				return new WP_Error( 'boss', 'No boss tries left today. Train on monsters and come back tomorrow!', array( 'status' => 400 ) );
 			}
 			$qs  = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, self::QUESTIONS['boss'], array( 'level' => self::LEVELS[ $t ] ) );
-			$foe = array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => self::boss_hp( $t ), 'atk' => 12 + 3 * $t, 'boss' => true );
+			$foe = array( 'name' => $town[4][0], 'icon' => $town[4][1], 'hp' => self::boss_hp( $t ), 'atk' => 14 + 4 * $t, 'boss' => true );
 			$w['f']['boss'] = (int) $w['f']['boss'] + 1;
 		} else {
 			if ( self::stamina( $uid, $w )['left'] < 1 ) {
@@ -483,7 +486,8 @@ final class Sawa_Tracker_World {
 			return new WP_Error( 'battle', 'Battles are not ready yet.', array( 'status' => 503 ) );
 		}
 		self::save( $uid, $w );
-		return self::battle_start( $uid, $kind, $qs, $foe, array( 'town' => $t ) );
+		$support = class_exists( 'Sawa_Tracker_Coop' ) ? Sawa_Tracker_Coop::support_for( $uid, $foe['name'] ) : null; // a call for help was answered
+		return self::battle_start( $uid, $kind, $qs, $foe, array( 'town' => $t, 'support' => $support ) );
 	}
 
 	private static function battle_get( $r, $uid ) {
@@ -538,7 +542,7 @@ final class Sawa_Tracker_World {
 				$out['blocked'] = true;
 			} else {
 				$hit            = (int) round( $b['foe']['atk'] * ( 2 === $st['phase'] ? 1.5 : 1 ) * ( 1 - $b['me']['armor'] ) * ( empty( $b['me']['soft'] ) ? 1 : 0.75 ) );
-				$hit            = Sawa_Tracker_Combat::wrong( $b, $out, $hit, $uid );
+				$hit            = Sawa_Tracker_Combat::allies( $b, $out, Sawa_Tracker_Combat::wrong( $b, $out, $hit, $uid ) );
 				$b['me']['hp']  = max( empty( $b['me']['noKo'] ) ? 0 : 1, $b['me']['hp'] - $hit );
 				$st['taken']   += $hit;
 				$out['taken']   = $hit;
@@ -548,6 +552,7 @@ final class Sawa_Tracker_World {
 			$st['phase']   = 2; // the boss gets angry: it hits harder
 			$out['enrage'] = true;
 		}
+		Sawa_Tracker_Combat::ally_heal( $b, $out );
 		Sawa_Tracker_Combat::next( $b, $out ); // what the monster gets ready to do next
 		$st['done'] = $b['foe']['hp'] <= 0 || $b['me']['hp'] <= 0 || $i + 1 >= count( $b['qs'] );
 		set_transient( $key, $b, 20 * MINUTE_IN_SECONDS );
@@ -670,7 +675,13 @@ final class Sawa_Tracker_World {
 		$t     = (int) ( $b['meta']['town'] ?? self::at( $uid ) );
 		$bonus = self::party_near( $uid, $t ) ? 1.2 : 1;
 		$out['partyBonus'] = $bonus > 1;
-		if ( 'duel' === $b['kind'] ) {
+		if ( ! empty( $b['meta']['support']['call'] ) ) {
+			Sawa_Tracker_Coop::support_done( $uid, $b['meta']['support']['call'], $won );
+			$out['allies'] = count( $b['meta']['support']['allies'] );
+		}
+		if ( 'support' === $b['kind'] ) {
+			$out = Sawa_Tracker_Coop::after_support( $uid, $b, $right ) + $out;
+		} elseif ( 'duel' === $b['kind'] ) {
 			$out = Sawa_Tracker_Play::after_duel( $uid, $b, $won, $right ) + $out;
 		} elseif ( 'pboss' === $b['kind'] ) {
 			$out = Sawa_Tracker_Party::after_hit( $uid, $b, (int) $st['dealt'], $right ) + $out;

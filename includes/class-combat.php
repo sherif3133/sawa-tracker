@@ -93,6 +93,57 @@ final class Sawa_Tracker_Combat {
 		return in_array( $id, array_column( (array) ( $b['me']['styles'] ?? array() ), 'id' ), true );
 	}
 
+	/** What a helper gives, from their role and right answers (1–4). */
+	public static function help_text( $role, $p ) {
+		return array( 'guardian' => '🛡 a shield of ' . ( 10 * $p ) . ' health', 'healer' => '💚 ' . ( $p >= 3 ? 2 : 1 ) . ' heal' . ( $p >= 3 ? 's' : '' ) . ' when your health is low', 'mage' => '🔮 a fireball: ' . ( 12 * $p ) . ' damage at the start', 'trickster' => ( $p > 2 ? '❄ frost: the first 2 attacks miss' : '❄ frost: the first attack misses' ) )[ $role ] ?? '';
+	}
+
+	/** Allies from a call for help join the battle: shield, heals, a fireball at the start, frost. */
+	public static function apply_support( &$foe, &$me, &$st, $sup ) {
+		$me['allies'] = array();
+		foreach ( (array) ( $sup['allies'] ?? array() ) as $a ) {
+			$p = max( 1, min( 4, (int) $a['power'] ) );
+			if ( 'guardian' === $a['role'] ) {
+				$st['shield'] = (int) ( $st['shield'] ?? 0 ) + 10 * $p;
+			} elseif ( 'healer' === $a['role'] ) {
+				$st['heals'] = (int) ( $st['heals'] ?? 0 ) + ( $p >= 3 ? 2 : 1 );
+			} elseif ( 'mage' === $a['role'] ) {
+				$hit         = 12 * $p;
+				$foe['hp']   = max( 1, (int) $foe['hp'] - $hit );
+				$st['dealt'] = (int) $st['dealt'] + $hit;
+				$a['fire']   = $hit;
+			} elseif ( 'trickster' === $a['role'] ) {
+				$st['frost'] = (int) ( $st['frost'] ?? 0 ) + (int) ceil( $p / 2 );
+			}
+			$a['help']      = self::help_text( $a['role'], $p );
+			$me['allies'][] = $a;
+		}
+	}
+
+	/** A hit on the traveller, after the allies: frost makes it miss, the shield takes it, a healer heals. */
+	public static function allies( &$b, &$out, $hit ) {
+		if ( $hit <= 0 ) {
+			return $hit;
+		}
+		if ( ! empty( $b['st']['shield'] ) ) {
+			$took             = min( $hit, (int) $b['st']['shield'] );
+			$b['st']['shield'] -= $took;
+			$hit             -= $took;
+			$out['fx'][]      = array( 'k' => 'shield', 'n' => $took );
+		}
+		return $hit;
+	}
+
+	/** After a hit: a healer ally heals when health is low. */
+	public static function ally_heal( &$b, &$out ) {
+		if ( ! empty( $b['st']['heals'] ) && $b['me']['hp'] > 0 && $b['me']['hp'] < 0.4 * $b['me']['hpMax'] ) {
+			--$b['st']['heals'];
+			$n             = (int) round( 0.25 * $b['me']['hpMax'] );
+			$b['me']['hp'] = min( $b['me']['hpMax'], $b['me']['hp'] + $n );
+			$out['fx'][]   = array( 'k' => 'allyheal', 'n' => $n );
+		}
+	}
+
 	/** Before an answer counts: poison and fire burn. Changes $b, adds what happened to $out['fx']. */
 	public static function tick( &$b, &$out ) {
 		foreach ( array( 'poison' => 3, 'burn' => 4 ) as $k => $per ) {
@@ -144,6 +195,11 @@ final class Sawa_Tracker_Combat {
 	/** A wrong answer (or no answer): the hit, and what the monster's style does. */
 	public static function wrong( &$b, &$out, $hit, $uid ) {
 		$s = $b['foe']['style']['id'] ?? '';
+		if ( ! empty( $b['st']['frost'] ) ) { // an ally's frost: the whole attack misses
+			--$b['st']['frost'];
+			$out['fx'][] = array( 'k' => 'frost' );
+			return 0;
+		}
 		if ( ! empty( $b['st']['ice'] ) ) { // frozen: this attack misses
 			$b['st']['ice'] = 0;
 			$out['fx'][]    = array( 'k' => 'frozen' );
@@ -195,6 +251,6 @@ final class Sawa_Tracker_Combat {
 			$b['st']['charged'] = true;
 		}
 		$out['charged'] = ! empty( $b['st']['charged'] );
-		$out['status']  = array( 'poison' => (int) ( $b['st']['poison'] ?? 0 ), 'burn' => (int) ( $b['st']['burn'] ?? 0 ), 'rage' => (int) ( $b['st']['rage'] ?? 0 ) );
+		$out['status']  = array( 'poison' => (int) ( $b['st']['poison'] ?? 0 ), 'burn' => (int) ( $b['st']['burn'] ?? 0 ), 'rage' => (int) ( $b['st']['rage'] ?? 0 ), 'shield' => (int) ( $b['st']['shield'] ?? 0 ), 'frost' => (int) ( $b['st']['frost'] ?? 0 ), 'heals' => (int) ( $b['st']['heals'] ?? 0 ) );
 	}
 }

@@ -2,9 +2,11 @@
 /**
  * The Caravan: co-op on the Silk Road that works when students study at different times of day.
  *
- * - Help requests ("Ask the caravan"): tap a word, sentence or grammar point you don't understand and ask. Any
- *   other traveller can answer in English later (6+ words). The asker taps "This helped": the helper gets XP and
- *   coins, the asker gets a little too. Asks can go to the whole caravan or to one student (from their echo).
+ * - Calls for help: stuck on a boss or a monster? Call the caravan. Other travellers answer when they play: each one
+ *   fights a short support battle (4 questions of their own English), and their role turns their right answers
+ *   into help for your next fight against that foe: a Guardian's shield, a Healer's heals, a Mage's fireball, a
+ *   Trickster's frost. They stand next to you in the arena. When you win, your helpers get XP and coins too.
+ * - (Older: word questions answered in English. Still served, no longer shown in the game.)
  * - The caravanserai: one weekly project for the whole community. It needs three materials that come from
  *   different people: bricks (right battle answers), lanterns (review cards) and lessons (explanations marked
  *   helpful). Lessons only come from helping each other, so the project can't be finished alone.
@@ -36,11 +38,11 @@ final class Sawa_Tracker_Coop {
 	const MATERIALS = array(
 		array( 'bricks', '🧱', 'Bricks', 'right battle answers', 12, 150 ),
 		array( 'lanterns', '🏮', 'Lanterns', 'review cards', 15, 200 ),
-		array( 'lessons', '📜', 'Lessons', 'explanations marked helpful', 1, 6 ),
+		array( 'lessons', '⚔', 'Battles won together', 'calls for help that ended in a win', 1, 6 ),
 	);
 	/** Guide and newcomer steps: [key, text, reward coins]. */
 	const PAIR_STEPS = array(
-		array( 'ask', 'The newcomer asks the guide a question and it helps', 15 ),
+		array( 'ask', 'The guide helps the newcomer win a battle', 15 ),
 		array( 'days', 'Study on the same day 3 times', 20 ),
 		array( 'boss', 'The newcomer defeats their first town boss', 40 ),
 	);
@@ -58,6 +60,9 @@ final class Sawa_Tracker_Coop {
 			array( '/coop/helped', 'POST', 'helped' ),
 			array( '/coop/close', 'POST', 'close' ),
 			array( '/coop/guide', 'POST', 'guide' ),
+			array( '/coop/call', 'POST', 'call' ),
+			array( '/coop/call/cancel', 'POST', 'call_cancel' ),
+			array( '/coop/help', 'POST', 'help' ),
 		);
 		foreach ( $routes as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
@@ -265,6 +270,198 @@ final class Sawa_Tracker_Coop {
 			}
 		}
 		return self::state( $uid );
+	}
+
+	/* ------------------------------------------------------------------ calls for help (battle support by role) */
+
+	const CALLS_OPT  = 'sawa_tr_coop_calls';
+	const CALL_HOURS = 48;
+	const HELPERS    = 3;
+	const HELPS_DAY  = 3;
+
+	private static function calls() {
+		$c = get_option( self::CALLS_OPT, array() );
+		return array_values( array_filter( is_array( $c ) ? $c : array(), function ( $x ) { return time() < (int) $x['ends'] + DAY_IN_SECONDS; } ) );
+	}
+
+	private static function save_calls( $c ) {
+		update_option( self::CALLS_OPT, array_slice( array_values( $c ), -100 ), false );
+	}
+
+	private static function my_call( $uid ) {
+		foreach ( array_reverse( self::calls() ) as $c ) {
+			if ( (int) $c['uid'] === $uid && empty( $c['used'] ) && time() < (int) $c['ends'] ) {
+				return $c;
+			}
+		}
+		return null;
+	}
+
+	private static function call_out( $c, $uid ) {
+		$p = Sawa_Tracker_Game::person( (int) $c['uid'] );
+		return array(
+			'id'      => $c['id'],
+			'by'      => self::first( $c['uid'] ),
+			'byId'    => (int) $c['uid'],
+			'avatar'  => $p['avatar'] ?? '',
+			'role'    => Sawa_Tracker_Combat::role( (int) $c['uid'] ),
+			'foe'     => $c['foe'],
+			'msg'     => $c['msg'],
+			'helpers' => array_map( function ( $h ) { return array( 'name' => self::first( $h['uid'] ), 'role' => $h['role'], 'power' => (int) $h['power'] ); }, $c['helpers'] ),
+			'full'    => count( $c['helpers'] ) >= self::HELPERS,
+			'helped'  => (bool) array_filter( $c['helpers'], function ( $h ) use ( $uid ) { return (int) $h['uid'] === $uid; } ),
+			'mine'    => (int) $c['uid'] === $uid,
+			'mate'    => Sawa_Tracker_Social::clan_of( $uid ) && Sawa_Tracker_Social::clan_of( $uid ) === Sawa_Tracker_Social::clan_of( (int) $c['uid'] ),
+			'used'    => ! empty( $c['used'] ),
+			'won'     => ! empty( $c['won'] ),
+			'at'      => (int) $c['at'],
+			'ends'    => (int) $c['ends'],
+		);
+	}
+
+	/** Call the caravan against the town boss (kind boss) or a monster of this town (kind monster, m = 0–2). */
+	public static function call( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$kind = 'boss' === $r->get_param( 'kind' ) ? 'boss' : 'monster';
+		$w    = Sawa_Tracker_World::get( $uid );
+		$t    = Sawa_Tracker_World::TOWNS[ $w['at'] ];
+		if ( self::my_call( $uid ) ) {
+			return new WP_Error( 'coop', 'You already have a call for help open. Fight that battle first — or cancel it.', array( 'status' => 400 ) );
+		}
+		if ( 'boss' === $kind && in_array( (int) $w['at'], $w['beaten'], true ) ) {
+			return new WP_Error( 'coop', 'You already beat this boss!', array( 'status' => 400 ) );
+		}
+		$m    = $t[3][ min( 2, max( 0, (int) $r->get_param( 'm' ) ) ) ];
+		$foe  = 'boss' === $kind ? array( 'name' => $t[4][0], 'icon' => $t[4][1], 'kind' => 'boss' ) : array( 'name' => $m[0], 'icon' => $m[1], 'kind' => 'monster' );
+		$foe['town'] = $t[0];
+		$msg  = mb_substr( trim( Sawa_Tracker_Social::filter_words( sanitize_text_field( (string) $r->get_param( 'msg' ) ) ) ), 0, 120 );
+		if ( '' !== $msg && ! self::english( $msg ) ) {
+			$msg = '';
+		}
+		$list   = self::calls();
+		$c      = array( 'id' => wp_generate_password( 10, false ), 'uid' => $uid, 'foe' => $foe, 'msg' => $msg, 'helpers' => array(), 'at' => time(), 'ends' => time() + self::CALL_HOURS * HOUR_IN_SECONDS );
+		$list[] = $c;
+		self::save_calls( $list );
+		// clanmates and a guide hear about it first
+		$tell = Sawa_Tracker_Social::clan_of( $uid ) ? Sawa_Tracker_Social::clan_members( Sawa_Tracker_Social::clan_of( $uid ) ) : array();
+		$pair = self::pair( $uid );
+		if ( $pair ) {
+			$tell[] = (int) $pair['guide'];
+		}
+		foreach ( array_unique( array_map( function ( $x ) { return (int) ( is_array( $x ) ? ( $x['id'] ?? 0 ) : $x ); }, $tell ) ) as $to ) {
+			if ( $to && $to !== $uid ) {
+				Sawa_Tracker_Game::event( $uid, 'coop_call', $to, array( 'foe' => $foe['name'], 'icon' => $foe['icon'] ) );
+			}
+		}
+		return self::state( $uid );
+	}
+
+	public static function call_cancel() {
+		$uid  = self::uid();
+		$list = self::calls();
+		foreach ( $list as $i => $c ) {
+			if ( (int) $c['uid'] === $uid && empty( $c['used'] ) ) {
+				$list[ $i ]['used'] = 1;
+			}
+		}
+		self::save_calls( $list );
+		return self::state( $uid );
+	}
+
+	/** Answer a call: a 4-question support battle of your own English. Right answers become your help. */
+	public static function help( WP_REST_Request $r ) {
+		$uid = self::uid();
+		$id  = (string) $r->get_param( 'id' );
+		$c   = null;
+		foreach ( self::calls() as $x ) {
+			if ( $x['id'] === $id ) {
+				$c = $x;
+			}
+		}
+		if ( ! $c || ! empty( $c['used'] ) || time() > (int) $c['ends'] ) {
+			return new WP_Error( 'coop', 'This call is over. Thank you anyway!', array( 'status' => 400 ) );
+		}
+		if ( (int) $c['uid'] === $uid ) {
+			return new WP_Error( 'coop', 'This is your own call. Others will answer it.', array( 'status' => 400 ) );
+		}
+		$out = self::call_out( $c, $uid );
+		if ( $out['helped'] || $out['full'] ) {
+			return new WP_Error( 'coop', $out['helped'] ? 'You already helped here.' : 'This call has 3 helpers already.', array( 'status' => 400 ) );
+		}
+		if ( self::daily( $uid, 'helps' ) >= self::HELPS_DAY ) {
+			return new WP_Error( 'coop', 'You helped 3 times today. Thank you! Come back tomorrow.', array( 'status' => 400 ) );
+		}
+		$qs = apply_filters( 'sawa_tracker_battle_questions', array(), $uid, 4, array( 'own' => true, 'weak' => true ) );
+		if ( count( $qs ) < 4 ) {
+			return new WP_Error( 'battle', 'Battles are not ready yet.', array( 'status' => 503 ) );
+		}
+		self::daily( $uid, 'helps', 1 );
+		return Sawa_Tracker_World::battle_start( $uid, 'support', $qs, array( 'name' => $c['foe']['name'], 'icon' => $c['foe']['icon'], 'hp' => 999, 'atk' => 6, 'boss' => 'boss' === $c['foe']['kind'], 'for' => self::first( $c['uid'] ) ), array( 'call' => $c['id'], 'for' => self::first( $c['uid'] ) ) );
+	}
+
+	/** After a support battle: the helper's role and right answers are saved on the call. */
+	public static function after_support( $uid, $b, $right ) {
+		$list = self::calls();
+		$role = Sawa_Tracker_Combat::role( $uid );
+		$out  = array( 'support' => true, 'role' => $role, 'power' => $right, 'for' => $b['meta']['for'] ?? '' );
+		foreach ( $list as $i => $c ) {
+			if ( $c['id'] !== ( $b['meta']['call'] ?? '' ) || ! empty( $c['used'] ) || count( $c['helpers'] ) >= self::HELPERS ) {
+				continue;
+			}
+			if ( array_filter( $c['helpers'], function ( $h ) use ( $uid ) { return (int) $h['uid'] === $uid; } ) ) {
+				break;
+			}
+			$list[ $i ]['helpers'][] = array( 'uid' => $uid, 'role' => $role, 'power' => max( 1, (int) $right ), 'at' => time() );
+			self::save_calls( $list );
+			$out['xp']    = Sawa_Tracker_XP::award( $uid, 10, 'support', false );
+			$out['coins'] = Sawa_Tracker_Raids::add_coins( $uid, 5 );
+			Sawa_Tracker_World::progress( $uid, 'answer' );
+			Sawa_Tracker_Game::event( $uid, 'coop_support', (int) $c['uid'], array( 'foe' => $c['foe']['name'], 'role' => $role ) );
+			$out['help'] = Sawa_Tracker_Combat::help_text( $role, max( 1, (int) $right ) );
+			break;
+		}
+		return $out;
+	}
+
+	/** The support waiting for this student's next fight against this foe (used once). */
+	public static function support_for( $uid, $foe_name ) {
+		$list = self::calls();
+		foreach ( $list as $i => $c ) {
+			if ( (int) $c['uid'] === $uid && empty( $c['used'] ) && $c['foe']['name'] === $foe_name && $c['helpers'] && time() < (int) $c['ends'] ) {
+				$list[ $i ]['used'] = 1;
+				self::save_calls( $list );
+				$allies = array();
+				foreach ( $c['helpers'] as $h ) {
+					$allies[] = array( 'uid' => (int) $h['uid'], 'name' => self::first( $h['uid'] ), 'role' => $h['role'], 'power' => (int) $h['power'], 'avatar' => Sawa_Tracker_Play::avatar( (int) $h['uid'] ) );
+				}
+				return array( 'call' => $c['id'], 'allies' => $allies );
+			}
+		}
+		return null;
+	}
+
+	/** After the student's battle with support: helpers share the win. */
+	public static function support_done( $uid, $call_id, $won ) {
+		$list = self::calls();
+		foreach ( $list as $i => $c ) {
+			if ( $c['id'] !== $call_id ) {
+				continue;
+			}
+			$list[ $i ]['won'] = $won ? 1 : 0;
+			self::save_calls( $list );
+			foreach ( $c['helpers'] as $h ) {
+				$hid = (int) $h['uid'];
+				if ( $won ) {
+					Sawa_Tracker_XP::award( $hid, 20, 'support_win', false );
+					Sawa_Tracker_Raids::add_coins( $hid, 15 );
+					self::bump( $hid, 'lessons', 1 );
+					self::bump( $hid, 'helpedAll', 1, false );
+					Sawa_Tracker_World::progress( $hid, 'helped' );
+					self::pair_ask( $uid, $hid );
+				}
+				Sawa_Tracker_Game::event( $uid, 'coop_won', $hid, array( 'foe' => $c['foe']['name'], 'won' => $won ) );
+			}
+		}
 	}
 
 	/* ------------------------------------------------------------------ the caravanserai (weekly) */
@@ -548,11 +745,30 @@ final class Sawa_Tracker_Coop {
 			}
 		}
 		$c    = self::mine_wk( $uid );
+		$calls = array();
+		foreach ( array_reverse( self::calls() ) as $c ) {
+			if ( (int) $c['uid'] !== $uid && empty( $c['used'] ) && time() < (int) $c['ends'] && count( $calls ) < 12 ) {
+				$calls[] = self::call_out( $c, $uid );
+			}
+		}
+		usort( $calls, function ( $a, $b ) { return array( $a['helped'] || $a['full'], ! $a['mate'], -$a['at'] ) <=> array( $b['helped'] || $b['full'], ! $b['mate'], -$b['at'] ); } );
+		$mine_call = self::my_call( $uid );
+		$last      = null;
+		foreach ( array_reverse( self::calls() ) as $c ) {
+			if ( (int) $c['uid'] === $uid ) {
+				$last = $c;
+				break;
+			}
+		}
 		return array(
+			'calls'   => $calls,
+			'myCall'  => $mine_call ? self::call_out( $mine_call, $uid ) : ( $last && time() - (int) $last['at'] < DAY_IN_SECONDS ? self::call_out( $last, $uid ) : null ),
+			'helpsLeft' => max( 0, self::HELPS_DAY - self::daily( $uid, 'helps' ) ),
+			'role'    => Sawa_Tracker_Combat::role( $uid ),
 			'help'    => $help,
 			'mine'    => $mine,
-			'badge'   => $new + count( array_filter( $help, function ( $a ) { return $a['toMe'] && ! $a['answered']; } ) ),
-			'todo'    => $todo,
+			'badge'   => count( array_filter( $calls, function ( $c ) { return $c['mate'] && ! $c['helped'] && ! $c['full']; } ) ) + ( $mine_call && $mine_call['helpers'] ? 1 : 0 ),
+			'todo'    => count( array_filter( $calls, function ( $c ) { return ! $c['helped'] && ! $c['full']; } ) ),
 			'newAnswers' => $new,
 			'project' => self::project(),
 			'myWeek'  => array( 'bricks' => (int) ( $c['bricks'] ?? 0 ), 'lanterns' => (int) ( $c['lanterns'] ?? 0 ), 'lessons' => (int) ( $c['lessons'] ?? 0 ) ),

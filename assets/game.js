@@ -546,7 +546,8 @@
         dialog.who = 'boss';
         if (!b.ready) return dialog(b.name, 'The ' + b.name + ' looks down at you. You are not ready. (Finish Elder Wen\'s tasks first.)', [], b.icon);
         if (!b.tries) return dialog(b.name, 'The ' + b.name + ' is resting. Come back tomorrow.', [], b.icon);
-        dialog(b.name, 'The ' + b.name + ' rises! Up to ' + (b.questions || 10) + ' questions at ' + w.town.level + ' level: bring its health to 0 before they run out. It gets angry at half health. ' + b.tries + (b.tries === 1 ? ' try' : ' tries') + ' left today.', [{ label: 'Fight!', primary: true, run: function () { S.frozen = true; G.battle('/world/fight', { kind: 'boss' }, S.boss); } }], b.icon);
+        var cs = CARAVAN.s, mc = cs && cs.myCall && !cs.myCall.used && cs.myCall.foe.name === b.name ? cs.myCall : null;
+        dialog(b.name, (mc && mc.helpers.length ? '⚔ ' + mc.helpers.length + (mc.helpers.length > 1 ? ' allies' : ' ally') + ' will fight with you! ' : '') + 'The ' + b.name + ' rises! Up to ' + (b.questions || 10) + ' questions at ' + w.town.level + ' level: bring its health to 0 before they run out. It gets angry at half health. ' + b.tries + (b.tries === 1 ? ' try' : ' tries') + ' left today.', [{ label: 'Fight!', primary: true, run: function () { S.frozen = true; G.battle('/world/fight', { kind: 'boss' }, S.boss); } }].concat(mc ? [] : [{ label: '📣 Call for help', run: function () { CARAVAN.call('boss', 0, b.name); } }]), b.icon);
       },
       afterBattle: function (r) {
         var S = this, now = S.now(); S.frozen = false; S.cool = now + 6000; // the scene clock stood still during the battle: use the game's clock
@@ -600,7 +601,6 @@
         H.api('/play/profile', { query: { user: p.id } }).then(function (pr) {
           var job = { thief: '🗡 Thief', hunter: '🏹 Hunter', trader: '🐪 Trader' }[pr.job] || 'Traveller', btns = [];
           btns.push({ label: '👋 Wave', run: function () { G.emote('wave'); } });
-          btns.push({ label: '🙋 Ask ' + pr.name.split(' ')[0] + ' for help', run: function () { CARAVAN.askTo(p.id, pr.name.split(' ')[0]); } });
           if (pr.duelsLeft > 0) btns.push({ label: '⚔ Duel their shadow', primary: true, run: function () { S.frozen = true; G.battle('/play/duel', { user: p.id }, null); } });
           if (H.stage() >= 5 && !pr.party) btns.push({ label: '+ Invite to party', run: function () { H.api('/party/invite', { method: 'POST', body: { user: p.id } }).then(function () { say('Invitation sent to ' + pr.name.split(' ')[0]); }, function (x) { say(x.message); }); } });
           var my = H.world().job;
@@ -667,7 +667,8 @@
       var f2 = frameCanvas(sheet, size, size, size), k = 0;
       A.anim = setInterval(function () { k = 1 - k; foe.getContext('2d').clearRect(0, 0, size, size); foe.getContext('2d').drawImage(k ? f2 : frameCanvas(sheet, 0, size, size), 0, 0); }, 420);
     }
-    A.hero = hero; A.foe = foe;
+    A.hero = hero; A.foe = foe; A.allies = [];
+    ((b.me && b.me.allies) || []).forEach(function (al, k) { var c = frameCanvas(drawChar(al.avatar || { look: {} }), 2 * 3 * 16, 16, 24); c.className = 'sg-ally a' + k; c.title = al.name; A.el.appendChild(c); A.allies.push(c); });
     A.el.appendChild(el('div', 'sg-ashadow h')); A.el.appendChild(el('div', 'sg-ashadow f'));
     A.el.appendChild(hero); A.el.appendChild(foe);
     ROOT.insertBefore(A.el, ROOT.querySelector('.sg-top'));
@@ -717,6 +718,7 @@
         closeDialog(); LENS.close();
         world.scene.pause(); $('.sg-labels').style.visibility = 'hidden'; MUSIC.battle(true); var arena = GAME.arena = new Arena(b); GAME.battleUI(b, arena);
         var kind = mobKind(b.foe); SFX.growl(b.foe.name);
+        ((b.me && b.me.allies) || []).forEach(function (al, k) { setTimeout(function () { var A = arena; if (!A.el.isConnected) return; A.pop(A.allies[k] || A.hero, al.name + ': ' + al.help, 'say'); if (al.fire) { A.pop(A.foe, '🔥 -' + al.fire, 'dmg'); SFX.power(); } else SFX.sparkle(); }, 1400 + k * 1100); });
         setTimeout(function () { var lines = (b.foe.shadow ? TAUNTS.intro.shadow : b.foe.boss || b.kind === 'pboss' ? TAUNTS.intro.boss : TAUNTS.intro[kind] || TAUNTS.intro.beast).filter(function (x) { return x !== GAME.lastTaunt; }); arena.taunt(pickOne(lines)); SFX.laugh(kind); }, 500);
       }, function (x) { world.frozen = false; world.cool = world.now() + 2500; say(x.message, 4500); });
     },
@@ -727,7 +729,7 @@
       function bars() {
         return '<div class="sg-duo"><div class="sg-side"><b>' + esc(H.me().name.split(' ')[0]) + ' <small>Lv ' + me.level + '</small></b><div class="sg-hpb me"><i style="width:' + Math.max(0, me.hp / me.hpMax * 100) + '%"></i><span>❤ ' + me.hp + '/' + me.hpMax + '</span></div><div class="sg-mpb"><i style="width:' + Math.max(0, mana / me.manaMax * 100) + '%"></i><span>💧 ' + mana + '</span></div></div>'
           + '<div class="sg-combo' + (combo >= 3 ? ' hot' : '') + '">' + (combo >= 2 ? '×' + combo + '<small>combo</small>' : '') + '</div>'
-          + '<div class="sg-side foe"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + (phase === 2 ? ' <small class="rage">ENRAGED</small>' : '') + '</b><div class="sg-hpb"><i style="width:' + Math.max(0, foe.hp / foe.max * 100) + '%"></i><span>❤ ' + foe.hp + '/' + foe.max + '</span></div></div></div>'
+          + '<div class="sg-side foe"><b>' + esc(b.foe.icon) + ' ' + esc(b.foe.name) + (phase === 2 ? ' <small class="rage">ENRAGED</small>' : '') + '</b>' + (b.kind === 'support' ? '<small>🤝 For ' + esc(b.foe.for || 'a traveller') + ': every right answer helps</small>' : '<div class="sg-hpb"><i style="width:' + Math.max(0, foe.hp / foe.max * 100) + '%"></i><span>❤ ' + foe.hp + '/' + foe.max + '</span></div>') + '</div></div>'
           + '<div class="sg-styles"><span>' + (me.styles || []).map(function (s) { return '<i title="' + esc(s.text) + '">' + s.icon + ' ' + esc(s.name) + '</i>'; }).join('') + (stat.poison ? '<i class="bad">☠ Poison ' + stat.poison + '</i>' : '') + (stat.burn ? '<i class="bad">🔥 Burning ' + stat.burn + '</i>' : '') + (stat.ice ? '<i class="good">❄ Foe frozen</i>' : '') + '</span>'
           + (b.foe.style ? '<span class="foe"><i title="' + esc(b.foe.style.text) + '">' + b.foe.style.icon + ' ' + esc(b.foe.style.name) + '</i>' + (stat.rage ? '<i class="bad">🐾 Angry ×' + stat.rage + '</i>' : '') + (stat.charged ? '<i class="bad blink">⚡ Charging!</i>' : '') + '</span>' : '') + '</div>';
       }
@@ -775,7 +777,7 @@
           H.api('/world/flee', { method: 'POST', body: { battle: b.battle } }).then(function (r) { if (r.world) H.setWorld(r.world); scene.taunt(pickOne(TAUNTS.flee)); SFX.laugh(kind); setTimeout(function () { close({ kind: b.kind, fled: true, won: false }); say(r.refund ? 'You left the battle. The fight was given back.' : 'You left the battle. Take your time!', 4000); }, 900); }, function () { close({ kind: b.kind, fled: true, won: false }); });
         };
       }
-      function fxText(f) { return { poison: '☠ -' + f.n, burn: '🔥 -' + f.n, poisoned: '☠ Poisoned!', burning: '🔥 On fire!', stole: '🫳 -' + f.n + ' 💧', spooked: '😱 Spooked!', smash: '💥 SMASH ×2', stagger: '💫 Guard broken!', swoop: '🪶 Too slow: half damage', riddle: '❓ It healed +' + f.n, mend: '💚 +' + f.n, spell: '🔮 Spell!', freeze: '❄ Frozen!', frozen: '❄ Its attack missed!', frenzy: '🐾 Angrier!' }[f.k] || ''; }
+      function fxText(f) { return { frost: '❄ Frost: it missed!', shield: '🛡 Shield took ' + f.n, allyheal: '💚 Ally heals +' + f.n, poison: '☠ -' + f.n, burn: '🔥 -' + f.n, poisoned: '☠ Poisoned!', burning: '🔥 On fire!', stole: '🫳 -' + f.n + ' 💧', spooked: '😱 Spooked!', smash: '💥 SMASH ×2', stagger: '💫 Guard broken!', swoop: '🪶 Too slow: half damage', riddle: '❓ It healed +' + f.n, mend: '💚 +' + f.n, spell: '🔮 Spell!', freeze: '❄ Frozen!', frozen: '❄ Its attack missed!', frenzy: '🐾 Angrier!' }[f.k] || ''; }
       function bindSkills() {
         box.querySelectorAll('[data-sk]').forEach(function (s) {
           s.onclick = function () {
@@ -799,7 +801,7 @@
           if (!r.correct) box.querySelectorAll('[data-k]').forEach(function (x) { if (x.textContent.slice(1) === r.right) x.classList.add('ok'); });
           foe.hp = r.foeHp; me.hp = r.hp; combo = r.combo; phase = r.phase; if (r.mana != null) mana = r.mana;
           stat = Object.assign({}, r.status || {}, { charged: r.charged, ice: (r.fx || []).some(function (f) { return f.k === 'freeze'; }) }); spooked = !!r.spooked;
-          (r.fx || []).forEach(function (f, k) { var t = fxText(f); if (t) setTimeout(function () { scene.pop(/^(mend|poison|burn|poisoned|burning|stole|spooked|smash|frozen)$/.test(f.k) ? scene.hero : scene.foe, t, /^(mend|freeze|frozen|stagger|spell)$/.test(f.k) ? 'heal' : 'miss'); }, 500 + k * 380); });
+          (r.fx || []).forEach(function (f, k) { var t = fxText(f); if (t) setTimeout(function () { scene.pop(/^(mend|poison|burn|poisoned|burning|stole|spooked|smash|frozen|frost|shield|allyheal)$/.test(f.k) ? scene.hero : scene.foe, t, /^(mend|freeze|frozen|stagger|spell|frost|shield|allyheal)$/.test(f.k) ? 'heal' : 'miss'); }, 500 + k * 380); });
           var taunt = !r.correct ? (ans.choice === -1 && !ans.text ? TAUNTS.slow : TAUNTS.miss) : r.combo >= 3 ? TAUNTS.combo : TAUNTS.hit;
           if (!r.correct || r.combo >= 3 || Math.random() < 0.45) setTimeout(function () { scene.taunt(pickOne(taunt)); if (r.correct) SFX.scream(kind, true); else SFX.laugh(kind); }, r.correct ? 700 : 520);
           if (!lowSaid && foe.hp > 0 && foe.hp < foe.max * 0.3) { lowSaid = true; setTimeout(function () { scene.taunt(pickOne(TAUNTS.low)); SFX.scream(kind); }, 1500); }
@@ -823,10 +825,13 @@
           if (r.ko) { SFX.sad(); SFX.laugh(kind); scene.taunt(pickOne(TAUNTS.win)); } else if (r.won) { SFX.scream(kind); scene.taunt(pickOne(r.foe.boss ? BOSS_LINES.fall : TAUNTS.fall)); setTimeout(r.foe.boss ? SFX.fanfare : SFX.coin, 500); } else { SFX.sad(); SFX.laugh(kind); scene.taunt(pickOne(TAUNTS.escape)); }
           var leveled = r.hero && r.hero.level > me.level;
           var pb = r.kind === 'pboss', duel = r.kind === 'duel';
-          var title = r.ko ? '💫 You were knocked out' : pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.attack + ' damage to the party boss') : duel ? (r.won ? '🏆 You beat the shadow!' : '💨 The shadow was stronger') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' got away';
+          var sup = r.kind === 'support';
+          var title = sup ? '🤝 You fought for ' + esc(r.for || 'a traveller') + '!' : r.ko ? '💫 You were knocked out' : pb ? (r.won ? '🏆 The party boss is down!' : '💥 ' + r.attack + ' damage to the party boss') : duel ? (r.won ? '🏆 You beat the shadow!' : '💨 The shadow was stronger') : r.won ? (r.foe.boss ? '🏆 ' + esc(r.foe.name) + ' defeated!' : '⚔ Victory!') : '💨 The ' + esc(r.foe.name) + ' got away';
           var gains = (r.coins ? '+' + r.coins + ' 🪙 ' : '') + (r.xp ? '+' + r.xp + ' XP ' : '') + (r.elixirs ? '+' + r.elixirs + ' ⚗' : '');
           var hero = r.hero || {};
           box.innerHTML = '<div class="sg-bp sg-res"><h3>' + title + '</h3><p>' + r.right + ' of ' + r.total + ' right · ' + r.attack + ' damage dealt' + (r.best >= 3 ? ' · best combo ×' + r.best : '') + '</p>'
+            + (sup ? '<p>' + (r.help ? 'You give them <b>' + esc(r.help) + '</b> for their next fight.' : 'Thank you!') + ' You get more XP and coins when they win.</p>' : '')
+            + (r.allies ? '<p class="small">⚔ ' + r.allies + (r.allies > 1 ? ' allies' : ' ally') + ' fought with you' + (r.won ? ' — they share the win!' : '.') + '</p>' : '')
             + (r.ko ? '<p>You wake up at the inn. Review some cards there to heal faster.</p>' : '')
             + (gains ? '<p class="sg-gain">' + gains + (r.partyBonus ? '<small> · party bonus +20%</small>' : '') + '</p>' : '')
             + (duel && r.rating != null ? '<p>Arena: ' + (r.rating >= 0 ? '+' : '') + r.rating + ' · rank <b>' + esc(r.rank) + '</b></p>' : '')
@@ -834,8 +839,9 @@
             + (r.title ? '<p>🏅 New title: <b>' + esc(r.title) + '</b>' + (r.next ? '<br>The road to <b>' + esc(r.next) + '</b> is open!' : '') + '</p>' : '')
             + (function () { var miss = (r.review || []).filter(function (x) { return !x.ok; }).slice(0, 4); return miss.length ? '<div class="sg-miss"><small>Learn from it:</small>' + miss.map(function (x) { return '<p>✗ ' + wrapWords(x.q, null, true) + ' → <b>' + wrapWords(x.right) + '</b>' + (x.why ? '<br><small>' + esc(x.why) + '</small>' : '') + '</p>'; }).join('') + '</div>' : ''; })()
             + (r.missedWords ? '<p class="small">📇 ' + r.missedWords + ' word' + (r.missedWords > 1 ? 's' : '') + ' you missed will come back in your review cards today.</p>' : '')
-            + ((r.title || leveled) ? '<button data-share="1">📣 Share it</button> ' : '') + '<button class="pri" data-x="1">Continue</button></div>';
+            + ((r.title || leveled) ? '<button data-share="1">📣 Share it</button> ' : '') + (!r.won && !sup && (r.kind === 'boss' || r.kind === 'monster') && !(CARAVAN.s && CARAVAN.s.myCall && !CARAVAN.s.myCall.used) ? '<button data-callhelp="1">📣 Call for help</button> ' : '') + '<button class="pri" data-x="1">Continue</button></div>';
           box.querySelector('[data-x]').onclick = function () { close(r); };
+          var ch = box.querySelector('[data-callhelp]'); if (ch) ch.onclick = function () { ch.disabled = true; var w = H.world(), mi = w.town.monsters.map(function (m) { return m.name; }).indexOf(r.foe.name); CARAVAN.call(r.kind === 'boss' ? 'boss' : 'monster', Math.max(0, mi), r.foe.name); };
           var sb = box.querySelector('[data-share]'); if (sb) sb.onclick = function () { close(r); SHARE.show(r.title ? 'I became ' + r.title : 'I reached level ' + r.hero.level); };
           G.keyPick = function () { close(r); };
         }, function (x) { say(x.message); close(null); });
@@ -908,10 +914,10 @@
   };
   /** Silk Road roles: [id, icon, name, in battle, when helping others]. The server has the same list (Sawa_Tracker_Combat::ROLES). */
   var ROLES = [
-    ['guardian', '🛡', 'Guardian', 'a tank: you take 25% less damage', 'a shield, so your ally takes no damage from the first hits'],
-    ['healer', '💚', 'Healer', 'every right answer heals you, and cleans off poison and fire', 'heals when your ally\'s health is low'],
-    ['mage', '🔮', 'Mage', 'typing and sentence questions hit 40% harder', 'a fireball when your ally\'s battle starts'],
-    ['trickster', '❄', 'Trickster', '3 right answers in a row freeze the monster: its next attack misses', 'the monster\'s first attacks miss']
+    ['guardian', '🛡', 'Guardian', 'a tank: you take 25% less damage', 'a shield that takes the first hits'],
+    ['healer', '💚', 'Healer', 'every right answer heals you, and cleans off poison and fire', 'heals when their health is low'],
+    ['mage', '🔮', 'Mage', 'typing and sentence questions hit 40% harder', 'a fireball at the start of the fight'],
+    ['trickster', '❄', 'Trickster', '3 right answers in a row freeze the monster: its next attack misses', 'frost, so the monster\'s first attacks miss']
   ];
   var EMO_LIST = { wave: '👋', cheer: '🎉', clap: '👏', heart: '❤️', laugh: '😂', bow: '🙇' };
 
@@ -1378,7 +1384,11 @@
   REV.show = function () {
     if (!H.lens) return H.go('review');
     var b = panel('sg-revp', '🃏 Review cards', '<p class="sg-wait">Loading your cards…</p>');
-    Promise.all([H.lens.api('review'), H.lens.lex()]).then(function (r) { REV.q = r[0].cards; REV.done = 0; REV.stats = r[0].stats; REV.card(); }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
+    Promise.all([H.lens.api('review'), H.lens.lex()]).then(function (r) {
+      REV.q = r[0].cards; REV.done = 0; REV.stats = r[0].stats || {}; REV.change = REV.stats.level && REV.stats.level.change || '';
+      if (REV.change === 'up') say('🎉 Card level up! You get more new cards a day now.', 5000);
+      REV.card();
+    }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
   REV.front = function (c) {
     if (c.type === 'word') return '<small>Word · what does it mean?</small><p class="sg-cw">' + esc(c.lemma) + '</p>' + (c.text ? '<p class="sg-cs">“' + wrapWords(c.text) + '”</p>' : '') + (c.title ? '<small>from ' + esc(c.title) + '</small>' : '');
@@ -1390,14 +1400,24 @@
     if (c.type === 'mistake') return '<p class="sg-cs ok">✓ ' + wrapWords(c.fixed) + '</p>' + (c.why ? '<p class="en">' + esc(c.why) + '</p>' : '') + (c.why_ar ? '<p class="ar" dir="rtl">' + esc(c.why_ar) + '</p>' : '');
     return c.ar ? '<p class="ar" dir="rtl">' + esc(c.ar) + '</p>' : '<button data-r="ar">Show the Arabic translation</button><p class="ar" dir="rtl" data-r="arout"></p>';
   };
+  /** Card level and memory (FSRS on the Sawa Lens side): level dots, new cards a day, % remembered this week, catch-up mode. */
+  REV.head = function () {
+    var s = REV.stats || {}, L = s.level; if (!L || typeof L !== 'object') return '';
+    var dots = ''; for (var i = 1; i <= (L.levels || L.level); i++) dots += '<i' + (i <= L.level ? ' class="on"' : '') + '></i>';
+    return '<div class="sg-rvl"><div class="sg-rvl1"><b>Card level ' + L.level + '</b><span class="sg-dots" aria-hidden="true">' + dots + '</span><span>' + L.newPerDay + ' new card' + (L.newPerDay === 1 ? '' : 's') + ' a day</span></div>'
+      + (s.retention != null ? '<small>🧠 ' + s.retention + '% remembered this week</small>' : '<small>🧠 Review a few days to see how much you remember</small>')
+      + (L.catchup ? '<p class="sg-catch">⏳ Catch-up time: finish your reviews, then new cards come back.</p>' : '')
+      + (REV.change === 'up' ? '<p class="sg-lvch up">🎉 Level up! Now ' + L.newPerDay + ' new cards a day.</p>' : REV.change === 'down' ? '<p class="sg-lvch down">Level ' + L.level + ' for now: fewer new cards (' + L.newPerDay + ' a day), so reviews stay easy to finish. Keep going and it comes back up.</p>' : '')
+      + '</div>';
+  };
   REV.card = function () {
     var b = $('.sg-revp .sg-pb'); if (!b) return;
     var c = REV.q[0];
     if (!c) {
-      b.innerHTML = '<div class="sg-card"><p class="sg-cw">' + (REV.done ? '✓ ' + REV.done + ' card' + (REV.done > 1 ? 's' : '') + ' done' : 'No cards due right now') + '</p><p class="en">' + (REV.done ? 'Well done, traveller. Your plan step counts, and the words you review are the ones monsters attack with.' : 'Save new words — tap any word in the game and press “+ Learning”.') + '</p><div class="sg-opts"><button class="pri" data-p="x">Back to the road</button></div></div>';
+      b.innerHTML = REV.head() + '<div class="sg-card"><p class="sg-cw">' + (REV.done ? '✓ ' + REV.done + ' card' + (REV.done > 1 ? 's' : '') + ' done' : 'No cards due right now') + '</p><p class="en">' + (REV.done ? 'Well done, traveller. Your plan step counts, and the words you review are the ones monsters attack with.' : 'Save new words — tap any word in the game and press “+ Learning”.') + '</p><div class="sg-opts"><button class="pri" data-p="x">Back to the road</button></div></div>';
       b.querySelector('[data-p="x"]').onclick = closePanel; return;
     }
-    b.innerHTML = '<p class="small">' + REV.q.length + ' left · ' + REV.done + ' done</p><div class="sg-card">' + REV.front(c) + '<div class="sg-back"></div></div><div class="sg-opts sg-ra"><button class="pri" data-r="flip">Show answer</button></div>';
+    b.innerHTML = REV.head() + '<p class="small">' + REV.q.length + ' left · ' + REV.done + ' done</p><div class="sg-card">' + REV.front(c) + '<div class="sg-back"></div></div><div class="sg-opts sg-ra"><button class="pri" data-r="flip">Show answer</button></div>';
     b.querySelector('[data-r="flip"]').onclick = function () {
       var bk = b.querySelector('.sg-back'); bk.innerHTML = '<hr>' + REV.back(c);
       var ar = bk.querySelector('[data-r="ar"]'); if (ar) ar.onclick = function () { ar.disabled = true; H.lens.api('library/translate', { body: { uuid: c.uuid } }).then(function (j) { ar.remove(); bk.querySelector('[data-r="arout"]').textContent = j.ar; }, function (x) { say(x.message); ar.disabled = false; }); };
@@ -1457,47 +1477,55 @@
   };
   CARAVAN.paint = function () {
     var b = $('.sg-carp .sg-pb'), s = CARAVAN.s; if (!b || !s) return;
-    var tabs = [['help', '🙋 Help others', s.todo], ['mine', '❓ My questions', s.newAnswers], ['build', '🏗 Caravanserai', 0], ['guide', '🧭 Guide', 0]];
+    var tabs = [['help', '⚔ Calls for help', s.todo], ['mine', '📣 My call', s.myCall && s.myCall.helpers.length && !s.myCall.used ? s.myCall.helpers.length : 0], ['build', '🏗 Caravanserai', 0], ['guide', '🧭 Guide', 0]];
     var html = '<div class="sg-tabs">' + tabs.map(function (t) { return '<button data-ct="' + t[0] + '"' + (t[0] === CARAVAN.tab ? ' class="on"' : '') + '>' + t[1] + (t[2] ? ' <i class="sg-dotn">' + t[2] + '</i>' : '') + '</button>'; }).join('') + '</div>';
     var ctx = function (a) { return (a.lemma ? '<p class="sg-cw">' + esc(a.lemma) + '</p>' : '') + '<p>' + wrapWords(a.q) + '</p>' + (a.ctx ? '<p class="sg-cs">“' + wrapWords(a.ctx, null, true) + '”</p>' : '') + (a.src ? '<small>from ' + esc(a.src) + '</small>' : ''); };
+    var ROLE = {}; ROLES.forEach(function (x) { ROLE[x[0]] = x; });
+    var helpers = function (c) { return c.helpers.length ? '<div class="sg-allies">' + c.helpers.map(function (h) { var r = ROLE[h.role] || ['', '🙂', '']; return '<span title="' + esc(r[2]) + '">' + r[1] + ' ' + esc(h.name) + '</span>'; }).join('') + '</div>' : ''; };
     if (CARAVAN.tab === 'help') {
-      html += '<p class="small">Travellers ask when they study; you answer when you play. Explain in easy English and give an example. When it helps, you get <b>+20 XP and 10 🪙</b>.</p>'
-        + (s.help.length ? s.help.map(function (a) {
-          return '<div class="sg-ask' + (a.toMe ? ' tome' : '') + '"><div class="sg-askh">' + (a.avatar ? '<img src="' + esc(a.avatar) + '" alt="">' : '') + '<b>' + esc(a.by) + '</b><small>' + (a.toMe ? 'asked <b>you</b> · ' : '') + CARAVAN.ago(a.at) + (a.answers.length ? ' · ' + a.answers.length + ' answer' + (a.answers.length > 1 ? 's' : '') : ' · no answer yet') + '</small></div>' + ctx(a)
-            + (a.answered ? '<p class="small ok">✓ You answered. ' + esc(a.by) + ' will see it next time.</p>' : '<div class="sg-ans"><textarea rows="2" maxlength="300" dir="ltr" placeholder="' + esc(a.kind === 'word' ? 'It means… For example: …' : 'Explain in easy English…') + '"></textarea><button class="pri" data-ans="' + esc(a.id) + '">Send</button></div>') + '</div>';
-        }).join('') : '<p class="sg-empty">No questions right now. Check again later — or ask one yourself: tap any English word in the game.</p>')
-        + '<p class="small">' + s.limits.answersLeft + (s.limits.answersLeft === 1 ? ' answer' : ' answers') + ' left today.</p>';
+      var me = ROLE[s.role] || ROLES[0];
+      html += '<p class="small">Travellers who are stuck call the caravan. Fight a short support battle (4 questions) and, as a <b>' + me[1] + ' ' + esc(me[2]) + '</b>, you give them <b>' + esc(me[4]) + '</b> in their next battle. You get <b>+10 XP and 5 🪙</b> now, and <b>+20 XP and 15 🪙</b> more when they win.</p>'
+        + (s.calls.length ? s.calls.map(function (c) {
+          return '<div class="sg-ask' + (c.mate ? ' tome' : '') + '"><div class="sg-askh">' + (c.avatar ? '<img src="' + esc(c.avatar) + '" alt="">' : '') + '<b>' + esc(c.by) + '</b><small>' + (c.mate ? 'your clan · ' : '') + CARAVAN.ago(c.at) + ' · ' + c.helpers.length + '/3 helpers</small></div>'
+            + '<p>' + (ROLE[c.role] ? ROLE[c.role][1] + ' ' : '') + 'needs help against <b>' + esc(c.foe.icon + ' ' + c.foe.name) + '</b> in ' + esc(c.foe.town) + (c.foe.kind === 'boss' ? ' (the town boss!)' : '') + '</p>' + (c.msg ? '<p class="sg-cs">“' + wrapWords(c.msg) + '”</p>' : '') + helpers(c)
+            + (c.helped ? '<p class="small ok">✓ You are in! You will hear how the battle goes.</p>' : c.full ? '<p class="small">This call has 3 helpers.</p>' : '<div class="sg-opts"><button class="pri" data-help="' + esc(c.id) + '">⚔ Help ' + esc(c.by) + '</button></div>') + '</div>';
+        }).join('') : '<p class="sg-empty">Nobody needs help right now. When you are stuck on a boss, call the caravan from here or at the boss.</p>')
+        + '<p class="small">' + s.helpsLeft + (s.helpsLeft === 1 ? ' help' : ' helps') + ' left today.</p>';
     } else if (CARAVAN.tab === 'mine') {
-      html += '<p class="small">Tap any English word in the game (in a battle, a card or the chat) and choose <b>🙋 Ask the caravan</b>. Or ask about anything here:</p><div class="sg-ans"><textarea rows="2" maxlength="200" dir="ltr" placeholder="When do I use did in a question?"></textarea><button class="pri" data-ask="1">Ask</button></div><p class="small">' + s.limits.asksLeft + (s.limits.asksLeft === 1 ? ' question' : ' questions') + ' left today.</p>'
-        + (s.mine.length ? s.mine.map(function (a) {
-          return '<div class="sg-ask' + (a.closed ? ' closed' : '') + '">' + ctx(a) + (a.to ? '<small>to ' + esc(a.to) + '</small>' : '')
-            + (a.answers.length ? a.answers.map(function (x) { return '<div class="sg-reply"><b>' + esc(x.by) + '</b> ' + wrapWords(x.text) + ' ' + VOICE.btn(x.text) + (x.helped ? '<span class="ok">✓ helped</span>' : a.closed ? '' : '<button class="pri" data-helped="' + esc(a.id) + '" data-a="' + esc(x.id) + '">This helped</button>'); }).join('</div>') + '</div>' : '<p class="small">Waiting for an answer. Travellers play at different times — you will get a notification.</p>')
-            + (a.closed ? '' : '<button data-close="' + esc(a.id) + '">Close</button>') + '</div>';
-        }).join('') : '');
+      var mc = s.myCall, w = H.world(), tb = w.town.boss;
+      if (mc && !mc.used) {
+        html += '<div class="sg-ask"><p>📣 You called for help against <b>' + esc(mc.foe.icon + ' ' + mc.foe.name) + '</b>.</p>' + (mc.helpers.length ? helpers(mc) + '<p class="small">Your helpers join your <b>next fight</b> against the ' + esc(mc.foe.name) + (mc.foe.kind === 'boss' ? ': talk to it in its lair.' : ': walk into one on the road.') + '</p>' : '<p class="small">Waiting for helpers. Travellers play at different times — your clan has been told. You get a notification when someone joins.</p>') + '<div class="sg-opts"><button data-cancel="1">Cancel the call</button></div></div>';
+      } else {
+        html += (mc && mc.used ? '<p class="small">' + (mc.won ? '🏆 You beat the ' + esc(mc.foe.name) + ' with your helpers!' : 'Your last call is over.') + '</p>' : '')
+          + '<p class="small">Stuck? Call the caravan. Other travellers fight a short support battle for you, and their roles help in your next fight: a Guardian\'s shield, a Healer\'s heals, a Mage\'s fireball, a Trickster\'s frost.</p>'
+          + '<input class="sg-callmsg" maxlength="120" dir="ltr" placeholder="A short message in English (optional): Please help me!">'
+          + '<div class="sg-opts">' + (!tb.beaten && tb.ready ? '<button class="pri" data-call="boss">📣 Help against the ' + esc(tb.name) + '</button>' : '') + w.town.monsters.map(function (m, k) { return '<button data-call="monster" data-m="' + k + '">' + esc(m.icon + ' ' + m.name) + '</button>'; }).join('') + '</div>';
+      }
     } else if (CARAVAN.tab === 'build') {
       var p = s.project;
-      html += '<div class="sg-build"><div class="sg-buildbar"><i style="width:' + p.pct + '%"></i><span>' + p.pct + '%</span></div><p class="small">The whole community builds <b>' + esc(p.name) + '</b> this week. It needs all three materials — and lessons only come from helping each other. Everyone who brings something gets <b>' + esc(p.reward) + '</b>' + (p.done ? '. <b>Built! 🎉</b>' : ' when it is finished.') + ' ' + p.builders + ' builder' + (p.builders === 1 ? '' : 's') + ' so far.</p>'
+      html += '<div class="sg-build"><div class="sg-buildbar"><i style="width:' + p.pct + '%"></i><span>' + p.pct + '%</span></div><p class="small">The whole community builds <b>' + esc(p.name) + '</b> this week. It needs all three materials — and battles won together only come from calls for help. Everyone who brings something gets <b>' + esc(p.reward) + '</b>' + (p.done ? '. <b>Built! 🎉</b>' : ' when it is finished.') + ' ' + p.builders + ' builder' + (p.builders === 1 ? '' : 's') + ' so far.</p>'
         + p.materials.map(function (m) { return '<div class="sg-mat"><b>' + m.icon + ' ' + esc(m.name) + '</b><small>from ' + esc(m.from) + '</small><div class="sg-buildbar"><i style="width:' + Math.round(m.have / m.goal * 100) + '%"></i><span>' + m.have + ' / ' + m.goal + '</span></div><small>' + (m.top.length ? m.top.map(function (t) { return esc(t.name) + ' ' + t.n; }).join(' · ') : 'Nobody yet — be the first!') + '</small></div>'; }).join('')
-        + '<p class="small">You this week: 🧱 ' + s.myWeek.bricks + ' · 🏮 ' + s.myWeek.lanterns + ' · 📜 ' + s.myWeek.lessons + '</p></div>';
+        + '<p class="small">You this week: 🧱 ' + s.myWeek.bricks + ' · 🏮 ' + s.myWeek.lanterns + ' · ⚔ ' + s.myWeek.lessons + '</p></div>';
     } else {
-      var pr = s.pair, row = function (q) { var w = q.with, seen = w.seen == null ? '' : w.seen < 120 ? ' · playing now' : ' · played ' + CARAVAN.ago(Date.now() / 1000 - w.seen); return '<div class="sg-ask"><div class="sg-askh">' + (w.avatar ? '<img src="' + esc(w.avatar) + '" alt="">' : '') + '<b>' + esc(w.name) + '</b><small>' + (q.role === 'newcomer' ? 'your guide' : 'new on the road') + ' · Lv ' + w.level + ' · ' + esc(w.town) + seen + '</small></div><ul class="sg-plan">' + q.steps.map(function (st) { return '<li class="' + (st.done ? 'done' : '') + '"><span>' + (st.done ? '✓' : '○') + '</span><div><b>' + esc(st.text) + '</b><small>' + (st.key === 'days' ? q.days + ' / 3 · ' : '') + '+' + st.coins + ' 🪙 each</small></div></li>'; }).join('') + '</ul><small>' + q.daysLeft + ' days left together.</small>' + (q.role === 'newcomer' ? '<div class="sg-opts"><button class="pri" data-askto="' + w.id + '">Ask ' + esc(w.name.split(' ')[0]) + ' something</button></div>' : '') + '</div>'; };
+      var pr = s.pair, row = function (q) { var w = q.with, seen = w.seen == null ? '' : w.seen < 120 ? ' · playing now' : ' · played ' + CARAVAN.ago(Date.now() / 1000 - w.seen); return '<div class="sg-ask"><div class="sg-askh">' + (w.avatar ? '<img src="' + esc(w.avatar) + '" alt="">' : '') + '<b>' + esc(w.name) + '</b><small>' + (q.role === 'newcomer' ? 'your guide' : 'new on the road') + ' · Lv ' + w.level + ' · ' + esc(w.town) + seen + '</small></div><ul class="sg-plan">' + q.steps.map(function (st) { return '<li class="' + (st.done ? 'done' : '') + '"><span>' + (st.done ? '✓' : '○') + '</span><div><b>' + esc(st.text) + '</b><small>' + (st.key === 'days' ? q.days + ' / 3 · ' : '') + '+' + st.coins + ' 🪙 each</small></div></li>'; }).join('') + '</ul><small>' + q.daysLeft + ' days left together.</small>' + '' + '</div>'; };
       html += pr ? row(pr) : '';
       html += s.guiding.map(row).join('');
-      html += !pr && !s.guiding.length ? '<p class="small">Guides are travellers further down the road. Every newcomer gets one for their first two weeks: ask them anything, study on the same days, and celebrate the first boss together.</p>' : '';
+      html += !pr && !s.guiding.length ? '<p class="small">Guides are travellers further down the road. Every newcomer gets one for their first two weeks: they answer your calls for help, study on the same days as you, and celebrate your first boss with you.</p>' : '';
       html += s.guide.can ? '<div class="sg-opts"><button class="' + (s.guide.on ? '' : 'pri') + '" data-guide="' + (s.guide.on ? 0 : 1) + '">' + (s.guide.on ? 'Stop guiding new travellers' : '🧭 Become a guide') + '</button></div>' + (s.guide.on ? '<p class="small">You are a guide. New travellers are matched with you (up to 3 at a time). Finish all three steps with one and you get the title <b>Guide of the Road</b>.</p>' : '') : (!pr ? '<p class="small">You can become a guide after you beat two town bosses (or reach level 5).</p>' : '');
     }
     b.innerHTML = html;
     b.querySelectorAll('[data-ct]').forEach(function (x) { x.onclick = function () { CARAVAN.tab = x.dataset.ct; CARAVAN.paint(); }; });
-    b.querySelectorAll('textarea').forEach(function (t) { t.onkeydown = function (e) { e.stopPropagation(); }; });
+    b.querySelectorAll('textarea, input').forEach(function (t) { t.onkeydown = function (e) { e.stopPropagation(); }; });
     var post = function (path, body, btn, then) { if (btn) btn.disabled = true; H.api(path, { method: 'POST', body: body }).then(function (j) { CARAVAN.s = j; hud(); CARAVAN.paint(); if (then) then(j); }, function (x) { if (btn) btn.disabled = false; say(x.message, 4500); }); };
-    b.querySelectorAll('[data-ans]').forEach(function (x) { x.onclick = function () { var v = x.previousSibling.value.trim(); if (!v) return; if (H.needsTr(v)) return say('Answer in English — simple words are perfect.', 4000); post('/coop/answer', { id: x.dataset.ans, text: v }, x, function (j) { SFX.quest(); say('Sent! ' + (j.xp ? '+' + j.xp + ' XP for writing English. ' : '') + 'More when they say it helped.', 4500); }); }; });
-    b.querySelectorAll('[data-ask]').forEach(function (x) { x.onclick = function () { var v = x.previousSibling.value.trim(); if (!v) return; if (H.needsTr(v)) return say('Ask in English — short is fine. Or tap a word in the game and use the ready question.', 4500); post('/coop/ask', { kind: 'other', q: v }, x, function () { say('Your question is on the board. You will get a notification when someone answers.', 4500); }); }; });
-    b.querySelectorAll('[data-helped]').forEach(function (x) { x.onclick = function () { post('/coop/helped', { id: x.dataset.helped, answer: x.dataset.a }, x, function (j) { SFX.coin(); say('Thank you sent to ' + j.thanked + '! They get XP and coins.', 4000); }); }; });
-    b.querySelectorAll('[data-close]').forEach(function (x) { x.onclick = function () { post('/coop/close', { id: x.dataset.close }, x); }; });
+    b.querySelectorAll('[data-help]').forEach(function (x) { x.onclick = function () { closePanel(); var w = G.phaser.scene.getScene('World'); w.frozen = true; G.battle('/coop/help', { id: x.dataset.help }, null); }; });
+    b.querySelectorAll('[data-call]').forEach(function (x) { x.onclick = function () { var m = b.querySelector('.sg-callmsg'); post('/coop/call', { kind: x.dataset.call, m: +(x.dataset.m || 0), msg: m ? m.value.trim() : '' }, x, function () { SFX.quest(); say('📣 Your call is on the board. Your clan has been told!', 4500); }); }; });
+    b.querySelectorAll('[data-cancel]').forEach(function (x) { x.onclick = function () { post('/coop/call/cancel', {}, x); }; });
     b.querySelectorAll('[data-guide]').forEach(function (x) { x.onclick = function () { post('/coop/guide', { on: +x.dataset.guide }, x); }; });
-    b.querySelectorAll('[data-askto]').forEach(function (x) { x.onclick = function () { CARAVAN.askTo(+x.dataset.askto, x.textContent.replace(/^Ask | something$/g, '')); }; });
   };
   /** Ask the caravan about a word (from the word popup) or a question for one student (from their echo). */
+  CARAVAN.call = function (kind, m, foe) {
+    H.api('/coop/call', { method: 'POST', body: { kind: kind, m: m || 0 } }).then(function (j) { CARAVAN.s = j; hud(); SFX.quest(); say('📣 You called the caravan for help against the ' + foe + '. Your clan has been told!', 5000); }, function (x) { say(x.message, 4500); });
+  };
   CARAVAN.askWord = function (lemma, sentence, src) {
     return H.api('/coop/ask', { method: 'POST', body: { kind: 'word', lemma: lemma, ctx: sentence && sentence !== lemma ? sentence.slice(0, 240) : '', src: src || 'Silk Road · ' + H.world().town.name } }).then(function (j) { CARAVAN.s = j; hud(); say('🙋 Asked! Travellers will explain “' + lemma + '” when they play. You get a notification.', 5000); }, function (x) { say(x.message, 4500); });
   };
@@ -1511,7 +1539,7 @@
   CARAVAN.intro = function () {
     var day = new Date().toISOString().slice(0, 10), first;
     try { first = localStorage.getItem('sawaRoadDay1'); if (!first) localStorage.setItem('sawaRoadDay1', first = day); if (first === day || localStorage.getItem('sawaCaravanIntro')) return; localStorage.setItem('sawaCaravanIntro', '1'); } catch (e) { return; }
-    setTimeout(function () { if (!running || $('.sg-dlg.on') || $('.sg-panel.on')) return; dialog.who = 'crier'; dialog('Town crier', 'News, traveller! The caravan board is open. Tap any English word and ask the caravan — other travellers explain it when they play. Help them too: when your answer helps, you get XP and coins. And this week we all build the caravanserai together!', [{ label: 'Open the caravan board', primary: true, run: function () { CARAVAN.show('help'); } }], '📣'); }, 2500);
+    setTimeout(function () { if (!running || $('.sg-dlg.on') || $('.sg-panel.on')) return; dialog.who = 'crier'; dialog('Town crier', 'News, traveller! The caravan board is open. Stuck on a boss? Call the caravan: other travellers fight for you, and their roles help you in your next battle. Help them too, for XP and coins. And this week we all build the caravanserai together!', [{ label: 'Open the caravan board', primary: true, run: function () { CARAVAN.show('help'); } }], '📣'); }, 2500);
   };
 
   /* ================================================================ start / stop */

@@ -405,15 +405,12 @@ final class Sawa_Tracker_Social {
 		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT r.id FROM ' . self::t( 'rooms' ) . ' r JOIN ' . self::t( 'room_members' ) . " m ON m.room_id = r.id WHERE r.type IN ('group','party') AND m.user_id = %d ORDER BY r.id", $uid ) ) as $g ) { // phpcs:ignore
 			$ids[] = (int) $g;
 		}
-		if ( Sawa_Tracker_World::started( $uid ) ) {
-			$ids[] = Sawa_Tracker_World::town_room( Sawa_Tracker_World::at( $uid ) ); // the chat of the town you're in
-		}
 		$out     = array();
 		$threads = array();
 		foreach ( self::thread_inbox( $uid ) as $th ) {
 			$threads[ $th['room'] ] = ( $threads[ $th['room'] ] ?? 0 ) + $th['unread'];
 		}
-		foreach ( array_filter( $ids ) as $id ) {
+		foreach ( array_unique( array_filter( $ids ) ) as $id ) { // the town chat in the game is the community room now
 			$r    = self::room( $id );
 			$read = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT last_read FROM ' . self::t( 'reads' ) . ' WHERE room_id = %d AND user_id = %d', $id, $uid ) ); // phpcs:ignore
 			$last = $wpdb->get_row( $wpdb->prepare( 'SELECT id, user_id, body, audio, created_at FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND thread_id = 0 AND deleted = 0 ORDER BY id DESC LIMIT 1', $id ), ARRAY_A ); // phpcs:ignore
