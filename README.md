@@ -22,3 +22,15 @@ After changing any Arabic text in `app.js`:
 - **The caravanserai:** one weekly community project. Bricks come from right battle answers, lanterns from review cards, and lessons from explanations marked helpful. Goals scale with last week's active students. When all three are full, everyone who brought something gets 30 coins, 1 elixir and 20 XP.
 - **Guides:** students with 2 town bosses or level 5 can volunteer. Every new member (who joined less than 14 days ago) is matched with a guide for 2 weeks. Three pair steps reward both: first question answered, 3 study days together, and the newcomer's first boss. Finishing all three gives the title *Guide of the Road*.
 - **Quests:** daily "Answer a traveller's question", weekly "Help 2 travellers".
+
+## Beta feedback
+
+`includes/class-feedback.php` and `assets/feedback.js`. Approved members see a **💬 Beta** button on every screen of the app and in the game. Turn it on or off in wp-admin → Sawa Tracker → Beta feedback.
+
+- **Reactions:** I don't understand, What does this do?, I like this, I don't like this, Boring, Something broke, Idea. Each one asks a follow-up question in the style of *The Mom Test* (what were you trying to do, what did you expect), in English and Arabic. The note can be in either language.
+- **👆 Show me:** the next tap picks the button, card or map the student means. It works inside the tracker and the game too, and the tap itself does nothing else.
+- **Saved automatically:** the screen (app tab, or in the game: map, battle, panel, dialog), the town, the battle question, level, HP, stamina, stage, device and version.
+- **Short questions after first-time moments.** The game sends `sawa:moment` events (first battle, first boss, first time on the caravan board, first level up), and one week after the first visit the button asks once. At most one question a day.
+- **Script errors** from Sawa files are reported as kind `error`.
+- **Reward:** 5 coins for the first feedback of the day.
+- **Admin page:** counts per screen × reaction, filters, CSV (with a BOM for Arabic in Excel). Setting **Planned** or **Fixed** with a reply notifies the student.

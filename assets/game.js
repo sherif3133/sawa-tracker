@@ -301,6 +301,7 @@
       return '<button class="sg-mb" data-g="' + b[0] + '" aria-label="' + b[2] + '"><span>' + b[1] + '</span><small>' + b[2] + '</small>' + (b[3] ? '<i>' + b[3] + '</i>' : '') + '</button>';
     }).join('');
   }
+  function moment(key) { try { window.dispatchEvent(new CustomEvent('sawa:moment', { detail: { key: key } })); } catch (e) { /* old browser */ } }
   function say(msg, ms) { var t = $('.sg-hint'); if (!t) return; t.textContent = msg; t.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(function () { t.classList.remove('on'); }, ms || 3200); }
   function dialog(name, text, buttons, portrait) {
     var d = $('.sg-dlg'); if (!d) return; d.innerHTML = '<div class="sg-box">' + (portrait ? '<span class="sg-por">' + portrait + '</span>' : '') + '<div class="sg-txt"><b>' + esc(name) + '</b><p></p><div class="sg-opts">' + (buttons || []).map(function (b, i) { return '<button data-o="' + i + '"' + (b.primary ? ' class="pri"' : '') + '>' + esc(b.label) + '</button>'; }).join('') + '<button data-o="x">Bye</button></div></div></div>';
@@ -726,6 +727,7 @@
         clearInterval(timer); used = {}; busy = false;
         if (i >= n) return end();
         var it = b.questions[i], secs = b.seconds + (it.type === 'type' || it.type === 'order' ? 10 : 0), left = secs;
+        GAME.cur = { kind: b.kind, foe: b.foe.name, q: (i + 1) + '/' + n, type: it.type, point: it.point || '', text: it.q };
         var label = { listen: '🎧 Listen', type: '⌨ Type the missing word', order: '🧩 Build the sentence', mc: '' }[it.type] || '';
         var qtext = it.type === 'listen' ? '<p class="sg-listen"><button class="sg-bigsay" data-say="' + esc(it.say) + '">🔊</button> ' + esc(it.q) + '</p>' : '<p>' + wrapWords(it.q, null, true) + ' ' + VOICE.btn(it.q) + '</p>';
         box.innerHTML = '<div class="sg-bp">' + bars() + '<div class="sg-tm"><i></i></div><div class="sg-qn"><small>' + (i + 1) + ' / ' + n + (label ? ' · ' + label : '') + (it.point ? ' · ' + esc(it.point) : '') + '</small>' + qtext + (it.src ? '<small class="src">from ' + esc(it.src) + '</small>' : '') + '<p class="sg-hint" hidden></p></div>' + body(it) + skillBar() + '</div>';
@@ -806,8 +808,9 @@
         }, function (x) { say(x.message); close(null); });
       }
       function close(r) {
-        G.keyPick = null; box.classList.remove('on'); box.innerHTML = '';
+        G.keyPick = null; box.classList.remove('on'); box.innerHTML = ''; GAME.cur = null;
         if (close.done) return; close.done = true;
+        if (r) setTimeout(function () { moment(r.kind === 'boss' ? 'first_boss' : 'first_battle'); }, 900);
         var world = G.phaser.scene.getScene('World'); scene.close(); world.scene.resume(); MUSIC.battle(false);
         if (GAME.needRebuild) { GAME.needRebuild = false; setTimeout(rebuild, 300); } $('.sg-labels').style.visibility = ''; world.afterBattle(r);
         if (r && r.kind === 'pboss') H.refreshParty();
@@ -817,7 +820,7 @@
     levelUp: function (hr) {
       var d = el('div', 'sg-levelup', '<div><small>LEVEL UP</small><b>' + hr.level + '</b><span>' + esc(hr.title) + '</span><p>❤ +10 · 💧 +5 · +' + (10 * hr.level) + ' 🪙</p></div>');
       if (!ROOT) return; ROOT.appendChild(d); setTimeout(function () { d.classList.add('on'); }, 30);
-      SFX.fanfare(); setTimeout(function () { VOICE.bark('level'); }, 600); setTimeout(function () { say('📣 Tap Share to show your new level in the community!', 5000); }, 3800); setTimeout(function () { d.classList.remove('on'); setTimeout(function () { d.remove(); }, 500); }, 3600);
+      SFX.fanfare(); setTimeout(function () { VOICE.bark('level'); }, 600); setTimeout(function () { moment('first_level'); }, 9000); setTimeout(function () { say('📣 Tap Share to show your new level in the community!', 5000); }, 3800); setTimeout(function () { d.classList.remove('on'); setTimeout(function () { d.remove(); }, 500); }, 3600);
     },
     emote: function (e) { var w = G.phaser.scene.getScene('World'); w.emote = { e: e, until: Date.now() + 5000 }; H.api('/play/emote', { method: 'POST', body: { e: e } }).catch(function () {}); },
     look: function (first) {
@@ -1239,7 +1242,7 @@
   };
   CARAVAN.ago = function (t) { var s = Math.max(1, Math.round(Date.now() / 1000 - t)); return s < 3600 ? Math.max(1, Math.round(s / 60)) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
   CARAVAN.show = function (tab) {
-    CARAVAN.tab = tab || CARAVAN.tab;
+    CARAVAN.tab = tab || CARAVAN.tab; setTimeout(function () { moment('first_caravan'); }, 4000);
     var b = panel('sg-carp', '🐫 The caravan board', '<p class="sg-wait">…</p>');
     CARAVAN.load().then(function () { CARAVAN.paint(); }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
@@ -1341,6 +1344,16 @@
     },
     battle: function (path, body) { if (!running) return false; var w = GAME.phaser.scene.getScene('World'); w.frozen = true; GAME.battle(path, body, null); return true; },
     hud: function () { if (running) hud(); },
-    scene: function () { return GAME.phaser && GAME.phaser.scene.getScene('World'); } // for tests
+    scene: function () { return GAME.phaser && GAME.phaser.scene.getScene('World'); }, // for tests
+    /** Where the student is, for beta feedback: a short area name plus details. */
+    context: function () {
+      if (!running) return null;
+      var w = H.world() || {}, p = $('.sg-panel.on'), d = $('.sg-dlg.on b'), hr = w.hero || {};
+      var pn = p ? ({ 'sg-carp': 'caravan board', 'sg-chatp': 'chat', 'sg-revp': 'review cards', 'sg-todayp': 'today\'s plan', 'sg-ranksp': 'rankings', 'sg-journalp': 'journal', 'sg-reportp': 'weekly report', 'sg-sharep': 'share card' }[[].filter.call(p.classList, function (c) { return /^sg-.+p$/.test(c) && c !== 'sg-panel'; })[0]] || 'panel') : '';
+      var modal = ROOT && ROOT.parentNode && ROOT.parentNode.querySelector('#modal'), mh = modal && modal.innerHTML ? (modal.querySelector('h2, h3') || {}).textContent : '';
+      var area = GAME.cur ? (GAME.cur.kind === 'boss' ? 'boss battle' : GAME.cur.kind === 'pboss' ? 'party boss battle' : GAME.cur.kind === 'duel' ? 'shadow duel' : 'battle') : $('.sg-res') ? 'battle result' : pn || (mh ? 'panel: ' + mh.trim().slice(0, 30) : $('.sg-look') ? 'character creator' : d ? 'talking to ' + d.textContent : $('.sg-word.on') ? 'word popup' : 'map');
+      return { area: area, town: (w.town || {}).name, battle: GAME.cur || undefined, level: hr.level, hp: hr.hp, stamina: w.stamina ? w.stamina.left + '/' + w.stamina.max : '' };
+    },
+    pause: function (on) { var s = running && GAME.phaser && GAME.phaser.scene.getScene('World'); if (s && !GAME.cur) { if (on) { s.betaWas = s.frozen; s.frozen = true; } else { s.frozen = !!s.betaWas && !!$('.sg-panel.on'); s.cool = s.now() + 1500; } } }
   };
 })();

@@ -9,6 +9,8 @@
   if (!host || host.shadowRoot) return;
   var cfgEl = host.nextElementSibling;
   var cfg = JSON.parse(cfgEl.textContent);
+  // Beta: a feedback button on every screen (assets/feedback.js), for approved members only.
+  if (cfg.beta && cfg.feedbackJs && cfg.status === 'approved' && !window.SawaBeta) { window.SawaBeta = { rest: cfg.rest, nonce: cfg.nonce }; var fbs = document.createElement('script'); fbs.src = cfg.feedbackJs; fbs.async = true; document.head.appendChild(fbs); }
   /* Embedded in the one Sawa English app (/app): the app owns the menu; it shows one part at a time with
      window.SawaTracker.show(view) and hears back through 'sawa-tracker' events on document. */
   var EMB = !!cfg.embedded;
@@ -916,13 +918,15 @@
       case 'coop_helped': return name(e.who) + ' says your explanation helped' + (d.lemma ? ' with <b dir="ltr">' + esc(d.lemma) + '</b>' : '') + '! ' + (d.xp ? '+' + d.xp + ' XP ' : '') + (d.coins ? '+' + d.coins + ' 🪙' : '') + ' 🤝';
       case 'coop_guide': return name(e.who) + ' and you are a guide pair for the next 2 weeks on the Silk Road 🧭';
       case 'coop_pair': return '🧭 You and ' + name(e.who) + ' finished: ' + esc(d.step) + ' · +' + d.coins + ' 🪙';
+      case 'feedback_fixed': return '🛠 Thanks to your beta feedback' + (d.text ? ' (<span dir="auto">"' + esc(d.text) + '"</span>)' : '') + ', we changed it!' + (d.reply ? ' <span dir="auto">' + esc(d.reply) + '</span>' : '');
+      case 'feedback_planned': return '📝 Your beta feedback' + (d.text ? ' (<span dir="auto">"' + esc(d.text) + '"</span>)' : '') + ' is on our list.' + (d.reply ? ' <span dir="auto">' + esc(d.reply) + '</span>' : '');
       case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
       case 'reply': return name(e.who) + ' replied to your message' + (d.voice ? ' with a voice note' : d.sticker ? ' with ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' did something';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', feedback_fixed: 'check', feedback_planned: 'pen' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
