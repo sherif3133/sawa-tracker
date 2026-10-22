@@ -23,6 +23,18 @@ After changing any Arabic text in `app.js`:
 - **Guides:** students with 2 town bosses or level 5 can volunteer. Every new member (who joined less than 14 days ago) is matched with a guide for 2 weeks. Three pair steps reward both: first question answered, 3 study days together, and the newcomer's first boss. Finishing all three gives the title *Guide of the Road*.
 - **Quests:** daily "Answer a traveller's question", weekly "Help 2 travellers".
 
+## Chat threads and the reply goal
+
+`includes/class-social.php` (threads), `includes/class-replies.php` (the goal). Works in the app chat (`app.js`) and the in-game chat (CHAT in `game.js`).
+
+- **Threads:** any main-chat message can start one (💬 button, or "Reply" in the game). Under the message: "N replies · last reply 5m ago". It opens beside the chat on a computer and full screen on a phone, with its own reply box; in the game it opens inside the chat panel. Thread replies use `thread_id` in the messages table and don't show in the main timeline.
+- **Following and unread:** the starter and everyone who writes in a thread follow it (table `thread_reads`); a Follow button turns it on or off. Unread replies show on the message, the room and in "Your threads", and count in the chat badge. A follower gets one bell notification per batch of new replies (only if they had read everything before).
+- **Reply goal:** reply to 10 messages from other people a day. A reply counts when it answers someone else (a quoted reply, or a message in a thread where someone else wrote) with 3+ English words (2 different) or a 5-second voice note. Not counted: replies to yourself, stickers/GIFs, the same text twice, replies less than 20 s apart, more than 4 to the same person a day. +2 XP each (capped with chat XP), +25 XP and 10 coins at 10. A progress pill shows in the chat, the thread and the game chat; the game's Today panel shows it under the plan; each counted reply moves the weekly quest "Reply to 25 messages".
+- **@mentions:** type `@` and a few letters; a list of people who can read that chat shows up (app chat, thread box and game chat). The mentioned student gets a bell notification, the message is highlighted for them, the room shows an **@** badge, and a mention inside a thread makes them follow it. Up to 10 names a message (`mentions` column: `,12,15,`).
+  - `@everyone`: admins only; notifies everyone who can read that chat.
+  - `@clan`: the clan leader (or an admin), in the clan chat only, once per 10 minutes; notifies the whole clan. The leader is picked in wp-admin → Sawa Tracker → Clans (column **Leader**); with no pick, the member with the most study days leads.
+- **Tests (local Playground):** `node tools/mention-api-test.js <idA> <idB> <idC>`, `node tools/thread-api-test.js <idA> <idB> <idC>` and, from `language-lens/tools`, `node ../../sawa-tracker/tools/thread-ui-test.js <outdir> <idA> <idB>` (needs the test-only mu-plugin `sawa-replies-test.php`).
+
 ## Beta feedback
 
 `includes/class-feedback.php` and `assets/feedback.js`. Approved members see a **💬 Beta** button on every screen of the app and in the game. Turn it on or off in wp-admin → Sawa Tracker → Beta feedback.

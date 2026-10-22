@@ -52,6 +52,7 @@ final class Sawa_Tracker_Admin {
 		if ( 'save' === $do ) {
 			foreach ( (array) ( $_POST['clan'] ?? array() ) as $id => $c ) {
 				$S::update_clan( (int) $id, sanitize_text_field( wp_unslash( $c['name'] ?? '' ) ), sanitize_text_field( wp_unslash( $c['emoji'] ?? '' ) ) );
+				$S::set_clan_leader( (int) $id, (int) ( $c['leader'] ?? 0 ) );
 			}
 			foreach ( (array) ( $_POST['member'] ?? array() ) as $uid => $clan ) {
 				$S::set_clan( (int) $uid, (int) $clan );
@@ -395,7 +396,7 @@ final class Sawa_Tracker_Admin {
 		wp_nonce_field( 'sawa_tr_clans' );
 		echo '<input type="hidden" name="action" value="sawa_tr_clans"><input type="hidden" name="do" value="save">';
 		if ( $clans ) {
-			echo '<h2>Clans this week</h2><table class="widefat striped" style="max-width:900px"><thead><tr><th>Emoji</th><th>Name</th><th>Members</th><th>Clan streak</th><th>Weekly score</th><th></th></tr></thead><tbody>';
+			echo '<h2>Clans this week</h2><table class="widefat striped" style="max-width:900px"><thead><tr><th>Emoji</th><th>Name</th><th>Members</th><th>Leader (can use @clan)</th><th>Clan streak</th><th>Weekly score</th><th></th></tr></thead><tbody>';
 			$stand = array();
 			foreach ( $S::standings() as $st ) {
 				$stand[ $st['id'] ] = $st;
@@ -403,7 +404,12 @@ final class Sawa_Tracker_Admin {
 			foreach ( $clans as $c ) {
 				$st = $stand[ (int) $c['id'] ] ?? array( 'size' => 0, 'streak' => 0, 'score' => 0 );
 				echo '<tr><td><input name="clan[' . (int) $c['id'] . '][emoji]" value="' . esc_attr( $c['emoji'] ) . '" class="small-text"></td><td><input name="clan[' . (int) $c['id'] . '][name]" value="' . esc_attr( $c['name'] ) . '"></td>';
-				echo '<td>' . (int) $st['size'] . '</td><td>' . (int) $st['streak'] . ' 🔥</td><td>' . esc_html( (string) $st['score'] ) . ' goal days per member</td>';
+				$lead = array( 0 => '— Auto: most study days (' . Sawa_Tracker_Game::person( $S::clan_leader( (int) $c['id'] ) )['name'] . ') —' );
+				foreach ( $S::clan_members( (int) $c['id'] ) as $m ) {
+					$lead[ $m ] = Sawa_Tracker_Game::person( $m )['name'];
+				}
+				echo '<td>' . (int) $st['size'] . '</td><td>' . self::select_html( 'clan[' . (int) $c['id'] . '][leader]', $lead, (int) ( $c['leader_id'] ?? 0 ) ) . '</td><td>' . (int) $st['streak'] . ' 🔥</td>'; // phpcs:ignore
+				echo '<td>' . esc_html( (string) $st['score'] ) . ' goal days per member</td>';
 				echo '<td><button class="button-link-delete" name="delete" value="' . (int) $c['id'] . '" onclick="return confirm(\'Delete this clan and its chat? Members become unassigned.\')">Delete</button></td></tr>';
 			}
 			echo '</tbody></table>';

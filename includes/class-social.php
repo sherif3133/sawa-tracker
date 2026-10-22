@@ -32,6 +32,7 @@ final class Sawa_Tracker_Social {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(60) NOT NULL,
 			emoji varchar(16) NOT NULL DEFAULT '',
+			leader_id bigint(20) unsigned NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id)
 			) $c;"
@@ -74,6 +75,8 @@ final class Sawa_Tracker_Social {
 			audio varchar(255) NOT NULL DEFAULT '',
 			duration smallint(5) unsigned NOT NULL DEFAULT 0,
 			reply_to bigint(20) unsigned NOT NULL DEFAULT 0,
+			thread_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			mentions varchar(500) NOT NULL DEFAULT '',
 			transcript text,
 			kind varchar(10) NOT NULL DEFAULT '',
 			media varchar(300) NOT NULL DEFAULT '',
@@ -81,7 +84,19 @@ final class Sawa_Tracker_Social {
 			deleted tinyint(1) NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
-			KEY room (room_id,id)
+			KEY room (room_id,id),
+			KEY thread (thread_id,id)
+			) $c;"
+		);
+		// Threads a student follows (started, wrote in, or tapped Follow) and how far they have read.
+		dbDelta(
+			'CREATE TABLE ' . self::t( 'thread_reads' ) . " (
+			thread_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			last_read bigint(20) unsigned NOT NULL DEFAULT 0,
+			followed tinyint(1) NOT NULL DEFAULT 1,
+			PRIMARY KEY  (thread_id,user_id),
+			KEY user (user_id,followed)
 			) $c;"
 		);
 		dbDelta(
@@ -171,6 +186,31 @@ final class Sawa_Tracker_Social {
 		$id = (int) $wpdb->insert_id;
 		$wpdb->insert( self::t( 'rooms' ), array( 'type' => 'clan', 'clan_id' => $id, 'name' => mb_substr( $name, 0, 60 ), 'created_at' => Sawa_Tracker_Game::now_mysql() ) ); // phpcs:ignore
 		return $id;
+	}
+
+	/** The clan leader: the one Sherif picked in wp-admin, or else the member with the most study days. */
+	public static function clan_leader( $clan_id ) {
+		$c       = self::clan( $clan_id );
+		$members = self::clan_members( $clan_id );
+		$lead    = (int) ( $c['leader_id'] ?? 0 );
+		if ( $lead && in_array( $lead, $members, true ) ) {
+			return $lead;
+		}
+		$best = 0;
+		$most = -1;
+		foreach ( $members as $uid ) {
+			$d = Sawa_Tracker_Game::study_days( $uid );
+			if ( $d > $most ) {
+				$most = $d;
+				$best = $uid;
+			}
+		}
+		return $best;
+	}
+
+	public static function set_clan_leader( $clan_id, $uid ) {
+		global $wpdb;
+		$wpdb->update( self::t( 'clans' ), array( 'leader_id' => (int) $uid ), array( 'id' => (int) $clan_id ) ); // phpcs:ignore
 	}
 
 	public static function update_clan( $id, $name, $emoji ) {
@@ -278,6 +318,7 @@ final class Sawa_Tracker_Social {
 			++$streak;
 		}
 		$out['streak'] = $streak;
+		$out['leader'] = self::clan_leader( $clan_id );
 		$out['need']   = $need;
 		$out['score']  = round( array_sum( array_map( 'count', $goal_days ) ) / $n, 2 );
 		if ( $with_members ) {
@@ -367,17 +408,23 @@ final class Sawa_Tracker_Social {
 		if ( Sawa_Tracker_World::started( $uid ) ) {
 			$ids[] = Sawa_Tracker_World::town_room( Sawa_Tracker_World::at( $uid ) ); // the chat of the town you're in
 		}
-		$out = array();
+		$out     = array();
+		$threads = array();
+		foreach ( self::thread_inbox( $uid ) as $th ) {
+			$threads[ $th['room'] ] = ( $threads[ $th['room'] ] ?? 0 ) + $th['unread'];
+		}
 		foreach ( array_filter( $ids ) as $id ) {
 			$r    = self::room( $id );
 			$read = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT last_read FROM ' . self::t( 'reads' ) . ' WHERE room_id = %d AND user_id = %d', $id, $uid ) ); // phpcs:ignore
-			$last = $wpdb->get_row( $wpdb->prepare( 'SELECT id, user_id, body, audio, created_at FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND deleted = 0 ORDER BY id DESC LIMIT 1', $id ), ARRAY_A ); // phpcs:ignore
-			$unread = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND id > %d AND user_id <> %d AND deleted = 0', $id, $read, $uid ) ); // phpcs:ignore
+			$last = $wpdb->get_row( $wpdb->prepare( 'SELECT id, user_id, body, audio, created_at FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND thread_id = 0 AND deleted = 0 ORDER BY id DESC LIMIT 1', $id ), ARRAY_A ); // phpcs:ignore
+			$unread = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND thread_id = 0 AND id > %d AND user_id <> %d AND deleted = 0', $id, $read, $uid ) ); // phpcs:ignore
 			$row  = array(
 				'id'     => (int) $id,
 				'type'   => $r['type'],
 				'name'   => 'public' === $r['type'] ? 'Community' : $r['name'],
 				'unread' => min( 99, $unread ),
+				'threadUnread' => (int) ( $threads[ (int) $id ] ?? 0 ),
+				'mentions' => (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND thread_id = 0 AND id > %d AND user_id <> %d AND deleted = 0 AND (mentions LIKE %s OR mentions LIKE %s OR mentions LIKE %s)', $id, $read, $uid, '%' . $wpdb->esc_like( ',' . $uid . ',' ) . '%', '%,all,%', '%,clan,%' ) ), // phpcs:ignore
 				'last'   => $last ? array(
 					'who'  => Sawa_Tracker_Game::person( (int) $last['user_id'] )['name'],
 					'text' => $last['audio'] ? '🎤 Voice message' : ( '' !== (string) $last['body'] ? wp_trim_words( (string) $last['body'], 10, '…' ) : 'Sticker' ),
@@ -385,8 +432,9 @@ final class Sawa_Tracker_Social {
 				) : null,
 			);
 			if ( 'clan' === $r['type'] ) {
-				$c            = self::clan( (int) $r['clan_id'] );
-				$row['emoji'] = $c ? $c['emoji'] : '🛡️';
+				$c             = self::clan( (int) $r['clan_id'] );
+				$row['emoji']  = $c ? $c['emoji'] : '🛡️';
+				$row['leader'] = self::clan_leader( (int) $r['clan_id'] );
 			} elseif ( 'town' === $r['type'] ) {
 				$row['members'] = array();
 			} elseif ( 'group' === $r['type'] || 'party' === $r['type'] ) {
@@ -412,8 +460,17 @@ final class Sawa_Tracker_Social {
 			'translated' => ! $m['deleted'] && '' !== (string) ( $m['orig'] ?? '' ),
 			'orig'       => ! $m['deleted'] && (int) $m['user_id'] === get_current_user_id() ? (string) ( $m['orig'] ?? '' ) : '',
 			'gone'       => (bool) $m['deleted'],
+			'thread'     => (int) ( $m['thread_id'] ?? 0 ),
 			'at'         => mysql2date( 'c', $m['created_at'] ),
 		);
+		// Mentions: the names to highlight (@Name), @everyone / @clan, and whether this message pings the viewer.
+		$tags = array_values( array_filter( explode( ',', (string) ( $m['mentions'] ?? '' ) ) ) );
+		if ( $tags && ! $m['deleted'] ) {
+			$ids          = array_map( 'intval', array_filter( $tags, 'is_numeric' ) );
+			$out['tags']  = array_values( array_filter( array_map( function ( $id ) { $u = get_userdata( $id ); return $u ? $u->display_name : ''; }, $ids ) ) );
+			$out['ping']  = in_array( 'all', $tags, true ) ? 'everyone' : ( in_array( 'clan', $tags, true ) ? 'clan' : '' );
+			$out['pingsMe'] = (int) $m['user_id'] !== get_current_user_id() && ( '' !== $out['ping'] || in_array( get_current_user_id(), $ids, true ) );
+		}
 		if ( ! empty( $m['reply_to'] ) ) {
 			$p = self::message_row( (int) $m['reply_to'] );
 			if ( $p ) {
@@ -458,9 +515,9 @@ final class Sawa_Tracker_Social {
 	}
 
 	/** Spam protection: how many of the latest messages in this room are this student's, in a row (last 15 minutes). */
-	private static function in_a_row( $uid, $room_id ) {
+	private static function in_a_row( $uid, $room_id, $thread = 0 ) {
 		global $wpdb;
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT user_id, created_at FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND deleted = 0 ORDER BY id DESC LIMIT 40', $room_id ), ARRAY_A ); // phpcs:ignore
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT user_id, created_at FROM ' . self::t( 'messages' ) . ' WHERE room_id = %d AND thread_id = %d AND deleted = 0 ORDER BY id DESC LIMIT 40', $room_id, $thread ), ARRAY_A ); // phpcs:ignore
 		$n    = 0;
 		$from = strtotime( Sawa_Tracker_Game::now_mysql() ) - 15 * MINUTE_IN_SECONDS;
 		foreach ( (array) $rows as $r ) {
@@ -476,12 +533,121 @@ final class Sawa_Tracker_Social {
 		global $wpdb;
 		$t = self::t( 'messages' );
 		if ( $after ) {
-			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE room_id = %d AND id > %d ORDER BY id ASC LIMIT 100", $room_id, $after ), ARRAY_A ); // phpcs:ignore
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE room_id = %d AND thread_id = 0 AND id > %d ORDER BY id ASC LIMIT 100", $room_id, $after ), ARRAY_A ); // phpcs:ignore
 		} else {
 			$cond = $before ? $wpdb->prepare( 'AND id < %d', $before ) : '';
-			$rows = array_reverse( $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE room_id = %d $cond ORDER BY id DESC LIMIT 50", $room_id ), ARRAY_A ) ); // phpcs:ignore
+			$rows = array_reverse( $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE room_id = %d AND thread_id = 0 $cond ORDER BY id DESC LIMIT 50", $room_id ), ARRAY_A ) ); // phpcs:ignore
 		}
 		return array_map( array( __CLASS__, 'message_out' ), $rows );
+	}
+
+	/* ------------------------------------------------------------------ threads (any message can start one) */
+
+	/** Replies in a thread, oldest first. */
+	public static function thread_messages( $root_id, $after = 0 ) {
+		global $wpdb;
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::t( 'messages' ) . ' WHERE thread_id = %d AND id > %d ORDER BY id ASC LIMIT 300', $root_id, $after ), ARRAY_A ); // phpcs:ignore
+		return array_map( array( __CLASS__, 'message_out' ), $rows );
+	}
+
+	/** Unread replies in a thread for this student (replies by others after their read marker). */
+	private static function thread_unread( $uid, $root_id, $last_read ) {
+		global $wpdb;
+		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::t( 'messages' ) . ' WHERE thread_id = %d AND id > %d AND user_id <> %d AND deleted = 0', $root_id, $last_read, $uid ) ); // phpcs:ignore
+	}
+
+	/** "N replies · last reply 5m ago" for the threads under the messages of a room: { rootId: {n, last, unread, following} }. */
+	public static function thread_meta( $room_id, $uid, $since_id = 0 ) {
+		global $wpdb;
+		$m    = self::t( 'messages' );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT thread_id, COUNT(*) n, MAX(created_at) last FROM $m WHERE room_id = %d AND thread_id >= %d AND thread_id > 0 AND deleted = 0 GROUP BY thread_id", $room_id, $since_id ), ARRAY_A ); // phpcs:ignore
+		if ( ! $rows ) {
+			return (object) array();
+		}
+		$ids   = implode( ',', array_map( 'intval', wp_list_pluck( $rows, 'thread_id' ) ) );
+		$reads = array();
+		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SELECT thread_id, last_read, followed FROM ' . self::t( 'thread_reads' ) . " WHERE user_id = %d AND thread_id IN ($ids)", $uid ), ARRAY_A ) as $x ) { // phpcs:ignore
+			$reads[ (int) $x['thread_id'] ] = $x;
+		}
+		$out = array();
+		foreach ( $rows as $x ) {
+			$tid         = (int) $x['thread_id'];
+			$follow      = ! empty( $reads[ $tid ]['followed'] );
+			$out[ $tid ] = array(
+				'n'         => (int) $x['n'],
+				'last'      => mysql2date( 'c', $x['last'] ),
+				'unread'    => $follow ? self::thread_unread( $uid, $tid, (int) $reads[ $tid ]['last_read'] ) : 0,
+				'following' => $follow,
+			);
+		}
+		return (object) $out;
+	}
+
+	/** Threads this student follows that have replies, newest first, with unread counts. */
+	public static function thread_inbox( $uid ) {
+		global $wpdb;
+		$m    = self::t( 'messages' );
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT r.thread_id, r.last_read, MAX(m.id) last_id, MAX(m.created_at) last, COUNT(*) n FROM ' . self::t( 'thread_reads' ) . " r JOIN $m m ON m.thread_id = r.thread_id AND m.deleted = 0 WHERE r.user_id = %d AND r.followed = 1 GROUP BY r.thread_id, r.last_read ORDER BY last_id DESC LIMIT 20", $uid ), ARRAY_A ); // phpcs:ignore
+		$out  = array();
+		foreach ( (array) $rows as $x ) {
+			$root = self::message_row( (int) $x['thread_id'] );
+			if ( ! $root || ! self::can_access( $uid, self::room( (int) $root['room_id'] ) ) ) {
+				continue;
+			}
+			$out[] = array(
+				'id'     => (int) $root['id'],
+				'room'   => (int) $root['room_id'],
+				'who'    => Sawa_Tracker_Game::person( (int) $root['user_id'] )['name'],
+				'text'   => $root['deleted'] ? '' : ( '' !== (string) $root['body'] ? wp_trim_words( (string) $root['body'], 10, '…' ) : ( '' !== (string) $root['audio'] ? '🎤' : self::sticker_label( $root['media'] ) ) ),
+				'n'      => (int) $x['n'],
+				'last'   => mysql2date( 'c', $x['last'] ),
+				'unread' => (int) $x['last_id'] > (int) $x['last_read'] ? min( 99, self::thread_unread( $uid, (int) $root['id'], (int) $x['last_read'] ) ) : 0,
+			);
+		}
+		return $out;
+	}
+
+	/** Follows a thread (or stops following). $last_read moves the read marker forward. */
+	public static function follow_thread( $uid, $root_id, $on = true, $last_read = 0 ) {
+		global $wpdb;
+		$t = self::t( 'thread_reads' );
+		$wpdb->query( $wpdb->prepare( "INSERT INTO $t (thread_id, user_id, last_read, followed) VALUES (%d, %d, %d, %d) ON DUPLICATE KEY UPDATE last_read = GREATEST(last_read, VALUES(last_read)), followed = VALUES(followed)", $root_id, $uid, $last_read, $on ? 1 : 0 ) ); // phpcs:ignore
+	}
+
+	/** Moves the read marker of a followed thread forward. */
+	public static function read_thread( $uid, $root_id, $msg_id ) {
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::t( 'thread_reads' ) . ' SET last_read = %d WHERE thread_id = %d AND user_id = %d AND last_read < %d', $msg_id, $root_id, $uid, $msg_id ) ); // phpcs:ignore
+	}
+
+	public static function thread_following( $uid, $root_id ) {
+		global $wpdb;
+		return (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT followed FROM ' . self::t( 'thread_reads' ) . ' WHERE thread_id = %d AND user_id = %d', $root_id, $uid ) ); // phpcs:ignore
+	}
+
+	/** The message a thread hangs on, if this student may see it (a thread reply cannot start its own thread). */
+	public static function thread_root( $uid, $root_id ) {
+		$root = self::message_row( (int) $root_id );
+		if ( ! $root || (int) $root['thread_id'] || ! self::can_access( $uid, self::room( (int) $root['room_id'] ) ) ) {
+			return null;
+		}
+		return $root;
+	}
+
+	/**
+	 * Tells everyone who follows a thread about a new reply, once per batch: only followers who had read
+	 * everything before it get a bell notification (the rest already see the unread marker).
+	 */
+	private static function notify_thread( $uid, $root, $id, $prev_last, $skip, $data ) {
+		global $wpdb;
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT user_id, last_read FROM ' . self::t( 'thread_reads' ) . ' WHERE thread_id = %d AND followed = 1 AND user_id <> %d LIMIT 50', $root['id'], $uid ), ARRAY_A ); // phpcs:ignore
+		foreach ( (array) $rows as $r ) {
+			$to = (int) $r['user_id'];
+			if ( $to === $skip || (int) $r['last_read'] < $prev_last ) {
+				continue;
+			}
+			Sawa_Tracker_Game::event( $uid, 'thread_reply', $to, $data + array( 'thread' => (int) $root['id'], 'mine' => (int) $root['user_id'] === $to ) );
+		}
 	}
 
 	const REACTS = array( '👍', '❤️', '😂', '😮', '👏', '🔥' );
@@ -520,9 +686,10 @@ final class Sawa_Tracker_Social {
 	}
 
 	/** Reactions for the latest messages in a room: { msgId: [ {e, n, mine} ] }. */
-	public static function reactions( $room_id, $uid, $since_id = 0 ) {
+	public static function reactions( $room_id, $uid, $since_id = 0, $thread = 0 ) {
 		global $wpdb;
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT r.message_id, r.emoji, COUNT(*) n, SUM(r.user_id = %d) mine FROM ' . self::t( 'msg_reacts' ) . ' r JOIN ' . self::t( 'messages' ) . ' m ON m.id = r.message_id WHERE m.room_id = %d AND m.id >= %d GROUP BY r.message_id, r.emoji', $uid, $room_id, $since_id ), ARRAY_A ); // phpcs:ignore
+		$cond = $thread ? $wpdb->prepare( 'AND ( m.thread_id = %d OR m.id = %d )', $thread, $thread ) : '';
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT r.message_id, r.emoji, COUNT(*) n, SUM(r.user_id = %d) mine FROM ' . self::t( 'msg_reacts' ) . ' r JOIN ' . self::t( 'messages' ) . " m ON m.id = r.message_id WHERE m.room_id = %d AND m.id >= %d $cond GROUP BY r.message_id, r.emoji", $uid, $room_id, $since_id ), ARRAY_A ); // phpcs:ignore
 		$out  = array();
 		foreach ( (array) $rows as $r ) {
 			$out[ (int) $r['message_id'] ][] = array( 'e' => $r['emoji'], 'n' => (int) $r['n'], 'mine' => (bool) $r['mine'] );
@@ -553,11 +720,76 @@ final class Sawa_Tracker_Social {
 		return $text;
 	}
 
-	public static function send( $uid, $room_id, $body, $audio_url = '', $reply_to = 0, $duration = 0, $kind = '', $media = '', $orig = '' ) {
+	const MENTION_MAX = 10;
+
+	/**
+	 * Who a message mentions: [ user ids, all | clan | empty ], or an error.
+	 * @Name comes from the suggestion list of the composer ($picked ids) and must still be in the text;
+	 * @everyone is for admins; @clan is for the clan leader (or an admin), in the clan chat, once per 10 minutes.
+	 */
+	private static function mentions( $uid, $room, $body, $picked ) {
+		$admin = user_can( $uid, 'manage_options' );
+		$ping  = '';
+		if ( preg_match( '/(^|[^\w])@everyone\b/i', $body ) ) {
+			if ( ! $admin ) {
+				return new WP_Error( 'everyone', 'منشن @everyone للأدمن بس. اعمل منشن لزميلك باسمه.' );
+			}
+			$ping = 'all';
+		} elseif ( preg_match( '/(^|[^\w])@clan\b/i', $body ) ) {
+			if ( 'clan' !== $room['type'] ) {
+				return new WP_Error( 'clan', 'منشن @clan بيشتغل في شات الكلان بس.' );
+			}
+			if ( ! $admin && self::clan_leader( (int) $room['clan_id'] ) !== $uid ) {
+				return new WP_Error( 'clan', 'قائد الكلان بس هو اللي يقدر يعمل منشن @clan.' );
+			}
+			if ( ! $admin && get_transient( 'sawa_tr_clanping_' . $uid ) ) {
+				return new WP_Error( 'clan', 'عملت منشن للكلان من شوية. استنى ١٠ دقايق.' );
+			}
+			$ping = 'clan';
+		}
+		$ids = array();
+		foreach ( array_unique( array_map( 'intval', (array) $picked ) ) as $id ) {
+			$u = $id && $id !== $uid ? get_userdata( $id ) : null;
+			if ( $u && false !== mb_stripos( $body, '@' . $u->display_name ) && self::can_access( $id, $room ) ) {
+				$ids[] = $id;
+			}
+			if ( count( $ids ) >= self::MENTION_MAX ) {
+				break;
+			}
+		}
+		return array( $ids, $ping );
+	}
+
+	/** Everyone a @everyone / @clan reaches in this room. */
+	private static function ping_targets( $room, $ping ) {
+		if ( 'clan' === $ping || 'clan' === $room['type'] ) {
+			return self::clan_members( (int) $room['clan_id'] );
+		}
+		if ( 'group' === $room['type'] || 'party' === $room['type'] ) {
+			return self::group_members( (int) $room['id'] );
+		}
+		$out = array();
+		foreach ( Sawa_Tracker_Game::member_ids() as $id ) {
+			if ( 'public' === $room['type'] || self::can_access( $id, $room ) ) {
+				$out[] = (int) $id;
+			}
+		}
+		return $out;
+	}
+
+	public static function send( $uid, $room_id, $body, $audio_url = '', $reply_to = 0, $duration = 0, $kind = '', $media = '', $orig = '', $thread = 0, $mentions = array() ) {
 		global $wpdb;
 		$room = self::room( $room_id );
 		if ( ! self::can_access( $uid, $room ) ) {
 			return new WP_Error( 'room', 'إنت مش في الشات ده.' );
+		}
+		$is_admin = user_can( $uid, 'manage_options' );
+		$root     = null;
+		if ( $thread ) {
+			$root = self::thread_root( $uid, $thread );
+			if ( ! $root || (int) $root['room_id'] !== (int) $room_id ) {
+				return new WP_Error( 'thread', 'ملقيناش الثريد ده.' );
+			}
 		}
 		if ( ! Sawa_Tracker_Game::settings()['chat_enabled'] && ! user_can( $uid, 'manage_options' ) ) {
 			return new WP_Error( 'off', 'الشات متوقف دلوقتي.' );
@@ -589,12 +821,11 @@ final class Sawa_Tracker_Social {
 		if ( '' === $body && '' === $audio_url && '' === $kind ) {
 			return new WP_Error( 'empty', 'اكتب رسالة الأول.' );
 		}
-		$is_admin = user_can( $uid, 'manage_options' );
 		if ( ! $is_admin && '' === (string) Sawa_Tracker_Game::m( $uid, 'avatar', '' ) ) {
 			return new WP_Error( 'photo', 'ارفع صورتك الأول من الإعدادات عشان تقدر تكتب في الشات.' );
 		}
 		$max_row = (int) ( Sawa_Tracker_Game::settings()['chat_max_row'] ?? 5 );
-		if ( ! $is_admin && self::in_a_row( $uid, $room_id ) >= $max_row ) {
+		if ( ! $is_admin && self::in_a_row( $uid, $room_id, $root ? (int) $root['id'] : 0 ) >= $max_row ) {
 			return new WP_Error( 'row', sprintf( 'بعت %d رسايل ورا بعض. استنى حد يرد عليك الأول، أو جرب كمان شوية.', $max_row ) );
 		}
 		$parent = null;
@@ -603,7 +834,16 @@ final class Sawa_Tracker_Social {
 			if ( ! $parent || (int) $parent['room_id'] !== (int) $room_id || $parent['deleted'] ) {
 				$parent = null;
 			}
+			// Inside a thread you can quote messages of that thread only.
+			if ( $parent && $root && (int) $parent['id'] !== (int) $root['id'] && (int) $parent['thread_id'] !== (int) $root['id'] ) {
+				$parent = null;
+			}
 		}
+		$tagged = '' !== $body ? self::mentions( $uid, $room, $body, $mentions ) : array( array(), '' );
+		if ( is_wp_error( $tagged ) ) {
+			return $tagged;
+		}
+		$prev_last = $root ? (int) $wpdb->get_var( $wpdb->prepare( 'SELECT MAX(id) FROM ' . self::t( 'messages' ) . ' WHERE thread_id = %d', $root['id'] ) ) : 0; // phpcs:ignore
 		$rl = (array) get_transient( 'sawa_tr_chat_' . $uid );
 		$now = microtime( true );
 		$rl  = array_values( array_filter( $rl, function ( $t ) use ( $now ) { return $now - $t < 60; } ) );
@@ -621,30 +861,55 @@ final class Sawa_Tracker_Social {
 				'audio'      => $audio_url,
 				'duration'   => max( 0, min( 120, (int) $duration ) ),
 				'reply_to'   => $parent ? (int) $parent['id'] : 0,
+				'thread_id'  => $root ? (int) $root['id'] : 0,
+				'mentions'   => $tagged[0] || $tagged[1] ? ',' . implode( ',', array_merge( $tagged[0], $tagged[1] ? array( $tagged[1] ) : array() ) ) . ',' : '',
 				'kind'       => $kind,
 				'media'      => $media,
 				'orig'       => $orig,
 				'created_at' => Sawa_Tracker_Game::now_mysql(),
 			)
 		);
-		$id = (int) $wpdb->insert_id;
+		$id   = (int) $wpdb->insert_id;
+		$note = array(
+			'room'    => (int) $room_id,
+			'msg'     => $id,
+			'text'    => '' !== $body ? wp_trim_words( self::filter_words( $body ), 12, '…' ) : '',
+			'voice'   => '' !== $audio_url,
+			'sticker' => 'sticker' === $kind ? self::sticker_label( $media ) : ( 'gif' === $kind ? 'GIF' : '' ),
+		);
 		if ( $parent && (int) $parent['user_id'] !== $uid ) {
 			// Notification for the author of the message being replied to (shows in their bell).
-			Sawa_Tracker_Game::event(
-				$uid,
-				'reply',
-				(int) $parent['user_id'],
-				array(
-					'room' => (int) $room_id,
-					'msg'  => $id,
-					'text' => '' !== $body ? wp_trim_words( self::filter_words( $body ), 12, '…' ) : '',
-					'voice' => '' !== $audio_url,
-					'sticker' => 'sticker' === $kind ? self::sticker_label( $media ) : ( 'gif' === $kind ? 'GIF' : '' ),
-				)
-			);
+			Sawa_Tracker_Game::event( $uid, 'reply', (int) $parent['user_id'], $note + ( $root ? array( 'thread' => (int) $root['id'] ) : array() ) );
+		}
+		if ( $root ) {
+			// The starter of a thread follows it from the first reply; whoever writes in a thread follows it too.
+			$wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO ' . self::t( 'thread_reads' ) . ' (thread_id, user_id, last_read, followed) VALUES (%d, %d, %d, 1)', $root['id'], $root['user_id'], $root['id'] ) ); // phpcs:ignore
+			self::notify_thread( $uid, $root, $id, $prev_last, $parent ? (int) $parent['user_id'] : 0, $note );
+			self::follow_thread( $uid, (int) $root['id'], true, $id );
+		}
+		// Mentions: a bell notification for each person (they also follow the thread, if it is in one).
+		$told = $parent ? array( (int) $parent['user_id'] ) : array();
+		$to   = $tagged[0];
+		if ( $tagged[1] ) {
+			$to = array_merge( $to, self::ping_targets( $room, $tagged[1] ) );
+			if ( 'clan' === $tagged[1] ) {
+				set_transient( 'sawa_tr_clanping_' . $uid, 1, 10 * MINUTE_IN_SECONDS );
+			}
+		}
+		foreach ( array_unique( $to ) as $who ) {
+			if ( $who === $uid || in_array( $who, $told, true ) ) {
+				continue;
+			}
+			$type = in_array( $who, $tagged[0], true ) ? 'mention' : ( 'all' === $tagged[1] ? 'mention_all' : 'mention_clan' );
+			Sawa_Tracker_Game::event( $uid, $type, $who, $note + ( $root ? array( 'thread' => (int) $root['id'] ) : array() ) );
+			if ( $root && in_array( $who, $tagged[0], true ) ) {
+				$wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO ' . self::t( 'thread_reads' ) . ' (thread_id, user_id, last_read, followed) VALUES (%d, %d, %d, 1)', $root['id'], $who, $prev_last ? $prev_last : $root['id'] ) ); // phpcs:ignore
+			}
 		}
 		do_action( 'sawa_tracker_message_sent', $uid, (int) $room_id, $id, $body, $audio_url );
-		self::mark_read( $uid, $room_id, $id );
+		if ( ! $root ) {
+			self::mark_read( $uid, $room_id, $id );
+		}
 		return $id;
 	}
 

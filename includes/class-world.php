@@ -56,9 +56,10 @@ final class Sawa_Tracker_World {
 		'mastered' => array( 'mastered', 1, 'Master a skill point' ),
 		'share'    => array( 'share', 1, 'Share your Silk Road card in the Skool community' ),
 		'helped'   => array( 'helped', 2, 'Help 2 travellers (they tap “This helped”)' ),
+		'reply'    => array( 'reply', 25, 'Reply to 25 messages from other travellers in the chat' ),
 	);
 	/** Where the app takes the student to do a quest step. */
-	const GO           = array( 'answer' => 'caravan', 'helped' => 'caravan', 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'perfect' => 'today', 'mastered' => 'skills' );
+	const GO           = array( 'answer' => 'caravan', 'helped' => 'caravan', 'monster' => 'map', 'boss' => 'map', 'card' => 'review', 'practice' => 'skills', 'use' => 'chat', 'reply' => 'chat', 'perfect' => 'today', 'mastered' => 'skills' );
 	/** The community is A2–B1: the six towns are small steps from early A2 to late B1 (question difficulty). */
 	const LEVELS       = array( 1 => 1.7, 2 => 2.0, 3 => 2.35, 4 => 2.7, 5 => 3.0, 6 => 3.35 );
 	const STAMINA      = 5;
@@ -239,6 +240,7 @@ final class Sawa_Tracker_World {
 			'elixirs'  => (int) $rpg['elixirs'],
 			'weapon'   => (int) round( 100 * Sawa_Tracker_RPG::slot_bonus( $rpg, 'weapon' ) ),
 			'job'      => $rpg['job'],
+			'replyGoal' => Sawa_Tracker_Replies::goal( $uid ),
 			'titles'   => array_values( (array) $w['titles'] ),
 			'avatar'   => Sawa_Tracker_Play::avatar( $uid ),
 			'hero'     => Sawa_Tracker_Hero::sheet( $uid ),

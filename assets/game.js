@@ -1228,36 +1228,78 @@
   }
 
   /* -------- chat: town and party, never leaving the world; Arabic or Franco-Arabic goes through translation */
-  var CHAT = { room: 0, rooms: [], msgs: [], t: null, open: false };
+  /* threads: tap "Reply" (or "N replies") under a message to open its thread inside the same panel; replies count toward today's reply goal */
+  var CHAT = { room: 0, rooms: [], msgs: [], t: null, open: false, threads: {}, th: 0, thMsgs: [], thRoot: null, goal: null };
+  function agoEn(iso) { var s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); return s < 45 ? 'just now' : s < 3600 ? Math.round(s / 60) + 'm ago' : s < 86400 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; }
+  CHAT.goalPaint = function () {
+    var el = $('.sg-goal'), g = CHAT.goal || (H.world() || {}).replyGoal; if (!el || !g) return;
+    el.innerHTML = '<button class="sg-goalb' + (g.done ? ' done' : '') + '">↩ ' + (g.done ? 'Reply goal done!' : 'Replies today') + ' <b>' + Math.min(g.n, g.goal) + '/' + g.goal + '</b><i><i style="width:' + Math.min(100, Math.round(g.n / g.goal * 100)) + '%"></i></i></button>';
+    el.querySelector('button').onclick = function () { say('Reply to other travellers (3+ English words, or a 5-second voice note): +' + g.xp + ' XP each, and +' + g.bonus + ' XP and ' + g.coins + ' coins at ' + g.goal + '. Replies to yourself, stickers, copies and very fast replies don\'t count.', 7000); };
+  };
   CHAT.show = function (roomId) {
-    var w = H.world(); CHAT.open = true;
+    var w = H.world(); CHAT.open = true; CHAT.th = 0;
     CHAT.rooms = [{ id: w.town.room, name: '💬 Community' }]; // one chat for the whole community
     var go = function () {
       CHAT.room = roomId || CHAT.room && CHAT.rooms.some(function (r) { return r.id === CHAT.room; }) && CHAT.room || CHAT.rooms[0].id;
-      var b = panel('sg-chatp', '💬 Chat', '<div class="sg-tabs">' + CHAT.rooms.map(function (r) { return '<button data-room="' + r.id + '"' + (r.id === CHAT.room ? ' class="on"' : '') + '>' + esc(r.name) + '</button>'; }).join('') + '</div><div class="sg-msgs"><p class="sg-wait">…</p></div><div class="sg-tr"></div><div class="sg-send"><input maxlength="500" placeholder="Write in English — or in Arabic to get help" dir="auto"><button class="pri">Send</button></div>');
+      var b = panel('sg-chatp', '💬 Chat', '<div class="sg-goal"></div><div class="sg-tabs">' + CHAT.rooms.map(function (r) { return '<button data-room="' + r.id + '"' + (r.id === CHAT.room ? ' class="on"' : '') + '>' + esc(r.name) + '</button>'; }).join('') + '</div><div class="sg-msgs"><p class="sg-wait">…</p></div><div class="sg-tr"></div><div class="sg-mp"></div><div class="sg-send"><input maxlength="500" placeholder="Write in English — or in Arabic to get help" dir="auto"><button class="pri">Send</button></div>');
       b.querySelectorAll('[data-room]').forEach(function (x) { x.onclick = function () { CHAT.show(+x.dataset.room); }; });
       var inp = b.querySelector('.sg-send input');
       inp.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') CHAT.send(); };
+      inp.oninput = function () { CHAT.mentionInput(inp); };
       b.querySelector('.sg-send button').onclick = CHAT.send;
-      CHAT.msgs = []; CHAT.load();
+      CHAT.msgs = []; CHAT.threads = {}; CHAT.goalPaint(); CHAT.load();
+      H.api('/chat/rooms').then(function (j) { if (j.replyGoal) { CHAT.goal = j.replyGoal; CHAT.goalPaint(); } }, function () {});
     };
     if (w.party) H.api('/party').then(function (j) { if (j.party) CHAT.rooms.push({ id: j.party.room, name: '⚔ ' + j.party.name }); go(); }, go); else go();
   };
   CHAT.load = function () {
     if (!CHAT.open) return;
+    if (CHAT.th) return CHAT.loadThread();
     var after = CHAT.msgs.length ? CHAT.msgs[CHAT.msgs.length - 1].id : 0, room = CHAT.room;
     H.api('/chat/rooms/' + room + '/messages', after ? { query: { after: after } } : {}).then(function (j) {
-      if (!CHAT.open || room !== CHAT.room) return;
-      if (j.messages.length || !after) { CHAT.msgs = after ? CHAT.msgs.concat(j.messages) : j.messages; CHAT.paint(); }
+      if (!CHAT.open || room !== CHAT.room || CHAT.th) return;
+      var before = JSON.stringify(CHAT.threads); Object.keys(j.threads || {}).forEach(function (k) { CHAT.threads[k] = j.threads[k]; });
+      var me = H.me().id, ping = after && j.messages.filter(function (m) { return m.pingsMe && m.who && m.who.id !== me; })[0];
+      if (ping) say('🔔 ' + ping.who.name.split(' ')[0] + (ping.ping === 'everyone' ? ' mentioned everyone' : ' mentioned you') + ' in the chat', 5000);
+      if (j.messages.length || !after || JSON.stringify(CHAT.threads) !== before) { CHAT.msgs = after ? CHAT.msgs.concat(j.messages) : j.messages; CHAT.paint(); }
       clearTimeout(CHAT.t); CHAT.t = setTimeout(CHAT.load, 4000);
     }, function () { clearTimeout(CHAT.t); CHAT.t = setTimeout(CHAT.load, 8000); });
   };
+  CHAT.msgHtml = function (m, me, inThread) {
+    var mine = m.who && m.who.id === me, txt = m.gone ? '<i>removed</i>' : m.body ? wrapWords(m.body) : m.audio ? '🎤 voice message' + (m.transcript ? ': ' + wrapWords(m.transcript) : '') : m.kind === 'gif' ? 'GIF' : m.kind === 'sticker' ? 'Sticker' : '';
+    var th = !inThread && CHAT.threads[m.id] && CHAT.threads[m.id].n ? CHAT.threads[m.id] : null;
+    var foot = inThread || m.gone ? '' : '<div class="sg-mf">' + (th ? '<button class="sg-thr' + (th.unread ? ' new' : '') + '" data-th="' + m.id + '">💬 ' + th.n + (th.n === 1 ? ' reply' : ' replies') + ' · ' + agoEn(th.last) + (th.unread ? ' <em>' + th.unread + ' new</em>' : '') + '</button>' : '<button class="sg-thr" data-th="' + m.id + '">↩ Reply</button>') + '</div>';
+    return '<div class="sg-m' + (mine ? ' me' : '') + (m.pingsMe ? ' ping' : '') + '"><b>' + esc(m.who ? m.who.name.split(' ')[0] : '') + (m.pingsMe ? ' 🔔' : '') + '</b><p>' + txt + (m.translated ? ' <small>🌐 translated</small>' : '') + '</p>' + foot + '</div>';
+  };
+  CHAT.bindThreads = function (box) { box.querySelectorAll('[data-th]').forEach(function (x) { x.onclick = function (e) { e.stopPropagation(); CHAT.openThread(+x.dataset.th); }; }); };
   CHAT.paint = function () {
-    var box = $('.sg-msgs'); if (!box) return; var me = H.me().id;
-    box.innerHTML = CHAT.msgs.length ? CHAT.msgs.slice(-40).map(function (m) {
-      var mine = m.who && m.who.id === me, txt = m.gone ? '<i>removed</i>' : m.body ? wrapWords(m.body) : m.audio ? '🎤 voice message' + (m.transcript ? ': ' + wrapWords(m.transcript) : '') : m.kind === 'gif' ? 'GIF' : m.kind === 'sticker' ? 'Sticker' : '';
-      return '<div class="sg-m' + (mine ? ' me' : '') + '"><b>' + esc(m.who ? m.who.name.split(' ')[0] : '') + '</b><p>' + txt + (m.translated ? ' <small>🌐 translated</small>' : '') + '</p></div>';
-    }).join('') : '<p class="sg-empty">No messages yet. Say hello in English!</p>';
+    var box = $('.sg-msgs'); if (!box || CHAT.th) return; var me = H.me().id;
+    box.innerHTML = CHAT.msgs.length ? CHAT.msgs.slice(-40).map(function (m) { return CHAT.msgHtml(m, me); }).join('') : '<p class="sg-empty">No messages yet. Say hello in English!</p>';
+    CHAT.bindThreads(box);
+    box.scrollTop = box.scrollHeight;
+  };
+  CHAT.openThread = function (id) {
+    CHAT.th = id; CHAT.thMsgs = []; CHAT.thRoot = CHAT.msgs.filter(function (m) { return m.id === id; })[0] || null;
+    var tabs = $('.sg-chatp .sg-tabs'); if (tabs) tabs.innerHTML = '<button data-thx="1">← Back to the chat</button><span class="sg-thl">🧵 Thread</span>';
+    var bk = tabs && tabs.querySelector('[data-thx]'); if (bk) bk.onclick = CHAT.closeThread;
+    var inp = $('.sg-send input'); if (inp) inp.placeholder = 'Reply in the thread, in English';
+    CHAT.paintThread(); clearTimeout(CHAT.t); CHAT.loadThread();
+  };
+  CHAT.closeThread = function () { CHAT.th = 0; CHAT.show(CHAT.room); };
+  CHAT.loadThread = function () {
+    var id = CHAT.th; if (!CHAT.open || !id) return;
+    var after = CHAT.thMsgs.length ? CHAT.thMsgs[CHAT.thMsgs.length - 1].id : 0;
+    H.api('/chat/threads/' + id, after ? { query: { after: after } } : {}).then(function (j) {
+      if (!CHAT.open || CHAT.th !== id) return;
+      CHAT.thRoot = j.root; if (j.replyGoal) { CHAT.goal = j.replyGoal; CHAT.goalPaint(); }
+      if (j.messages.length || !after) { CHAT.thMsgs = CHAT.thMsgs.concat(j.messages); CHAT.paintThread(); }
+      if (CHAT.threads[id]) CHAT.threads[id].unread = 0;
+      clearTimeout(CHAT.t); CHAT.t = setTimeout(CHAT.load, 4000);
+    }, function (x) { say(x.message); CHAT.closeThread(); });
+  };
+  CHAT.paintThread = function () {
+    var box = $('.sg-msgs'); if (!box || !CHAT.th) return; var me = H.me().id, n = CHAT.thMsgs.length;
+    box.innerHTML = (CHAT.thRoot ? CHAT.msgHtml(CHAT.thRoot, me, true) : '') + '<p class="sg-thd">' + (n ? n + (n === 1 ? ' reply' : ' replies') : 'No replies yet — be the first!') + '</p>' + CHAT.thMsgs.map(function (m) { return CHAT.msgHtml(m, me, true); }).join('');
     box.scrollTop = box.scrollHeight;
   };
   CHAT.send = function () {
@@ -1265,14 +1307,59 @@
     if (H.needsTr(v)) return CHAT.translate(v);
     CHAT.post({ body: v }, inp);
   };
+  /* @mentions: type @ and a name; @everyone for admins (the game chats are town and party rooms, so no @clan here) */
+  CHAT.picks = [];
+  CHAT.mentionInput = function (inp) {
+    var box = $('.sg-mp'); if (!box) return;
+    var m = inp.value.slice(0, inp.selectionStart || inp.value.length).match(/(^|\s)@([^\s@]{0,20})$/);
+    if (!m) { box.innerHTML = ''; return; }
+    var q = m[2].toLowerCase(), room = CHAT.room;
+    clearTimeout(CHAT.mt);
+    CHAT.mt = setTimeout(function () {
+      H.api('/members', { query: { q: q, room: room } }).then(function (j) {
+        var b = $('.sg-mp'); if (!b) return;
+        var opts = (H.isAdmin() && 'everyone'.indexOf(q) === 0 ? [{ name: 'everyone', id: 0 }] : []).concat(j.members.slice(0, 5));
+        b.innerHTML = opts.map(function (p) { return '<button data-mid="' + p.id + '" data-mname="' + esc(p.name) + '">@' + esc(p.name) + '</button>'; }).join('');
+        b.querySelectorAll('[data-mid]').forEach(function (x) { x.onclick = function () {
+          var v = inp.value, pos = inp.selectionStart || v.length, start = v.slice(0, pos).replace(/@([^\s@]{0,20})$/, '@' + x.dataset.mname + ' ');
+          inp.value = start + v.slice(pos); inp.focus();
+          if (+x.dataset.mid) CHAT.picks.push({ id: +x.dataset.mid, name: x.dataset.mname });
+          b.innerHTML = '';
+        }; });
+      }, function () {});
+    }, 200);
+  };
+  CHAT.takeMentions = function (text) {
+    var low = String(text || '').toLowerCase(), ids = CHAT.picks.filter(function (p) { return low.indexOf('@' + p.name.toLowerCase()) >= 0; }).map(function (p) { return p.id; });
+    CHAT.picks = []; var b = $('.sg-mp'); if (b) b.innerHTML = '';
+    return ids;
+  };
   CHAT.post = function (body, inp) {
+    var th = CHAT.th;
+    body.mentions = CHAT.takeMentions(body.body);
+    if (th) {
+      var tafter = CHAT.thMsgs.length ? CHAT.thMsgs[CHAT.thMsgs.length - 1].id : 0;
+      return H.api('/chat/threads/' + th, { method: 'POST', body: body, query: { after: tafter } }).then(function (j) {
+        if (inp) inp.value = ''; var tr = $('.sg-tr'); if (tr) tr.innerHTML = '';
+        if (CHAT.th === th) { CHAT.thMsgs = CHAT.thMsgs.concat(j.messages || []); CHAT.paintThread(); }
+        CHAT.replySay(j);
+      }, function (x) { say(x.message, 4500); });
+    }
     var after = CHAT.msgs.length ? CHAT.msgs[CHAT.msgs.length - 1].id : 0, room = CHAT.room;
     H.api('/chat/rooms/' + room + '/messages', { method: 'POST', body: body, query: { after: after } }).then(function (j) {
       if (inp) inp.value = ''; var tr = $('.sg-tr'); if (tr) tr.innerHTML = '';
       CHAT.msgs = CHAT.msgs.concat(j.messages || []); CHAT.paint();
       var w = G.phaser.scene.getScene('World'); if (w && room === H.world().town.room) w.bubble = { text: body.body, until: Date.now() + 7000 };
-      if (j.xp) say('+' + (j.xp.gained || j.xp) + ' XP for writing in English');
+      CHAT.replySay(j);
     }, function (x) { say(x.message, 4500); });
+  };
+  /** XP toast after sending, and how the reply did on today's reply goal. */
+  CHAT.replySay = function (j) {
+    if (j.replyGoal) { CHAT.goal = j.replyGoal; CHAT.goalPaint(); }
+    var r = j.reply, xp = (j.xp && (j.xp.gained || j.xp)) || 0;
+    if (r && r.counted) { xp += r.xp || 0; say(r.bonus ? '🎉 Reply goal done! +' + xp + ' XP and ' + r.coins + ' coins' : '+' + xp + ' XP · reply counted: ' + Math.min(r.n, r.goal) + '/' + r.goal, 4500); }
+    else if (r && r.why && r.why !== 'sticker') say({ short: 'Sent! To count for your reply goal, write 3+ English words.', same: 'Sent — but the same reply again doesn\'t count for the goal.', fast: 'Sent! Very fast replies in a row don\'t count — take your time.', person: 'You replied to this person 4 times today. Reply to someone else to count.' }[r.why] || '', 5000);
+    else if (xp) say('+' + xp + ' XP for writing in English');
   };
   CHAT.translate = function (text) {
     var tr = $('.sg-tr'); tr.innerHTML = '<p class="sg-wait">Translating…</p>';
@@ -1336,6 +1423,11 @@
 
   /* -------- today's plan (the same plan as the Today tab) */
   var TODAY = {};
+  /** The daily reply goal under the plan (from the tracker; it isn't a plan step, so it doesn't change fights). */
+  TODAY.replyRow = function () {
+    var g = CHAT.goal || (H.world() || {}).replyGoal; if (!g) return '';
+    return '<li class="' + (g.done ? 'done' : '') + '"><span>' + (g.done ? '✓' : '↩') + '</span><div><b>Reply to ' + g.goal + ' messages from other travellers</b><small>' + Math.min(g.n, g.goal) + '/' + g.goal + ' today · +' + g.xp + ' XP each, +' + g.bonus + ' XP at the end</small></div>' + (g.done ? '' : '<button data-go="reply" class="pri">Do it here</button>') + '</li>';
+  };
   TODAY.show = function () {
     if (!H.lens) return H.go('today');
     var b = panel('sg-todayp', '📅 Today\'s plan', '<p class="sg-wait">…</p>');
@@ -1343,8 +1435,8 @@
       var inGame = { review: 1, use: 1, log: 1 };
       b.innerHTML = '<p class="small">Every step gives you one more fight today' + (d.perfect ? ' — and you had a perfect day! 🌟' : '.') + '</p><ul class="sg-plan">' + d.items.map(function (it) {
         return '<li class="' + (it.done ? 'done' : '') + '"><span>' + (it.done ? '✓' : '○') + '</span><div><b>' + esc(it.t) + '</b><small>' + esc(it.sub || '') + '</small></div>' + (it.done ? '' : '<button data-go="' + esc(it.k) + '" data-to="' + esc(it.go || '') + '"' + (inGame[it.k] ? ' class="pri"' : '') + '>' + (inGame[it.k] ? 'Do it here' : 'Go') + '</button>') + '</li>';
-      }).join('') + '</ul>';
-      b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(x.dataset.to || (k === 'collect' ? 'scan' : k)); }; });
+      }).join('') + TODAY.replyRow() + '</ul>';
+      b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'reply') CHAT.show(); else if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(x.dataset.to || (k === 'collect' ? 'scan' : k)); }; });
     }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
 

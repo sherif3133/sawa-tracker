@@ -41,6 +41,9 @@ final class Sawa_Tracker_Rest_Social {
 		self::route( '/chat/gifs', 'GET', 'gifs' );
 		self::route( '/chat/translate', 'POST', 'translate' );
 		self::route( '/chat/messages/(?P<id>\d+)', 'DELETE', 'delete_message' );
+		self::route( '/chat/threads/(?P<id>\d+)', 'GET', 'thread' );
+		self::route( '/chat/threads/(?P<id>\d+)', 'POST', 'thread_send' );
+		self::route( '/chat/threads/(?P<id>\d+)/follow', 'POST', 'thread_follow' );
 		self::route( '/members', 'GET', 'members' );
 		self::route( '/quest', 'POST', 'quest' );
 		self::route( '/reminder', 'POST', 'reminder' );
@@ -71,11 +74,14 @@ final class Sawa_Tracker_Rest_Social {
 	}
 
 	public static function rooms() {
-		$uid   = self::uid();
-		$rooms = Sawa_Tracker_Social::rooms_for( $uid );
+		$uid     = self::uid();
+		$rooms   = Sawa_Tracker_Social::rooms_for( $uid );
+		$threads = Sawa_Tracker_Social::thread_inbox( $uid );
 		return array(
 			'rooms'   => $rooms,
-			'unread'  => array_sum( wp_list_pluck( $rooms, 'unread' ) ),
+			'unread'  => array_sum( wp_list_pluck( $rooms, 'unread' ) ) + array_sum( wp_list_pluck( $threads, 'unread' ) ),
+			'threads' => $threads,
+			'replyGoal' => Sawa_Tracker_Replies::goal( $uid ),
 			'enabled' => (bool) Sawa_Tracker_Game::settings()['chat_enabled'],
 			'muted'   => (string) Sawa_Tracker_Game::m( $uid, 'muted_until', '' ),
 			'admin'   => current_user_can( 'manage_options' ),
@@ -112,7 +118,63 @@ final class Sawa_Tracker_Rest_Social {
 		return array(
 			'messages' => $msgs,
 			'reacts'   => Sawa_Tracker_Social::reactions( (int) $room['id'], self::uid(), $first ),
+			'threads'  => Sawa_Tracker_Social::thread_meta( (int) $room['id'], self::uid(), $first ),
 		);
+	}
+
+	/** A thread: the message it started from and its replies (?after= for new ones). Opening it marks it read. */
+	public static function thread( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$root = Sawa_Tracker_Social::thread_root( $uid, (int) $r['id'] );
+		if ( ! $root ) {
+			return self::fail( 'ملقيناش الثريد ده.', 404 );
+		}
+		$after = (int) $r->get_param( 'after' );
+		$msgs  = Sawa_Tracker_Social::thread_messages( (int) $root['id'], $after );
+		if ( $msgs ) {
+			Sawa_Tracker_Social::read_thread( $uid, (int) $root['id'], end( $msgs )['id'] );
+		}
+		return array(
+			'root'      => Sawa_Tracker_Social::message_out( $root ),
+			'room'      => (int) $root['room_id'],
+			'messages'  => $msgs,
+			'reacts'    => Sawa_Tracker_Social::reactions( (int) $root['room_id'], $uid, (int) $root['id'], (int) $root['id'] ),
+			'following' => Sawa_Tracker_Social::thread_following( $uid, (int) $root['id'] ),
+			'replyGoal' => Sawa_Tracker_Replies::goal( $uid ),
+		);
+	}
+
+	public static function thread_send( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$root = Sawa_Tracker_Social::thread_root( $uid, (int) $r['id'] );
+		if ( ! $root ) {
+			return self::fail( 'ملقيناش الثريد ده.', 404 );
+		}
+		$id = Sawa_Tracker_Social::send( $uid, (int) $root['room_id'], (string) $r->get_param( 'body' ), '', (int) $r->get_param( 'reply_to' ), 0, (string) $r->get_param( 'kind' ), (string) $r->get_param( 'media' ), (string) $r->get_param( 'orig' ), (int) $root['id'], (array) $r->get_param( 'mentions' ) );
+		if ( is_wp_error( $id ) ) {
+			return self::fail( $id );
+		}
+		return array(
+			'ok'        => true,
+			'xp'        => Sawa_Tracker_XP::$last,
+			'reply'     => Sawa_Tracker_Replies::$last,
+			'replyGoal' => Sawa_Tracker_Replies::goal( $uid ),
+			'messages'  => Sawa_Tracker_Social::thread_messages( (int) $root['id'], (int) $r->get_param( 'after' ) ),
+			'following' => true,
+		);
+	}
+
+	public static function thread_follow( WP_REST_Request $r ) {
+		$uid  = self::uid();
+		$root = Sawa_Tracker_Social::thread_root( $uid, (int) $r['id'] );
+		if ( ! $root ) {
+			return self::fail( 'ملقيناش الثريد ده.', 404 );
+		}
+		global $wpdb;
+		$on   = (bool) $r->get_param( 'on' );
+		$last = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT MAX(id) FROM ' . Sawa_Tracker_Game::table( 'messages' ) . ' WHERE thread_id = %d', $root['id'] ) ); // phpcs:ignore
+		Sawa_Tracker_Social::follow_thread( $uid, (int) $root['id'], $on, max( $last, (int) $root['id'] ) );
+		return array( 'ok' => true, 'following' => $on );
 	}
 
 	public static function send( WP_REST_Request $r ) {
@@ -142,14 +204,16 @@ final class Sawa_Tracker_Rest_Social {
 			}
 			$audio = esc_url_raw( $up['url'] );
 		}
-		$id = Sawa_Tracker_Social::send( $uid, (int) $room['id'], (string) $r->get_param( 'body' ), $audio, (int) $r->get_param( 'reply_to' ), (int) $r->get_param( 'duration' ), (string) $r->get_param( 'kind' ), (string) $r->get_param( 'media' ), (string) $r->get_param( 'orig' ) );
+		$id = Sawa_Tracker_Social::send( $uid, (int) $room['id'], (string) $r->get_param( 'body' ), $audio, (int) $r->get_param( 'reply_to' ), (int) $r->get_param( 'duration' ), (string) $r->get_param( 'kind' ), (string) $r->get_param( 'media' ), (string) $r->get_param( 'orig' ), 0, (array) $r->get_param( 'mentions' ) );
 		if ( is_wp_error( $id ) ) {
 			return self::fail( $id );
 		}
 		return array(
-			'ok'       => true,
-			'xp'       => Sawa_Tracker_XP::$last,
-			'messages' => Sawa_Tracker_Social::messages( (int) $room['id'], (int) $r->get_param( 'after' ) ),
+			'ok'        => true,
+			'xp'        => Sawa_Tracker_XP::$last,
+			'reply'     => Sawa_Tracker_Replies::$last,
+			'replyGoal' => Sawa_Tracker_Replies::goal( $uid ),
+			'messages'  => Sawa_Tracker_Social::messages( (int) $room['id'], (int) $r->get_param( 'after' ) ),
 		);
 	}
 
@@ -363,10 +427,11 @@ final class Sawa_Tracker_Rest_Social {
 	}
 
 	public static function members( WP_REST_Request $r ) {
-		$q   = mb_strtolower( trim( (string) $r->get_param( 'q' ) ) );
-		$out = array();
+		$q    = mb_strtolower( trim( (string) $r->get_param( 'q' ) ) );
+		$room = $r->get_param( 'room' ) ? Sawa_Tracker_Social::room( (int) $r->get_param( 'room' ) ) : null; // @mention suggestions: only people who can read this chat
+		$out  = array();
 		foreach ( Sawa_Tracker_Game::member_ids() as $id ) {
-			if ( $id === self::uid() ) {
+			if ( $id === self::uid() || ( $room && ! Sawa_Tracker_Social::can_access( $id, $room ) ) ) {
 				continue;
 			}
 			$p = Sawa_Tracker_Game::person( $id );

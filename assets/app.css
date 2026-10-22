@@ -973,3 +973,75 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
   :host(.emb) #app:has(> #world-card) > #view { grid-row: 2 / span 2; }
   :host(.emb) #app:has(> #world-card) > .feed { grid-row: 4 / span 6; }
 }
+
+/* Chat: threads (any message can start one) and the daily reply goal */
+.chat.has-thread { grid-template-columns: 280px minmax(0, 1fr) minmax(300px, 38%); }
+.thread-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-inline-start: 1px solid var(--line); background: var(--panel); }
+.thread-pane[hidden] { display: none; }
+.th-h { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); padding-top: max(10px, env(safe-area-inset-top)); }
+.th-h .icon-btn, .th-follow { min-height: 40px; min-width: 40px; }
+.th-follow[aria-pressed="true"] { background: var(--soft); }
+.th-msgs .msg { max-width: 94%; }
+.th-div { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; font-size: 12.5px; color: var(--muted); }
+.th-div::before, .th-div::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
+.thread-pane .composer { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+.th-sum { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; min-height: 40px; margin-top: 2px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--fg); font: inherit; font-size: 12.5px; cursor: pointer; max-width: 100%; }
+.msg.mine .th-sum { align-self: flex-end; }
+.th-sum b { font-weight: 700; white-space: nowrap; }
+.th-sum span::before { content: "· "; }
+.th-sum span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th-sum.new { border-color: var(--red); }
+.th-sum .unread { min-width: 18px; height: 18px; }
+.th-sum:hover { background: var(--panel-2); }
+.th-unread { display: inline-flex; gap: 3px; background: var(--fg); margin-inline-end: 4px; }
+.th-unread .ic { width: 11px; height: 11px; }
+.th-inbox-h { display: flex; gap: 6px; align-items: center; padding: 12px 10px 4px; }
+.th-row .room-main b { font-weight: 500; font-size: 13.5px; }
+.goal-slot:empty { display: none; }
+.goal-slot { padding: 0 12px 8px; }
+.convo-goal { padding: 8px 12px 0; display: none; }
+.goal-pill { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--fg); font: inherit; font-size: 13px; cursor: pointer; text-align: start; }
+.goal-pill span { white-space: nowrap; }
+.goal-pill b { font-weight: 700; }
+.goal-pill .gp-bar { flex: 1; height: 6px; min-width: 40px; border-radius: 99px; background: var(--soft); overflow: hidden; display: block; }
+.goal-pill .gp-bar i { display: block; height: 100%; background: var(--fg); border-radius: inherit; }
+.goal-pill.done { border-color: var(--fg); }
+.goal-pill.done .gp-bar i { background: var(--red); }
+.goal-rules { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px; font-size: 14px; }
+@container app (max-width: 1000px) {
+  .chat.has-thread { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .chat.has-thread .rooms { display: none; }
+  .chat.has-thread .convo { display: flex; }
+}
+@container app (max-width: 760px) { .convo-goal { display: block; } .chat.has-thread .convo-goal { display: none; } }
+@container app (max-width: 620px) {
+  .chat.has-thread { grid-template-columns: minmax(0, 1fr); }
+  .chat.has-thread .convo { display: none; }
+  .chat.has-thread .thread-pane { border: 0; }
+}
+@container app (min-width: 1001px) { .thread-pane .goal-slot { display: none; } }
+/* Silk Road chat: reply goal and threads */
+.sg-goalb { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; margin-bottom: 6px; text-align: left; }
+.sg-goalb b { color: #ffe39a; }
+.sg-goalb > i { flex: 1; height: 6px; border-radius: 99px; background: rgba(255,255,255,.15); overflow: hidden; display: block; }
+.sg-goalb > i > i { display: block; height: 100%; background: #e7c873; }
+.sg-goalb.done > i > i { background: #8be28b; }
+.sg-mf { margin-top: 2px; }
+.sg-pb .sg-thr { background: transparent !important; border: 0 !important; color: #ffe39a !important; padding: 8px 2px !important; min-height: 36px; font-size: 13px; font-weight: 600; }
+.sg-thr.new em { font-style: normal; background: #e3262b; color: #fff; border-radius: 99px; padding: 0 6px; margin-left: 4px; }
+.sg-thl { align-self: center; font-weight: 700; color: #ffe39a; }
+.sg-thd { text-align: center; font-size: 12px; opacity: .75; border-top: 1px solid rgba(255,255,255,.15); padding-top: 4px; }
+/* Chat: @mentions */
+.mention-pick { display: grid; gap: 2px; padding: 6px 8px; border-top: 1px solid var(--line); background: var(--panel); max-height: 260px; overflow: auto; }
+.mention-pick .mp-h { margin: 0 4px 2px; }
+.mention-pick button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--fg); font: inherit; font-size: 14px; cursor: pointer; text-align: start; }
+.mention-pick button:hover, .mention-pick button:focus-visible { background: var(--panel-2); }
+.mention-pick small { color: var(--muted); }
+.bubble .mention { font-weight: 700; background: color-mix(in srgb, var(--red) 14%, transparent); border-radius: 4px; padding: 0 2px; }
+.msg.mine .bubble .mention { background: color-mix(in srgb, var(--on-fg) 22%, transparent); }
+.msg.pinged .bubble { box-shadow: inset 3px 0 0 var(--red); }
+.at-unread { background: var(--red); margin-inline-end: 4px; }
+.sg-m.ping { box-shadow: inset 3px 0 0 #e7c873; background: #46407a; }
+.sg-mp { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.sg-mp:empty { display: none; }
+.sg-pb .sg-mp button { min-height: 40px; }

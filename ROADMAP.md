@@ -1,5 +1,9 @@
 # Sawa Tracker – planned features
 
+## Reply goal in the app's Today plan (planned, not built)
+
+The daily reply goal (`Sawa_Tracker_Replies::goal()`) shows in the chat, the game chat and the game's Today panel. The Today plan in `/app` comes from Sawa Lens (`today` endpoint), so adding it there as a plan step needs a change in `sawa-lens`: read the goal from the tracker and add a "Reply to 10 messages" step that links to the chat. Also possible later: @mentions in threads, and a weekly "best helper in the chat" shout-out.
+
 ## Chat XP: farm skill points by writing English (planned, not built)
 
 Requested by Sherif, 21 Oct 2026. Part of the skill tree ecosystem (Sawa Lens plugin: skill tree, writing checker, practice).

@@ -43,6 +43,7 @@
     hourglass: 'M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9',
     mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM18 11a6 6 0 0 1-12 0M12 17v4',
     reply: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 5 5v5',
+    thread: 'M4 4h16v10H10l-4 3v-3H4zM8 18h8l3 3v-3h1',
     smile: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14a4 4 0 0 0 7 0M9 9.5h.01M15 9.5h.01',
     text: 'M4 6h16M4 12h16M4 18h10',
     globe2: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
@@ -867,7 +868,7 @@
   function xpCard() {
     var x = S.data.xp; if (!x) return '';
     var pct = Math.min(100, Math.round((x.total - x.from) / Math.max(1, x.to - x.from) * 100));
-    var why = { chat: 'الشات', voice: 'رسايل صوتية', write: 'الكتابة', improve: 'تحسين أخطاءك', mastered: 'إتقان مهارة' };
+    var why = { chat: 'الشات', voice: 'رسايل صوتية', write: 'الكتابة', improve: 'تحسين أخطاءك', mastered: 'إتقان مهارة', reply: 'الردود على زمايلك', replygoal: 'هدف الردود' };
     var max = Math.max.apply(null, x.days.concat([1]));
     return '<section class="card xp-card"><div class="card-h"><h3>' + ico('bolt') + ' نقاط الإنجليزي (XP)</h3></div>'
       + '<div class="xp-row"><b class="xp-big" dir="ltr">' + x.total.toLocaleString('en-US') + ' XP</b><span class="muted small"><b dir="ltr">+' + x.week + '</b> الأسبوع ده</span></div>'
@@ -928,6 +929,10 @@
       case 'joined': return name(e.who) + ' انضم كـ' + esc(cls(d.class).ar) + '. أهلًا بيه!';
       case 'quest_done': return name(e.who) + ' خلّص مهمة النهارده' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
       case 'group_invite': return name(e.who) + ' ضافك لجروب <b dir="auto">' + esc(d.name) + '</b>';
+      case 'mention': return name(e.who) + ' عمل لك منشن' + (d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
+      case 'mention_all': return name(e.who) + ' عمل منشن لكل الناس' + (d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
+      case 'mention_clan': return name(e.who) + ' عمل منشن للكلان' + (d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
+      case 'thread_reply': return name(e.who) + (d.mine ? ' رد في الثريد بتاع رسالتك' : ' رد في ثريد إنت فيه') + (d.voice ? ' برسالة صوتية' : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
       case 'mastered': return name(e.who) + ' أتقن <b dir="ltr">' + esc(d.name) + '</b> 🏆';
       case 'hunt': return name(e.who) + (d.won ? ' (صياد) مسكك ورجّع ' + d.amount + ' 🪙 لصاحبها.' : ' (صياد) حاول يمسكك وهربت!');
       case 'returned': return name(e.who) + ' (صياد) مسك ' + esc(d.thief) + ' ورجّعلك ' + d.amount + ' 🪙!';
@@ -952,7 +957,7 @@
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', feedback_fixed: 'check', feedback_planned: 'pen' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -1166,7 +1171,7 @@
       }
       return eventText(e);
     };
-    openModal(mHead('الإشعارات', 'الردود على رسايلك، والمهارات اللي زمايلك استخدموها عليك') + (n.length ? '<ul class="events">' + n.map(function (e) { var inner = (e.who ? avatar(e.who, 32) : '') + '<div class="ev-main"><p>' + text(e) + '</p><div class="ev-foot"><time>' + ago(e.at) + '</time></div></div>'; return /^party_/.test(e.type) ? '<li><button class="ev ev-link" data-act="notif-world" data-tab="party"' + (e.type === 'party_live' ? ' data-live="1"' : '') + '>' + inner + '</button></li>' : e.type === 'reply' && e.data && e.data.room ? '<li><button class="ev ev-link" data-act="notif-room" data-room="' + e.data.room + '" data-msg="' + (e.data.msg || 0) + '">' + inner + '</button></li>' : '<li class="ev">' + inner + '</li>'; }).join('') + '</ul>' : '<p class="muted">لسه مفيش. لما حد يرد على رسالتك أو يعالجك أو يبعتلك Rally، هيظهر هنا.</p>'), 'narrow');
+    openModal(mHead('الإشعارات', 'الردود على رسايلك، والمهارات اللي زمايلك استخدموها عليك') + (n.length ? '<ul class="events">' + n.map(function (e) { var inner = (e.who ? avatar(e.who, 32) : '') + '<div class="ev-main"><p>' + text(e) + '</p><div class="ev-foot"><time>' + ago(e.at) + '</time></div></div>'; return /^party_/.test(e.type) ? '<li><button class="ev ev-link" data-act="notif-world" data-tab="party"' + (e.type === 'party_live' ? ' data-live="1"' : '') + '>' + inner + '</button></li>' : e.data && e.data.thread && /^(reply|thread_reply|mention)/.test(e.type) ? '<li><button class="ev ev-link" data-act="notif-thread" data-room="' + e.data.room + '" data-id="' + e.data.thread + '">' + inner + '</button></li>' : /^(reply|mention)/.test(e.type) && e.data && e.data.room ? '<li><button class="ev ev-link" data-act="notif-room" data-room="' + e.data.room + '" data-msg="' + (e.data.msg || 0) + '">' + inner + '</button></li>' : '<li class="ev">' + inner + '</li>'; }).join('') + '</ul>' : '<p class="muted">لسه مفيش. لما حد يرد على رسالتك أو يعالجك أو يبعتلك Rally، هيظهر هنا.</p>'), 'narrow');
     if (S.data.unread && n.length) { api('/notifications/seen', { method: 'POST', body: { id: n[0].id } }).then(function () { S.data.unread = 0; var b = $('.bell i'); if (b) b.remove(); var bell = $('.bell'); if (bell) bell.setAttribute('aria-label', 'الإشعارات'); }); }
   }
 
@@ -1241,24 +1246,26 @@
   }
 
   /* ------------------------------------------------------------ chat */
-  var C = { rooms: null, room: null, msgs: [], loadingRoom: false, enabled: true, muted: '', admin: false, rec: null, ai: {}, maxRow: 5, replyTo: null, stickers: {}, reactList: [], gifsOn: false, reacts: {}, tray: '' };
+  var C = { rooms: null, room: null, msgs: [], loadingRoom: false, enabled: true, muted: '', admin: false, rec: null, ai: {}, maxRow: 5, replyTo: null, stickers: {}, reactList: [], gifsOn: false, reacts: {}, tray: '', threads: {}, inbox: [], goal: null, thread: null, trTarget: '' };
   function loadRooms() {
     return api('/chat/rooms').then(function (j) {
       C.rooms = j.rooms; C.enabled = j.enabled; C.muted = j.muted; C.admin = j.admin; emit({ unread: j.unread }); C.ai = j.ai || {}; C.maxRow = j.maxRow || 5; C.stickers = j.stickers || {}; C.reactList = j.reacts || []; C.gifsOn = !!j.gifs;
+      C.inbox = j.threads || []; if (j.replyGoal) { C.goal = j.replyGoal; paintGoal(); }
       S.chatUnread = j.unread;
       var badge = $('.nav [data-view=chat] i');
       if (S.view !== 'chat') { if (badge) badge.textContent = j.unread; else if (j.unread) { var b = $('.nav [data-view=chat]'); if (b) b.insertAdjacentHTML('beforeend', '<i>' + j.unread + '</i>'); } if (!j.unread && badge) badge.remove(); }
       if (S.view === 'chat') paintRoomList();
       if (C.pending) { var p = C.pending; C.pending = 0; openRoom(p); }
+      if (C.pendingThread) { var pt = C.pendingThread; C.pendingThread = 0; openThread(pt); }
     }, function () {});
   }
   function roomName(r) { return r.type === 'public' ? 'المجتمع' : r.name; }
   function roomIcon(r) { return r.type === 'public' ? ico('globe') : r.type === 'clan' ? '<b class="mono">' + mono(r.name) + '</b>' : ico('users'); }
   function paintChat() {
     var v = $('#view'); if (!v) return;
-    v.innerHTML = '<section class="card chat' + (C.room ? ' has-room' : '') + '"><aside class="rooms"><div class="rooms-h"><h3>الشات</h3><button class="btn sm-btn" data-act="new-group">' + ico('plus') + ' جروب</button></div><ul id="room-list"></ul>'
-      + '<p class="muted small rules">خليك لطيف، وخلي الكلام عن التعلم. شريف بيراجع الرسايل اللي بيتعملها ريبورت.</p></aside><div class="convo" id="convo"></div></section>';
-    paintRoomList(); paintConvo();
+    v.innerHTML = '<section class="card chat' + (C.room ? ' has-room' : '') + (C.thread ? ' has-thread' : '') + '"><aside class="rooms"><div class="rooms-h"><h3>الشات</h3><button class="btn sm-btn" data-act="new-group">' + ico('plus') + ' جروب</button></div><div class="goal-slot" id="goal-rooms"></div><ul id="room-list"></ul>'
+      + '<p class="muted small rules">خليك لطيف، وخلي الكلام عن التعلم. شريف بيراجع الرسايل اللي بيتعملها ريبورت.</p></aside><div class="convo" id="convo"></div><aside class="thread-pane" id="thread-pane" aria-label="ثريد"></aside></section>';
+    paintRoomList(); paintConvo(); paintGoal(); paintThread();
     if (!C.rooms) loadRooms();
   }
   function paintRoomList() {
@@ -1266,11 +1273,46 @@
     if (!C.rooms) { el.innerHTML = '<li class="muted small pad">بيحمّل…</li>'; return; }
     el.innerHTML = C.rooms.map(function (r) {
       return '<li><button class="room' + (C.room && C.room.id === r.id ? ' on' : '') + '" data-act="open-room" data-id="' + r.id + '"><span class="room-ic">' + roomIcon(r) + '</span><span class="room-main"><b dir="auto">' + esc(roomName(r)) + '</b><small dir="auto">' + (r.last ? esc(r.last.who.split(' ')[0]) + ': ' + esc(r.last.text === '🎤 Voice message' ? 'رسالة صوتية' : r.last.text) : r.type === 'group' ? 'قول أهلًا لجروبك' : 'لسه مفيش رسايل') + '</small></span>'
-        + (r.unread ? '<i class="unread">' + r.unread + '</i>' : '') + '</button></li>';
-    }).join('') + (C.rooms.filter(function (r) { return r.type === 'group'; }).length ? '' : '<li class="muted small pad">اعمل جروب خاص من ٣ لـ ٥ زمايل وذاكروا سوا.</li>');
+        + (r.mentions ? '<i class="unread at-unread" title="حد عمل لك منشن">@</i>' : '') + (r.threadUnread ? '<i class="unread th-unread" title="ردود جديدة في ثريدات">' + ico('thread', 'tiny') + r.threadUnread + '</i>' : '') + (r.unread ? '<i class="unread">' + r.unread + '</i>' : '') + '</button></li>';
+    }).join('') + (C.rooms.filter(function (r) { return r.type === 'group'; }).length ? '' : '<li class="muted small pad">اعمل جروب خاص من ٣ لـ ٥ زمايل وذاكروا سوا.</li>')
+      + (C.inbox.length ? '<li class="th-inbox-h small muted">' + ico('thread', 'tiny') + ' الثريدات بتاعتك</li>' + C.inbox.slice(0, 8).map(function (t) {
+        return '<li><button class="room th-row' + (C.thread && C.thread.id === t.id ? ' on' : '') + '" data-act="open-thread" data-id="' + t.id + '" data-room="' + t.room + '"><span class="room-main"><b dir="auto">' + esc(t.who.split(' ')[0]) + ': ' + esc(t.text || '…') + '</b><small>' + threadLine(t.n, t.last) + '</small></span>' + (t.unread ? '<i class="unread">' + t.unread + '</i>' : '') + '</button></li>';
+      }).join('') : '');
+  }
+  /** "3 ردود · آخر رد من 5 دقايق" */
+  function threadLine(n, last) { return (n === 1 ? 'رد واحد' : n === 2 ? 'ردين' : n + ' ردود') + ' · آخر رد ' + ago(last); }
+  /** Today's reply goal: a small progress pill in the chat (tap for how it works). */
+  function goalHtml() {
+    var g = C.goal; if (!g) return '';
+    var pct = Math.min(100, Math.round(g.n / g.goal * 100));
+    return '<button class="goal-pill' + (g.done ? ' done' : '') + '" data-act="goal-info" aria-label="هدف الردود النهارده: ' + g.n + ' من ' + g.goal + '">' + ico('reply', 'tiny') + '<span>' + (g.done ? 'خلصت هدف الردود' : 'ردودك النهارده') + '</span><b dir="ltr">' + Math.min(g.n, g.goal) + '/' + g.goal + '</b><i class="gp-bar"><i style="width:' + pct + '%"></i></i></button>';
+  }
+  function paintGoal() { ['#goal-rooms', '#goal-convo', '#goal-thread'].forEach(function (s) { var el = $(s); if (el) el.innerHTML = goalHtml(); }); }
+  function goalInfo() {
+    var g = C.goal || { n: 0, goal: 10, xp: 2, bonus: 25, coins: 10, min: 3 };
+    openModal(mHead('هدف الردود', 'الشات بيحلو لما الناس ترد على بعض')
+      + '<div class="stack"><p>رد على رسايل زمايلك النهارده: <b dir="ltr">' + Math.min(g.n, g.goal) + '/' + g.goal + '</b></p><ul class="goal-rules">'
+      + '<li>كل رد بيتحسب: <b dir="ltr">+' + g.xp + ' XP</b>، ولما توصل ' + g.goal + ' ردود: <b dir="ltr">+' + g.bonus + ' XP</b> و' + g.coins + ' عملات.</li>'
+      + '<li>رد على رسالة حد تاني (زرار الرد أو الثريد)، بـ ' + g.min + ' كلمات إنجليزي على الأقل، أو رسالة صوتية ٥ ثواني.</li>'
+      + '<li>مش بيتحسب: الرد على نفسك، الستيكرز، نفس الكلام مرتين، الردود السريعة ورا بعض، وأكتر من ٤ ردود لنفس الشخص في اليوم.</li>'
+      + '<li>كل رد بيتحسب كمان في مهمة الأسبوع في طريق الحرير.</li></ul>'
+      + '<button class="btn primary wide" data-act="close">يلا نرد</button></div>', 'narrow');
+  }
+  /** After sending: XP toast plus how the reply did on today's goal. */
+  function replyToast(j, extra) {
+    if (j.replyGoal) { C.goal = j.replyGoal; paintGoal(); }
+    var r = j.reply, xp = j.xp || 0;
+    if (r && r.counted) {
+      xp += r.xp || 0;
+      if (r.bonus) toast('🎉 خلصت هدف الردود النهارده! +' + xp + ' XP و' + r.coins + ' عملات', 'good');
+      else toast('+' + xp + ' XP · ردك اتحسب: ' + Math.min(r.n, r.goal) + '/' + r.goal, 'good');
+    } else if (r && r.why && r.why !== 'sticker') {
+      toast({ short: 'الرسالة اتبعتت. عشان الرد يتحسب في هدف الردود: ٣ كلمات إنجليزي على الأقل.', same: 'الرسالة اتبعتت، بس نفس الرد اتكتب قبل كده فمش هيتحسب في الهدف.', fast: 'الرسالة اتبعتت. الردود السريعة ورا بعض مش بتتحسب في الهدف، خد وقتك في الرد.', person: 'رديت على نفس الشخص ٤ مرات النهارده. رد على حد تاني عشان يتحسب.' }[r.why] || '');
+    } else if (xp > 0) toast('+' + xp + ' XP' + (extra && extra.orig ? ' · اكتب بالإنجليزي على طول عشان تاخد XP أكتر' : ''), 'good');
+    if (xp > 0 && S.data && S.data.xp) { S.data.xp.total += xp; S.data.xp.today += xp; S.data.xp.base += xp; }
   }
   function linkify(t) { return esc(t).replace(/\bhttps?:\/\/[^\s<]+/g, function (u) { return '<a href="' + u + '" target="_blank" rel="noopener nofollow" dir="ltr">' + u + '</a>'; }); }
-  function msgHtml(m, prev) {
+  function msgHtml(m, prev, inThread) {
     var mine = m.who.id === S.data.me.id;
     var grouped = prev && prev.who.id === m.who.id && (new Date(m.at) - new Date(prev.at)) < 5 * 60000;
     var quote = m.reply && !m.gone ? '<button class="m-quote" data-act="goto-msg" data-id="' + m.reply.id + '"><b dir="auto">' + esc(m.reply.who) + '</b><span dir="auto">' + (m.reply.gone ? 'الرسالة اتمسحت' : m.reply.text ? esc(m.reply.text) : '🎤 رسالة صوتية') + '</span></button>' : '';
@@ -1281,13 +1323,15 @@
     var st = m.kind === 'sticker' && C.stickers[m.media] ? '<div class="sticker" dir="ltr"><span class="st-e">' + C.stickers[m.media][0] + '</span><span class="st-t">' + esc(C.stickers[m.media][1]) + '</span></div>' : '';
     var gif = m.kind === 'gif' && m.media ? '<img class="gif" src="' + esc(m.media) + '" alt="GIF" loading="lazy">' : '';
     var trl = m.translated && !m.gone ? '<div class="m-tr">' + (m.orig ? '<button class="m-tr-b" data-act="show-orig" data-id="' + m.id + '">' + ico('globe2', 'tiny') + ' مترجمة من العربي</button>' + (C.showOrig === m.id ? '<p class="m-orig" dir="auto">' + esc(m.orig) + '</p>' : '') : '<span>' + ico('globe2', 'tiny') + ' translated</span>') + '</div>' : '';
-    var body = m.gone ? '<em class="muted">الرسالة اتمسحت</em>' : quote + voice + st + gif + (m.body ? '<p dir="auto">' + linkify(m.body) + '</p>' : '') + trl;
+    var body = m.gone ? '<em class="muted">الرسالة اتمسحت</em>' : quote + voice + st + gif + (m.body ? '<p dir="auto">' + mentionify(linkify(m.body), m) + '</p>' : '') + trl;
+    var th = !inThread && !m.gone && C.threads[m.id] && C.threads[m.id].n ? C.threads[m.id] : null;
+    var thSum = th ? '<button class="th-sum' + (th.unread ? ' new' : '') + '" data-act="open-thread" data-id="' + m.id + '">' + ico('thread', 'tiny') + '<b>' + (th.n === 1 ? 'رد واحد' : th.n === 2 ? 'ردين' : th.n + ' ردود') + '</b><span>آخر رد ' + ago(th.last) + '</span>' + (th.unread ? '<i class="unread">' + th.unread + '</i>' : '') + '</button>' : '';
     var rs = (C.reacts[m.id] || []).filter(function (r) { return r.n > 0; });
     var reacts = !m.gone && rs.length ? '<div class="reacts">' + rs.map(function (r) { return '<button class="rx' + (r.mine ? ' on' : '') + '" data-act="msg-react" data-id="' + m.id + '" data-e="' + r.e + '">' + r.e + ' <b>' + r.n + '</b></button>'; }).join('') + '</div>' : '';
-    var menu = m.gone ? '' : '<span class="m-acts"><button class="icon-btn sm" data-act="react-pick" data-id="' + m.id + '" title="ريأكشن" aria-label="ريأكشن">' + ico('smile') + '</button><button class="icon-btn sm" data-act="msg-reply" data-id="' + m.id + '" title="رد" aria-label="رد على الرسالة">' + ico('reply') + '</button>'
+    var menu = m.gone ? '' : '<span class="m-acts"><button class="icon-btn sm" data-act="react-pick" data-id="' + m.id + '" title="ريأكشن" aria-label="ريأكشن">' + ico('smile') + '</button>' + (inThread ? '' : '<button class="icon-btn sm" data-act="open-thread" data-id="' + m.id + '" title="رد في ثريد" aria-label="رد في ثريد">' + ico('thread') + '</button><button class="icon-btn sm" data-act="msg-reply" data-id="' + m.id + '" title="رد" aria-label="رد على الرسالة">' + ico('reply') + '</button>')
       + (mine && !m.audio && C.ai.feedback && /[a-z]{2}/i.test(m.body) ? '<button class="icon-btn sm" data-act="feedback" data-id="' + m.id + '" title="رأي في الإنجليزي بتاعي" aria-label="رأي في الإنجليزي بتاعي">' + ico('spark') + '</button>' : '') + (mine || C.admin ? '<button class="icon-btn sm" data-act="msg-del" data-id="' + m.id + '" title="امسح" aria-label="امسح الرسالة">' + ico('trash') + '</button>' : '') + (!mine ? '<button class="icon-btn sm" data-act="msg-report" data-id="' + m.id + '" title="ريبورت" aria-label="اعمل ريبورت للرسالة">' + ico('flag') + '</button>' : '') + '</span>';
-    return '<li class="msg' + (mine ? ' mine' : '') + (grouped ? ' grouped' : '') + '" data-id="' + m.id + '">' + (grouped ? '<span class="av-gap"></span>' : avatar(m.who, 32))
-      + '<div class="m-col"><div class="bubble' + (st || gif ? ' media' : '') + '">' + (grouped ? '' : '<div class="m-head"><b dir="auto">' + esc(m.who.name) + '</b>' + (m.who.class ? '<span class="cl">' + ico(cls(m.who.class).ic, 'tiny') + '</span>' : '') + '<time dir="ltr">' + new Date(m.at).toLocaleTimeString(LOC, { hour: 'numeric', minute: '2-digit' }) + '</time></div>') + body + '</div>' + reacts + '</div>' + menu + '</li>';
+    return '<li class="msg' + (mine ? ' mine' : '') + (grouped ? ' grouped' : '') + (m.pingsMe ? ' pinged' : '') + '" data-id="' + m.id + '">' + (grouped ? '<span class="av-gap"></span>' : avatar(m.who, 32))
+      + '<div class="m-col"><div class="bubble' + (st || gif ? ' media' : '') + '">' + (grouped ? '' : '<div class="m-head"><b dir="auto">' + esc(m.who.name) + '</b>' + (m.who.class ? '<span class="cl">' + ico(cls(m.who.class).ic, 'tiny') + '</span>' : '') + '<time dir="ltr">' + new Date(m.at).toLocaleTimeString(LOC, { hour: 'numeric', minute: '2-digit' }) + '</time></div>') + body + '</div>' + reacts + thSum + '</div>' + menu + '</li>';
   }
   function paintMessages(keepScroll) {
     var list = $('#msgs'); if (!list) return;
@@ -1300,7 +1344,7 @@
     var el = $('#convo'); if (!el) return;
     var r = C.room;
     if (!r) { el.innerHTML = '<div class="convo-empty"><div class="big-ic">' + ico('chat') + '</div><p class="muted">اختار شات من القايمة.</p></div>'; return; }
-    var head = '<div class="convo-h"><button class="icon-btn back" data-act="close-room" aria-label="ارجع للشاتات">' + ico('back') + '</button><span class="room-ic">' + roomIcon(r) + '</span><div class="room-main"><b dir="auto">' + esc(roomName(r)) + '</b><small>'
+    var head = '<div class="goal-slot convo-goal" id="goal-convo">' + goalHtml() + '</div><div class="convo-h"><button class="icon-btn back" data-act="close-room" aria-label="ارجع للشاتات">' + ico('back') + '</button><span class="room-ic">' + roomIcon(r) + '</span><div class="room-main"><b dir="auto">' + esc(roomName(r)) + '</b><small>'
       + (r.type === 'public' ? 'كل اللي في التراكر' : r.type === 'clan' ? 'الكلان بتاعك' : r.members.map(function (m) { return esc(m.name.split(' ')[0]); }).join('، ')) + '</small></div>'
       + (r.type === 'group' ? (r.owner === S.data.me.id && r.members.length < 5 ? '<button class="btn sm-btn" data-act="group-add">' + ico('plus') + ' ضيف</button>' : '') + '<button class="btn ghost sm-btn" data-act="group-leave">اخرج</button>' : '') + '</div>';
     var canSend = C.admin || (C.enabled && !(C.muted && C.muted >= S.data.today));
@@ -1313,21 +1357,23 @@
     var ta = $('#m-body');
     if (ta) {
       ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMsg(); } });
-      ta.addEventListener('input', function () { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; var h = $('#ar-hint'); if (h) h.hidden = !(C.ai.translate && needsTranslation(ta.value)); });
+      ta.addEventListener('input', function () { mentionInput(ta, 'main'); ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; var h = $('#ar-hint'); if (h) h.hidden = !(C.ai.translate && needsTranslation(ta.value)); });
       $('#f-msg').addEventListener('submit', function (e) { e.preventDefault(); sendMsg(); });
     }
     if (C.msgs.length && C.msgs.roomId === r.id) paintMessages(); else loadMsgs();
   }
   function loadMsgs() {
     var r = C.room; if (!r) return;
-    api('/chat/rooms/' + r.id + '/messages').then(function (j) { if (!C.room || C.room.id !== r.id) return; C.msgs = j.messages; C.msgs.roomId = r.id; C.reacts = j.reacts || {}; C.noOlder = j.messages.length < 50; paintMessages(); markRoomRead(r.id); if (C.pendingMsg) { var pm = C.pendingMsg; C.pendingMsg = 0; setTimeout(function () { gotoMsg(pm); }, 50); } }, function (x) { toast(x.message, 'bad'); });
+    api('/chat/rooms/' + r.id + '/messages').then(function (j) { if (!C.room || C.room.id !== r.id) return; C.msgs = j.messages; C.msgs.roomId = r.id; C.reacts = j.reacts || {}; C.threads = j.threads || {}; C.noOlder = j.messages.length < 50; paintMessages(); markRoomRead(r.id); if (C.pendingMsg) { var pm = C.pendingMsg; C.pendingMsg = 0; setTimeout(function () { gotoMsg(pm); }, 50); } }, function (x) { toast(x.message, 'bad'); });
   }
   function pollMsgs() {
+    if (S.view === 'chat' && !document.hidden) pollThread();
     var r = C.room; if (!r || S.view !== 'chat' || document.hidden) return;
     var last = C.msgs.length ? C.msgs[C.msgs.length - 1].id : 0;
     api('/chat/rooms/' + r.id + '/messages', { query: { after: last } }).then(function (j) {
       if (!C.room || C.room.id !== r.id) return;
-      if (mergeReacts(j.reacts) && !j.messages.length) { paintMessages(true); return; }
+      var thChanged = mergeThreads(j.threads);
+      if ((mergeReacts(j.reacts) || thChanged) && !j.messages.length) { paintMessages(true); return; }
       if (!j.messages.length) return;
       var have = {}; C.msgs.forEach(function (m) { have[m.id] = 1; });
       j.messages.forEach(function (m) { if (!have[m.id]) C.msgs.push(m); });
@@ -1339,11 +1385,11 @@
     var ta = $('#m-body'), r = C.room; if (!r) return;
     var body = extra ? '' : ta ? ta.value.trim() : '';
     if (!body && !form && !extra) return;
-    if (!form && !extra && needsTranslation(body)) { if (C.ai.translate) translateFlow(body); else if (!C.admin) toast('الشات بالإنجليزي بس.', 'bad'); if (C.ai.translate || !C.admin) return; }
+    if (!form && !extra && needsTranslation(body)) { if (C.ai.translate) { C.trTarget = ''; translateFlow(body); } else if (!C.admin) toast('الشات بالإنجليزي بس.', 'bad'); if (C.ai.translate || !C.admin) return; }
     var last = C.msgs.length ? C.msgs[C.msgs.length - 1].id : 0;
     var rt = C.replyTo ? C.replyTo.id : 0;
     if (form && rt) form.append('reply_to', rt);
-    var opt = form ? { method: 'POST', form: form } : { method: 'POST', body: Object.assign({ body: body, reply_to: rt }, extra || {}) };
+    var opt = form ? { method: 'POST', form: form } : { method: 'POST', body: Object.assign({ body: body, reply_to: rt, mentions: takeMentions('main', body || (extra && extra.body) || '') }, extra || {}) };
     opt.query = { after: last };
     if (ta && !form && !extra) { ta.value = ''; ta.style.height = 'auto'; }
     api('/chat/rooms/' + r.id + '/messages', opt).then(function (j) {
@@ -1351,13 +1397,134 @@
       j.messages.forEach(function (m) { if (!have[m.id]) C.msgs.push(m); });
       C.replyTo = null; paintReplyBar();
       paintMessages(); loadRooms();
-      if (j.xp > 0) { toast('+' + j.xp + ' XP' + (extra && extra.orig ? ' · اكتب بالإنجليزي على طول عشان تاخد XP أكتر' : ''), 'good'); if (S.data && S.data.xp) { S.data.xp.total += j.xp; S.data.xp.today += j.xp; S.data.xp.base += j.xp; } }
+      replyToast(j, extra);
     }, function (x) { if (ta && !form && !extra) ta.value = body; toast(x.message, 'bad'); });
+  }
+  /* @mentions: type @ and a name (a list of people in this chat shows up); @everyone for admins, @clan for the clan leader in the clan chat */
+  var mentionT;
+  function mentionInput(ta, which) {
+    var pos = ta.selectionStart || ta.value.length, m = ta.value.slice(0, pos).match(/(^|\s)@([^\s@]{0,20})$/), box = $('#mp-' + which);
+    if (!m) { if (box) box.remove(); return; }
+    if (!box) { box = document.createElement('div'); box.className = 'mention-pick'; box.id = 'mp-' + which; ta.closest('form').insertAdjacentElement('beforebegin', box); }
+    var q = m[2].toLowerCase(), roomId = which === 'th' ? (C.thread && C.thread.room) : (C.room && C.room.id), room = (C.rooms || []).filter(function (x) { return x.id === roomId; })[0], special = [];
+    if (C.admin && 'everyone'.indexOf(q) === 0) special.push(['everyone', 'كل الناس في الشات ده']);
+    if (room && room.type === 'clan' && (C.admin || room.leader === S.data.me.id) && 'clan'.indexOf(q) === 0) special.push(['clan', 'كل الكلان']);
+    clearTimeout(mentionT);
+    mentionT = setTimeout(function () {
+      api('/members', { query: { q: q, room: roomId || 0 } }).then(function (j) {
+        var b = $('#mp-' + which); if (!b) return;
+        var people = j.members.slice(0, 6);
+        if (!special.length && !people.length) { b.remove(); return; }
+        b.innerHTML = '<p class="mp-h small muted">اختار زميل عشان يوصله إشعار</p>' + special.map(function (s) { return '<button type="button" data-act="mention-pick" data-w="' + which + '" data-name="' + s[0] + '"><b dir="ltr">@' + s[0] + '</b><small>' + s[1] + '</small></button>'; }).join('')
+          + people.map(function (p) { return '<button type="button" data-act="mention-pick" data-w="' + which + '" data-id="' + p.id + '" data-name="' + esc(p.name) + '">' + avatar(p, 24) + '<b dir="auto">' + esc(p.name) + '</b></button>'; }).join('');
+      }, function () {});
+    }, 200);
+  }
+  function pickMention(el) {
+    var w = el.dataset.w, ta = $(w === 'th' ? '#th-body' : '#m-body'); if (!ta) return;
+    var pos = ta.selectionStart || ta.value.length, before = ta.value.slice(0, pos).replace(/@([^\s@]{0,20})$/, '@' + el.dataset.name + ' ');
+    ta.value = before + ta.value.slice(pos); ta.focus(); ta.selectionStart = ta.selectionEnd = before.length;
+    C.picks = C.picks || {};
+    if (el.dataset.id) C.picks[w] = (C.picks[w] || []).filter(function (p) { return p.id !== +el.dataset.id; }).concat([{ id: +el.dataset.id, name: el.dataset.name }]);
+    var b = $('#mp-' + w); if (b) b.remove();
+  }
+  /** The people picked from the list whose @Name is still in the message. */
+  function takeMentions(w, body) {
+    C.picks = C.picks || {};
+    var low = String(body).toLowerCase(), ids = (C.picks[w] || []).filter(function (p) { return low.indexOf('@' + p.name.toLowerCase()) >= 0; }).map(function (p) { return p.id; });
+    C.picks[w] = []; var b = $('#mp-' + w); if (b) b.remove();
+    return ids;
+  }
+  function mentionify(html, m) {
+    (m.tags || []).forEach(function (n) { var e = esc('@' + n); html = html.split(e).join('<b class="mention">' + e + '</b>'); });
+    return html.replace(/(^|[^\w])(@everyone|@clan)\b/gi, '$1<b class="mention">$2</b>');
+  }
+  /* threads: any message can start one; it opens beside the chat (full screen on phones) */
+  function mergeThreads(map) {
+    if (!map) return false;
+    var before = JSON.stringify(C.threads);
+    Object.keys(map).forEach(function (k) { C.threads[k] = map[k]; });
+    return JSON.stringify(C.threads) !== before;
+  }
+  function openThread(id, roomId) {
+    C.thread = { id: id, room: roomId || (C.room && C.room.id) || 0, root: msgById(id) || null, msgs: [], following: false, loading: true };
+    C.trTarget = '';
+    var ch = $('.chat'); if (ch) ch.classList.add('has-thread');
+    paintThread();
+    api('/chat/threads/' + id).then(function (j) {
+      if (!C.thread || C.thread.id !== id) return;
+      C.thread.root = j.root; C.thread.room = j.room; C.thread.msgs = j.messages; C.thread.following = j.following; C.thread.loading = false;
+      Object.keys(j.reacts || {}).forEach(function (k) { C.reacts[k] = j.reacts[k]; });
+      if (j.replyGoal) C.goal = j.replyGoal;
+      if (C.threads[id]) C.threads[id].unread = 0;
+      C.inbox.forEach(function (t) { if (t.id === id) t.unread = 0; });
+      paintThread(); paintGoal(); paintMessages(true); paintRoomList();
+      var tb = $('#th-body'); if (tb && !matchMedia('(hover: none)').matches) tb.focus();
+    }, function (x) { closeThread(); toast(x.message, 'bad'); });
+  }
+  function closeThread() { C.thread = null; var ch = $('.chat'); if (ch) ch.classList.remove('has-thread'); paintThread(); }
+  function paintThread() {
+    var el = $('#thread-pane'); if (!el) return;
+    var t = C.thread;
+    el.hidden = !t;
+    if (!t) { el.innerHTML = ''; return; }
+    var canSend = C.admin || (C.enabled && !(C.muted && C.muted >= S.data.today));
+    var room = (C.rooms || []).filter(function (x) { return x.id === t.room; })[0];
+    el.innerHTML = '<div class="th-h"><button class="icon-btn" data-act="close-thread" aria-label="اقفل الثريد">' + ico('x') + '</button><div class="room-main"><b>ثريد</b><small dir="auto">' + (room ? esc(roomName(room)) : '') + '</small></div>'
+      + (t.loading ? '' : '<button class="btn ghost sm-btn th-follow" data-act="thread-follow" aria-pressed="' + !!t.following + '">' + ico('bell', 'tiny') + (t.following ? ' متابع' : ' تابع') + '</button>') + '</div>'
+      + '<div class="goal-slot" id="goal-thread">' + goalHtml() + '</div>'
+      + '<ul class="msgs th-msgs" id="th-msgs">' + (t.root ? msgHtml(t.root, null, true) : '') + '<li class="th-div"><span>' + (t.loading ? '<span class="spin sm"></span>' : t.msgs.length ? (t.msgs.length === 1 ? 'رد واحد' : t.msgs.length === 2 ? 'ردين' : t.msgs.length + ' ردود') : 'لسه مفيش ردود. كن أول واحد يرد!') + '</span></li>'
+      + t.msgs.map(function (m, i) { return msgHtml(m, t.msgs[i - 1], true); }).join('') + '</ul>'
+      + (canSend ? '<div class="tr-panel" id="th-tr" hidden></div><form class="composer" id="f-th"><textarea id="th-body" rows="1" maxlength="1000" placeholder="رد في الثريد… بالإنجليزي" dir="auto" aria-label="رد في الثريد"></textarea><button class="btn primary send-btn" type="submit" aria-label="ابعت الرد">' + ico('send') + '</button></form>' : '');
+    var list = $('#th-msgs'); if (list) list.scrollTop = list.scrollHeight;
+    var ta = $('#th-body');
+    if (ta) {
+      ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendThread(); } });
+      ta.addEventListener('input', function () { mentionInput(ta, 'th'); ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; });
+      $('#f-th').addEventListener('submit', function (e) { e.preventDefault(); sendThread(); });
+    }
+  }
+  function paintThreadMsgs() {
+    var t = C.thread, list = $('#th-msgs'); if (!t || !list) return paintThread();
+    var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    list.innerHTML = (t.root ? msgHtml(t.root, null, true) : '') + '<li class="th-div"><span>' + (t.msgs.length === 1 ? 'رد واحد' : t.msgs.length === 2 ? 'ردين' : t.msgs.length + ' ردود') + '</span></li>' + t.msgs.map(function (m, i) { return msgHtml(m, t.msgs[i - 1], true); }).join('');
+    if (nearBottom) list.scrollTop = list.scrollHeight;
+  }
+  function addThreadMsgs(list) {
+    var t = C.thread; if (!t || !list || !list.length) return false;
+    var have = {}; t.msgs.forEach(function (m) { have[m.id] = 1; });
+    list.forEach(function (m) { if (!have[m.id]) t.msgs.push(m); });
+    var meta = C.threads[t.id] || (C.threads[t.id] = { n: 0, unread: 0 });
+    meta.n = t.msgs.filter(function (m) { return !m.gone; }).length; meta.last = t.msgs[t.msgs.length - 1].at; meta.unread = 0;
+    return true;
+  }
+  function pollThread() {
+    var t = C.thread; if (!t || t.loading) return;
+    var id = t.id, last = t.msgs.length ? t.msgs[t.msgs.length - 1].id : 0;
+    api('/chat/threads/' + id, { query: { after: last } }).then(function (j) {
+      if (!C.thread || C.thread.id !== id) return;
+      var changed = false;
+      Object.keys(j.reacts || {}).forEach(function (k) { if (JSON.stringify(C.reacts[k]) !== JSON.stringify(j.reacts[k])) { C.reacts[k] = j.reacts[k]; changed = true; } });
+      if (addThreadMsgs(j.messages) || changed) { paintThreadMsgs(); paintMessages(true); }
+    }, function () {});
+  }
+  function sendThread(extra) {
+    var t = C.thread, ta = $('#th-body'); if (!t || t.loading) return;
+    var body = extra ? '' : ta ? ta.value.trim() : '';
+    if (!body && !extra) return;
+    if (!extra && needsTranslation(body)) { if (C.ai.translate) { C.trTarget = 'th'; translateFlow(body); } else if (!C.admin) toast('الشات بالإنجليزي بس.', 'bad'); if (C.ai.translate || !C.admin) return; }
+    var last = t.msgs.length ? t.msgs[t.msgs.length - 1].id : 0, id = t.id;
+    if (ta && !extra) { ta.value = ''; ta.style.height = 'auto'; }
+    api('/chat/threads/' + id, { method: 'POST', body: Object.assign({ body: body, mentions: takeMentions('th', body || (extra && extra.body) || '') }, extra || {}), query: { after: last } }).then(function (j) {
+      if (C.thread && C.thread.id === id) { C.thread.following = true; addThreadMsgs(j.messages); paintThread(); }
+      paintMessages(true); replyToast(j, extra);
+    }, function (x) { if (ta && !extra) ta.value = body; toast(x.message, 'bad'); });
   }
   function confirmLeave() { return window.confirm('Leave your party?'); }
   function openRoom(id) {
     var r = (C.rooms || []).filter(function (x) { return x.id === id; })[0]; if (!r) return;
-    C.room = r; C.msgs = []; C.replyTo = null; S.view = 'chat';
+    C.room = r; C.msgs = []; C.replyTo = null; S.view = 'chat'; C.threads = {};
+    if (C.thread && C.thread.room !== r.id) C.thread = null;
     if (!$('#convo')) renderView(); else { paintRoomList(); paintConvo(); $('.chat').classList.add('has-room'); }
   }
   /* voice notes */
@@ -1414,9 +1581,10 @@
       g.innerHTML = j.gifs.length ? j.gifs.map(function (x) { return '<button class="gif-pick" data-act="send-gif" data-url="' + esc(x.url) + '"><img src="' + esc(x.preview) + '" alt="' + esc(x.title) + '" loading="lazy"></button>'; }).join('') : '<p class="muted small">No GIFs found.</p>';
     }, function (x) { var g = $('#gif-grid'); if (g) g.innerHTML = '<p class="err small">' + esc(x.message) + '</p>'; });
   }
-  function openReactPick(id) {
+  function openReactPick(id, btn) {
     $$('.react-pick').forEach(function (p) { p.remove(); });
-    var li = $('#msgs li[data-id="' + id + '"] .m-col'); if (!li) return;
+    var own = btn && btn.closest('li.msg');
+    var li = own ? own.querySelector('.m-col') : $('#msgs li[data-id="' + id + '"] .m-col'); if (!li) return;
     li.insertAdjacentHTML('beforeend', '<div class="react-pick">' + C.reactList.map(function (e) { return '<button data-act="msg-react" data-id="' + id + '" data-e="' + e + '">' + e + '</button>'; }).join('') + '</div>');
   }
   /** More than 30% of the letters are Arabic script. */
@@ -1435,7 +1603,8 @@
   }
   /** Arabic (any dialect) → English preview. The student can edit it, then sends the English. */
   function translateFlow(text) {
-    var p = $('#tr-panel'); if (!p) return;
+
+    var p = $(C.trTarget === 'th' ? '#th-tr' : '#tr-panel'); if (!p) return;
     paintTray('');
     p.hidden = false;
     p.innerHTML = '<div class="tr-h"><b>' + ico('globe2', 'tiny') + ' بنترجم رسالتك…</b></div><span class="spin"></span>';
@@ -1450,7 +1619,9 @@
     }, function (x) { p.hidden = true; toast(x.message, 'bad'); });
   }
   function fmtDur(s) { return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
-  function msgById(id) { return C.msgs.filter(function (m) { return m.id === id; })[0]; }
+  function msgById(id) { var all = C.thread ? C.msgs.concat(C.thread.msgs, C.thread.root ? [C.thread.root] : []) : C.msgs; return all.filter(function (m) { return m.id === id; })[0]; }
+  /** Repaints the main chat and the open thread (a message can be in either). */
+  function paintBoth() { paintMessages(true); if (C.thread && !C.thread.loading) paintThreadMsgs(); }
   function paintReplyBar() {
     var b = $('#reply-bar'); if (!b) return;
     var m = C.replyTo;
@@ -1620,7 +1791,7 @@
         loadRooms().then(function () { var r = (C.rooms || []).filter(function (x) { return x.type === 'clan'; })[0]; if (r) openRoom(r.id); });
         break;
       case 'open-room': openRoom(+el.dataset.id); break;
-      case 'close-room': C.room = null; C.msgs = []; paintChat(); break;
+      case 'close-room': C.room = null; C.msgs = []; C.thread = null; paintChat(); break;
       case 'older':
         if (!C.room || !C.msgs.length) break;
         api('/chat/rooms/' + C.room.id + '/messages', { query: { before: C.msgs[0].id } }).then(function (j) { if (j.messages.length < 50) C.noOlder = true; var roomId = C.msgs.roomId; C.msgs = j.messages.concat(C.msgs); C.msgs.roomId = roomId; var list = $('#msgs'), h = list.scrollHeight; paintMessages(true); list.scrollTop = list.scrollHeight - h; });
@@ -1642,7 +1813,7 @@
         break;
       case 'msg-del':
         if (el.dataset.confirm !== '1') { el.dataset.confirm = '1'; el.textContent = 'امسح؟'; el.classList.add('confirm'); break; }
-        api('/chat/messages/' + el.dataset.id, { method: 'DELETE' }).then(function () { C.msgs.forEach(function (m) { if (m.id === +el.dataset.id) { m.gone = true; m.body = ''; m.audio = ''; } }); paintMessages(true); }, function (x) { toast(x.message, 'bad'); });
+        api('/chat/messages/' + el.dataset.id, { method: 'DELETE' }).then(function () { var dm = msgById(+el.dataset.id); if (dm) { dm.gone = true; dm.body = ''; dm.audio = ''; } paintBoth(); }, function (x) { toast(x.message, 'bad'); });
         break;
       case 'msg-report': reportMsg(+el.dataset.id); break;
       case 'do-report':
@@ -1693,25 +1864,44 @@
       case 'tray-close': paintTray(''); break;
       case 'send-sticker': paintTray(''); sendMsg(null, { kind: 'sticker', media: el.dataset.s }); break;
       case 'send-gif': paintTray(''); sendMsg(null, { kind: 'gif', media: el.dataset.url }); break;
-      case 'react-pick': openReactPick(+el.dataset.id); break;
+      case 'react-pick': openReactPick(+el.dataset.id, el); break;
       case 'msg-react':
         $$('.react-pick').forEach(function (p) { p.remove(); });
         api('/chat/messages/' + el.dataset.id + '/react', { method: 'POST', body: { i: C.reactList.indexOf(el.dataset.e) } }).then(function (j) {
-          var id = +el.dataset.id; C.reacts[id] = (j.reacts && j.reacts[id]) || []; paintMessages(true);
+          var id = +el.dataset.id; C.reacts[id] = (j.reacts && j.reacts[id]) || []; paintBoth();
         }, function (x) { toast(x.message, 'bad'); });
         break;
-      case 'tr-cancel': var tp = $('#tr-panel'); if (tp) { tp.hidden = true; tp.innerHTML = ''; } C.trOrig = ''; break;
+      case 'tr-cancel': var tp = $(C.trTarget === 'th' ? '#th-tr' : '#tr-panel'); if (tp) { tp.hidden = true; tp.innerHTML = ''; } C.trOrig = ''; C.trTarget = ''; break;
       case 'tr-send':
         var en2 = $('#tr-en'), eng = en2 ? en2.value.trim() : '';
         if (!eng) break;
         if (needsTranslation(eng) && !C.admin) { toast('الرسالة لازم تتبعت بالإنجليزي.', 'bad'); break; }
+        if (C.trTarget === 'th') {
+          var thb = $('#th-body'); if (thb) { thb.value = ''; thb.style.height = 'auto'; }
+          var tht = $('#th-tr'); if (tht) { tht.hidden = true; tht.innerHTML = ''; }
+          sendThread({ body: eng, orig: C.trOrig || '' }); C.trOrig = ''; C.trTarget = '';
+          break;
+        }
         var mb2 = $('#m-body'); if (mb2) { mb2.value = ''; mb2.style.height = 'auto'; }
         var tp2 = $('#tr-panel'); if (tp2) { tp2.hidden = true; tp2.innerHTML = ''; }
         var ah = $('#ar-hint'); if (ah) ah.hidden = true;
         sendMsg(null, { body: eng, orig: C.trOrig || '' }); C.trOrig = '';
         break;
-      case 'tr-raw': var raw = C.trOrig || ''; var tpr = $('#tr-panel'); if (tpr) { tpr.hidden = true; tpr.innerHTML = ''; } var mbr = $('#m-body'); if (mbr) { mbr.value = ''; mbr.style.height = 'auto'; } if (raw) sendMsg(null, { body: raw }); C.trOrig = ''; break;
-      case 'show-orig': C.showOrig = C.showOrig === +el.dataset.id ? 0 : +el.dataset.id; paintMessages(true); break;
+      case 'tr-raw': if (C.trTarget === 'th') { var rawT = C.trOrig || '', tht2 = $('#th-tr'); if (tht2) { tht2.hidden = true; tht2.innerHTML = ''; } var thb2 = $('#th-body'); if (thb2) thb2.value = ''; if (rawT) sendThread({ body: rawT }); C.trOrig = ''; C.trTarget = ''; break; } var raw = C.trOrig || ''; var tpr = $('#tr-panel'); if (tpr) { tpr.hidden = true; tpr.innerHTML = ''; } var mbr = $('#m-body'); if (mbr) { mbr.value = ''; mbr.style.height = 'auto'; } if (raw) sendMsg(null, { body: raw }); C.trOrig = ''; break;
+      case 'show-orig': C.showOrig = C.showOrig === +el.dataset.id ? 0 : +el.dataset.id; paintBoth(); break;
+      case 'open-thread':
+        $$('.react-pick').forEach(function (p) { p.remove(); });
+        if (el.dataset.room && (!C.room || C.room.id !== +el.dataset.room) && (C.rooms || []).some(function (x) { return x.id === +el.dataset.room; })) { openRoom(+el.dataset.room); }
+        openThread(+el.dataset.id, +el.dataset.room || 0); break;
+      case 'close-thread': closeThread(); break;
+      case 'thread-follow':
+        if (!C.thread) break;
+        var fid = C.thread.id, fon = !C.thread.following;
+        api('/chat/threads/' + fid + '/follow', { method: 'POST', body: { on: fon ? 1 : 0 } }).then(function () { if (C.thread && C.thread.id === fid) { C.thread.following = fon; paintThread(); } toast(fon ? 'هيوصلك إشعار لما حد يرد في الثريد ده.' : 'مش هيوصلك إشعارات من الثريد ده.'); loadRooms(); }, function (x) { toast(x.message, 'bad'); });
+        break;
+      case 'goal-info': goalInfo(); break;
+      case 'mention-pick': pickMention(el); break;
+      case 'notif-thread': closeModal(); S.view = 'chat'; C.pendingThread = +el.dataset.id; if (C.room && C.room.id === +el.dataset.room) { renderView(); openThread(C.pendingThread, +el.dataset.room); C.pendingThread = 0; } else { C.pending = +el.dataset.room; if (C.rooms) { var pr2 = C.pending; C.pending = 0; openRoom(pr2); openThread(C.pendingThread, pr2); C.pendingThread = 0; } else loadRooms(); } break;
       case 'msg-reply': C.replyTo = msgById(+el.dataset.id) || null; paintReplyBar(); var mb = $('#m-body'); if (mb) mb.focus(); break;
       case 'reply-cancel': C.replyTo = null; paintReplyBar(); break;
       case 'goto-msg': gotoMsg(+el.dataset.id); break;
