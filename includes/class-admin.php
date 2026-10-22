@@ -142,11 +142,14 @@ final class Sawa_Tracker_Admin {
 			}
 			if ( 'approve' === $do ) {
 				Sawa_Tracker_Game::set( $id, 'status', 'approved' );
-				wp_mail(
-					$u->user_email,
-					'اتفعلت! أهلًا بيك في تراكر سوا انجليش',
-					sprintf( "أهلًا يا %s،\n\nحسابك في تراكر سوا انجليش اتفعل. ادخل من هنا واختار الكلاس وسجّل أول نشاط:\n%s\n\nنشوفك في الترتيب.\nسوا انجليش", $u->display_name, $page )
-				);
+				// Other plugins can send their own welcome instead (the testimonials gift does).
+				if ( apply_filters( 'sawa_tracker_welcome_email', true, $id ) ) {
+					wp_mail(
+						$u->user_email,
+						'اتفعلت! أهلًا بيك في تراكر سوا انجليش',
+						sprintf( "أهلًا يا %s،\n\nحسابك في تراكر سوا انجليش اتفعل. ادخل من هنا واختار الكلاس وسجّل أول نشاط:\n%s\n\nنشوفك في الترتيب.\nسوا انجليش", $u->display_name, $page )
+					);
+				}
 				++$n;
 			} elseif ( 'deny' === $do ) {
 				Sawa_Tracker_Game::set( $id, 'status', 'denied' );
