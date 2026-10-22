@@ -832,7 +832,8 @@
     if (!r.length) return '<section class="card"><h3>آخر الأنشطة</h3><p class="muted">لسه مفيش. دوس <b>نشاط</b> فوق وسجّل أول واحد.</p></section>';
     return '<section class="card"><h3>آخر الأنشطة</h3><ul class="recent">' + r.map(function (x) {
       var a = act(x.activity);
-      return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' كارت' : '') + (x.notes ? ' · <span dir="auto">' + esc(x.notes) + '</span>' : '') + '</small></div>'
+      return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' كارت' : '') + (x.notes ? ' · <span dir="auto">' + esc(x.notes) + '</span>' : '') + '</small>'
+        + (x.links && x.links.length ? '<div class="r-links">' + x.links.map(function (l) { return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" dir="auto">' + (l.vid ? '▶ ' : '🔗 ') + esc(l.title || l.url) + '</a>'; }).join('') + '</div>' : '') + '</div>'
         + '<span class="r-min">' + hm(x.minutes) + '</span>' + (x.canDelete ? '<button class="icon-btn sm" data-act="del-log" data-id="' + x.id + '" aria-label="امسح النشاط ده" title="امسح">' + ico('x') + '</button>' : '<span class="icon-btn sm ghost"></span>') + '</li>';
     }).join('') + '</ul></section>';
   }
@@ -1019,6 +1020,43 @@
       + '<div class="quick">' + [10, 20, 30, 45, 60].map(function (m) { return '<button type="button" data-act="quick-min" data-target="' + id + '" data-min="' + m + '">' + m + '</button>'; }).join('') + '</div></div>';
   }
 
+  /* What the student studied with: search a YouTube video or song by its title, or paste any link. */
+  function linkPicker() {
+    return '<div class="f lp"><span>اتفرجت على إيه، سمعت إيه، أو قريت إيه؟ <small>اختياري</small></span><div class="lp-chips"></div>'
+      + '<input class="lp-q" maxlength="300" placeholder="اكتب اسم الفيديو أو الأغنية، أو الصق لينك" dir="auto" autocomplete="off"><div class="lp-res" role="listbox"></div></div>';
+  }
+  function bindLinkPicker(scope, links) {
+    var box = scope.querySelector('.lp'); if (!box) return;
+    var q = box.querySelector('.lp-q'), res = box.querySelector('.lp-res'), chips = box.querySelector('.lp-chips'), t = null, seq = 0, found = [];
+    function paintChips() {
+      chips.innerHTML = links.map(function (l, i) { return '<span class="lp-chip" dir="auto">' + (l.vid ? '▶ ' : '🔗 ') + esc(l.title || l.url) + '<button type="button" data-lp-del="' + i + '" aria-label="شيل">×</button></span>'; }).join('');
+      q.hidden = links.length >= 5;
+    }
+    function add(it) { if (!links.some(function (l) { return l.url === it.url; })) links.push({ url: it.url, title: it.title, channel: it.channel, vid: it.vid }); q.value = ''; res.innerHTML = ''; paintChips(); }
+    q.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+    q.addEventListener('input', function () {
+      clearTimeout(t); var v = q.value.trim(), my = ++seq;
+      if (v.length < 3) { res.innerHTML = ''; return; }
+      t = setTimeout(function () {
+        res.innerHTML = '<p class="muted small">بيدوّر…</p>';
+        var isUrl = /^https?:\/\/\S+$/i.test(v) || /^(www\.|youtu\.be\/|youtube\.com\/)/i.test(v);
+        (isUrl ? api('/media/info', { query: { url: /^https?:/i.test(v) ? v : 'https://' + v } }).then(function (j) { return [j.item]; }) : api('/media/search', { query: { q: v } }).then(function (j) { return j.items; })).then(function (items) {
+          if (my !== seq) return;
+          found = items || [];
+          res.innerHTML = found.length ? found.map(function (it, i) {
+            return '<button type="button" class="lp-it" data-lp-add="' + i + '">' + (it.thumb ? '<img src="' + esc(it.thumb) + '" alt="" loading="lazy">' : '<span class="lp-ic">🔗</span>') + '<span dir="auto"><b>' + esc(it.title) + '</b><small>' + esc(it.channel || '') + (it.duration ? ' · ' + esc(it.duration) : '') + '</small></span></button>';
+          }).join('') : '<p class="muted small">ملقيناش حاجة. جرّب اسم تاني أو الصق اللينك.</p>';
+        }, function (x) { if (my === seq) res.innerHTML = '<p class="err small">' + esc(x.message) + '</p>'; });
+      }, 450);
+    });
+    box.addEventListener('click', function (e) {
+      var a = e.target.closest('[data-lp-add]'), d = e.target.closest('[data-lp-del]');
+      if (a) { e.preventDefault(); add(found[+a.dataset.lpAdd]); }
+      if (d) { e.preventDefault(); links.splice(+d.dataset.lpDel, 1); paintChips(); }
+    });
+    paintChips();
+  }
+
   function openLogActivity(pre) {
     openModal(mHead('سجّل نشاط', 'كل نشاط بيديك نقطة مهارة.')
       + '<form class="stack" id="f-log"><div class="f"><span>النشاط</span>' + actChips('activity', pre) + '</div>'
@@ -1026,8 +1064,10 @@
       + '<label class="f" id="l-cards-row" hidden>عدد الكروت <small>اختياري</small><input type="number" id="l-cards" min="0" max="5000" inputmode="numeric" dir="ltr"></label>'
       + '<div class="f"><span>اليوم</span><div class="seg"><button type="button" data-act="day-pick" data-day="' + S.data.today + '" aria-pressed="true">النهارده</button><button type="button" data-act="day-pick" data-day="' + S.data.yesterday + '" aria-pressed="false">امبارح</button></div></div>'
       + '<label class="f">اشتغلت على إيه؟ <small>اختياري</small><input id="l-notes" maxlength="300" placeholder="مثلًا: بودكاست، أو راجعت الـ Anki deck" dir="auto"></label>'
+      + linkPicker()
       + '<p class="err" role="alert"></p><button class="btn primary wide" type="submit">احفظ النشاط</button></form>');
-    var form = $('#f-log'), day = S.data.today;
+    var form = $('#f-log'), day = S.data.today, links = [];
+    bindLinkPicker(form, links);
     function syncCards() { var c = form.querySelector('[name=activity]:checked'); $('#l-cards-row').hidden = !(c && act(c.value).cards); }
     form.addEventListener('change', syncCards); syncCards();
     form.addEventListener('click', function (e) { var b = e.target.closest('[data-act=day-pick]'); if (b) { day = b.dataset.day; form.querySelectorAll('[data-act=day-pick]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); } });
@@ -1038,7 +1078,7 @@
       if (!c) { err.textContent = 'اختار النشاط.'; return; }
       if (!(min >= 1 && min <= 720)) { err.textContent = 'اكتب الدقايق من 1 لـ 720.'; return; }
       busy(btn, true);
-      api('/log', { method: 'POST', body: { activity: c.value, minutes: min, cards: parseInt($('#l-cards').value, 10) || 0, notes: $('#l-notes').value.trim(), day: day } })
+      api('/log', { method: 'POST', body: { activity: c.value, minutes: min, cards: parseInt($('#l-cards').value, 10) || 0, notes: $('#l-notes').value.trim(), day: day, links: links } })
         .then(function (j) { closeModal(); afterAction(j, 'اتسجّل!' + (j.sp ? ' +' + j.sp + ' 🪙' : '')); }, function (x) { busy(btn, false); err.textContent = x.message; });
     });
   }
@@ -1059,6 +1099,7 @@
           + (e ? '<div class="stack"><div class="f"><span>الدقايق</span>' + minuteInput('d-min', e.minutes) + '</div>'
             + (s.a.cards ? '<label class="f">عدد الكروت <small>اختياري</small><input type="number" id="d-cards" min="0" max="5000" value="' + (e.cards || '') + '" dir="ltr"></label>' : '')
             + '<label class="f">ملاحظات <small>اختياري</small><input id="d-notes" maxlength="300" value="' + esc(e.notes || '') + '" dir="auto"></label>'
+            + linkPicker()
             + '<div class="row-btns"><button class="btn ghost" data-act="d-no">لأ معملتش</button><button class="btn primary" data-act="d-next">اللي بعده</button></div></div>'
             : '<div class="row-btns big"><button class="btn primary" data-act="d-yes">آه</button><button class="btn" data-act="d-no">لأ</button></div>');
       } else if (s.type === 'reflect') {
@@ -1077,13 +1118,14 @@
         + '<div class="steps-h"><span>خطوة ' + (st.i + 1) + ' من ' + n + '</span><span>' + (s.type === 'act' ? esc(act(s.a.name).ar) : s.type === 'reflect' ? 'إحساسك' : 'المراجعة') + '</span></div><div class="bar step"><i style="width:' + Math.round((st.i + 1) / n * 100) + '%"></i></div>'
         + (st.i === 0 ? '<div class="seg center"><button data-act="d-day" data-day="' + S.data.today + '" aria-pressed="' + (st.day === S.data.today) + '">النهارده</button><button data-act="d-day" data-day="' + S.data.yesterday + '" aria-pressed="' + (st.day === S.data.yesterday) + '">امبارح</button></div>' : '')
         + '<div class="step-body">' + body + '</div>');
+      if (s.type === 'act' && st.entries[s.a.name]) { var en = st.entries[s.a.name]; en.links = en.links || []; bindLinkPicker($('#modal'), en.links); }
     }
     function saveStep() {
       var s = steps[st.i];
       if (s.type === 'act' && st.entries[s.a.name]) {
         var m = parseInt($('#d-min').value, 10);
         if (!(m >= 1 && m <= 720)) { toast('اكتب الدقايق من 1 لـ 720.', 'bad'); return false; }
-        st.entries[s.a.name] = { activity: s.a.name, minutes: m, cards: $('#d-cards') ? parseInt($('#d-cards').value, 10) || 0 : 0, notes: $('#d-notes').value.trim() };
+        st.entries[s.a.name] = { activity: s.a.name, minutes: m, cards: $('#d-cards') ? parseInt($('#d-cards').value, 10) || 0 : 0, notes: $('#d-notes').value.trim(), links: st.entries[s.a.name].links || [] };
       }
       if (s.type === 'reflect') st.note = $('#d-note').value;
       return true;

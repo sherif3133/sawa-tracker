@@ -31,6 +31,8 @@ final class Sawa_Tracker_Rest {
 		self::route( '/me', 'GET', 'me' );
 		self::route( '/class', 'POST', 'choose_class' );
 		self::route( '/log', 'POST', 'log' );
+		self::route( '/media/search', 'GET', 'media_search' );
+		self::route( '/media/info', 'GET', 'media_info' );
 		self::route( '/log/(?P<id>\d+)', 'DELETE', 'delete_log' );
 		self::route( '/day', 'POST', 'day' );
 		self::route( '/cast', 'POST', 'cast' );
@@ -83,7 +85,7 @@ final class Sawa_Tracker_Rest {
 		$yday  = $G::add_days( $today, -1 );
 		$tot   = $wpdb->get_row( $wpdb->prepare( "SELECT COALESCE(SUM(minutes),0) AS m, COALESCE(SUM(cards),0) AS c FROM $logs WHERE user_id = %d", $uid ) ); // phpcs:ignore
 		$break = $wpdb->get_results( $wpdb->prepare( "SELECT activity, SUM(minutes) AS m FROM $logs WHERE user_id = %d GROUP BY activity ORDER BY m DESC", $uid ), ARRAY_A ); // phpcs:ignore
-		$recent = $wpdb->get_results( $wpdb->prepare( "SELECT id, activity, minutes, cards, notes, day FROM $logs WHERE user_id = %d ORDER BY day DESC, id DESC LIMIT 25", $uid ), ARRAY_A ); // phpcs:ignore
+		$recent = $wpdb->get_results( $wpdb->prepare( "SELECT id, activity, minutes, cards, notes, links, day FROM $logs WHERE user_id = %d ORDER BY day DESC, id DESC LIMIT 25", $uid ), ARRAY_A ); // phpcs:ignore
 		$trend = $wpdb->get_results( $wpdb->prepare( "SELECT day, health, minutes, state FROM $days WHERE user_id = %d AND day >= %s AND health IS NOT NULL ORDER BY day", $uid, $G::add_days( $today, -60 ) ), ARRAY_A ); // phpcs:ignore
 		$live  = $G::live( $uid );
 		$trend[] = array(
@@ -126,6 +128,7 @@ final class Sawa_Tracker_Rest {
 						'minutes'   => (int) $r['minutes'],
 						'cards'     => (int) $r['cards'],
 						'notes'     => $r['notes'],
+						'links'     => json_decode( (string) $r['links'], true ) ?: array(),
 						'day'       => $r['day'],
 						'canDelete' => $r['day'] === $today || $r['day'] === $yday,
 					);
@@ -222,12 +225,26 @@ final class Sawa_Tracker_Rest {
 			(int) $r->get_param( 'minutes' ),
 			(int) $r->get_param( 'cards' ),
 			(string) $r->get_param( 'notes' ),
-			(string) ( $r->get_param( 'day' ) ? $r->get_param( 'day' ) : Sawa_Tracker_Game::today() )
+			(string) ( $r->get_param( 'day' ) ? $r->get_param( 'day' ) : Sawa_Tracker_Game::today() ),
+			false,
+			(array) $r->get_param( 'links' )
 		);
 		if ( is_wp_error( $res ) ) {
 			return self::fail( $res );
 		}
 		return array( 'ok' => true ) + $res + array( 'data' => self::me_data( $uid ) );
+	}
+
+	/** Find the video you studied with, by its title. */
+	public static function media_search( WP_REST_Request $r ) {
+		$res = Sawa_Tracker_Media::search( self::uid(), (string) $r->get_param( 'q' ) );
+		return is_wp_error( $res ) ? self::fail( $res ) : array( 'ok' => true, 'items' => $res );
+	}
+
+	/** A pasted link's title. */
+	public static function media_info( WP_REST_Request $r ) {
+		$res = Sawa_Tracker_Media::info( (string) $r->get_param( 'url' ) );
+		return is_wp_error( $res ) ? self::fail( $res ) : array( 'ok' => true, 'item' => $res );
 	}
 
 	public static function delete_log( WP_REST_Request $r ) {

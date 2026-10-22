@@ -132,6 +132,7 @@ final class Sawa_Tracker_Game {
 			'chat_enabled' => 1,
 			'chat_max_row' => 5,
 			'giphy_key'    => '',
+			'yt_key'       => '',
 			'blocked_words' => '',
 			'skool_url'    => 'https://www.skool.com/sawa-english-7655',
 			'clan_size'    => 8,
@@ -162,6 +163,7 @@ final class Sawa_Tracker_Game {
 			minutes smallint(5) unsigned NOT NULL DEFAULT 0,
 			cards int(10) unsigned NOT NULL DEFAULT 0,
 			notes varchar(500) NOT NULL DEFAULT '',
+			links text,
 			day date NOT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -486,7 +488,7 @@ final class Sawa_Tracker_Game {
 
 	/* ------------------------------------------------------------------ logging */
 
-	public static function add_log( $uid, $activity, $minutes, $cards, $notes, $day, $quiet = false ) {
+	public static function add_log( $uid, $activity, $minutes, $cards, $notes, $day, $quiet = false, $links = array() ) {
 		if ( ! isset( self::ACTIVITIES[ $activity ] ) ) {
 			return new WP_Error( 'activity', 'اختار النشاط.' );
 		}
@@ -515,6 +517,7 @@ final class Sawa_Tracker_Game {
 				'minutes'    => $minutes,
 				'cards'      => self::ACTIVITIES[ $activity ]['cards'] ? max( 0, (int) $cards ) : 0,
 				'notes'      => mb_substr( sanitize_text_field( $notes ), 0, 500 ),
+				'links'      => wp_json_encode( Sawa_Tracker_Media::clean( $links ) ), // what they watched / listened to / read
 				'day'        => $day,
 				'created_at' => self::now_mysql(),
 			)
@@ -607,7 +610,7 @@ final class Sawa_Tracker_Game {
 		$levels  = null;
 		$badges  = array();
 		foreach ( $entries as $e ) {
-			$r = self::add_log( $uid, (string) ( $e['activity'] ?? '' ), (int) ( $e['minutes'] ?? 0 ), (int) ( $e['cards'] ?? 0 ), (string) ( $e['notes'] ?? '' ), $day );
+			$r = self::add_log( $uid, (string) ( $e['activity'] ?? '' ), (int) ( $e['minutes'] ?? 0 ), (int) ( $e['cards'] ?? 0 ), (string) ( $e['notes'] ?? '' ), $day, false, (array) ( $e['links'] ?? array() ) );
 			if ( is_wp_error( $r ) ) {
 				return $r;
 			}

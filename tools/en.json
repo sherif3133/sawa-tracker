@@ -537,7 +537,12 @@
   "<i class=\"unread at-unread\" title=\"حد عمل لك منشن\">@</i>": "<i class=\"unread at-unread\" title=\"Someone mentioned you\">@</i>",
   "كل الناس في الشات ده": "Everyone in this chat",
   "كل الكلان": "Your whole clan",
-  "<p class=\"mp-h small muted\">اختار زميل عشان يوصله إشعار</p>": "<p class=\"mp-h small muted\">Pick a classmate to notify them</p>"
+  "<p class=\"mp-h small muted\">اختار زميل عشان يوصله إشعار</p>": "<p class=\"mp-h small muted\">Pick a classmate to notify them</p>",
+  "<div class=\"f lp\"><span>اتفرجت على إيه، سمعت إيه، أو قريت إيه؟ <small>اختياري</small></span><div class=\"lp-chips\"></div>": "<div class=\"f lp\"><span>What did you watch, listen to or read? <small>optional</small></span><div class=\"lp-chips\"></div>",
+  "<input class=\"lp-q\" maxlength=\"300\" placeholder=\"اكتب اسم الفيديو أو الأغنية، أو الصق لينك\" dir=\"auto\" autocomplete=\"off\"><div class=\"lp-res\" role=\"listbox\"></div></div>": "<input class=\"lp-q\" maxlength=\"300\" placeholder=\"Type the video or song name, or paste a link\" dir=\"auto\" autocomplete=\"off\"><div class=\"lp-res\" role=\"listbox\"></div></div>",
+  "\" aria-label=\"شيل\">×</button></span>": "\" aria-label=\"Remove\">×</button></span>",
+  "<p class=\"muted small\">بيدوّر…</p>": "<p class=\"muted small\">Searching…</p>",
+  "<p class=\"muted small\">ملقيناش حاجة. جرّب اسم تاني أو الصق اللينك.</p>": "<p class=\"muted small\">Nothing found. Try another name or paste the link.</p>"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",
