@@ -216,9 +216,9 @@ async function open(br, size) {
 	await sleep(600);
 	// 📻 Radio: a podcast episode instead of the music, captions at the bottom (speech-to-text is mocked on the test site).
 	await click('.sg-road [data-road="radio"]');
-	await p.waitForFunction(() => window.__q('.sg-radiop [data-st="bbc6"]'), { timeout: 15000 });
+	await p.waitForFunction(() => window.__q('.sg-radiop [data-st="fish"]'), { timeout: 15000 });
 	await p.screenshot({ path: `${OUT}/road-10-radio.png` });
-	await click('.sg-radiop [data-st="bbc6"]');
+	await click('.sg-radiop [data-st="fish"]');
 	await p.waitForFunction(() => window.__q('.sg-radiop [data-ep]'), { timeout: 30000 });
 	await click('.sg-radiop [data-ep="0"]');
 	await p.waitForFunction(() => window.__q('.sg-cap.on'), { timeout: 10000 }).catch(() => {});

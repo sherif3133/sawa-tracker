@@ -28,16 +28,9 @@ final class Sawa_Tracker_Road {
 	const STATION_COINS = 5;
 	const ROAD_COINS    = 25;
 	const ROAD_XP       = 20;
-	/** The weekly chapters (one a week, in turn), and what walking the whole road on 3, 5 and 7 days of the week gives: [coins, elixirs, title]. */
+	/** This week's chapter (add next week's when it comes: the beta changes often, so no chapters are planned ahead), and what walking the whole road on 3, 5 and 7 days of the week gives: [coins, elixirs, title]. */
 	const CHAPTERS = array(
 		array( 'The Spice Caravan', 'Merchants carry pepper and cinnamon west. Walk the road with them: every camp you finish moves the caravan.' ),
-		array( 'Lanterns on the Road', 'The lantern festival is coming. Light the road: every camp you finish is one more lantern.' ),
-		array( 'The Lost Map', 'A traveller lost the old map of the Silk Road. Every camp you finish finds one more piece of it.' ),
-		array( 'The Silk Market', 'The great silk market opens at the end of the week. Every camp you finish brings one more roll of silk.' ),
-		array( 'Storm in the Desert', 'A sandstorm is coming. Travellers who study together get through it: every camp builds a shelter.' ),
-		array( 'The Poets of the Road', 'Poets from every town meet this week. Every camp you finish gives them one more word for their poems.' ),
-		array( 'The Wells of the Road', 'The wells on the road are drying up. Every camp you finish digs a little deeper.' ),
-		array( 'The Ambassador', 'An ambassador travels west to make peace. Every camp you finish keeps the road safe for her.' ),
 	);
 	const TIERS = array(
 		3 => array( 30, 0, '' ),
