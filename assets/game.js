@@ -346,7 +346,8 @@
     inn: ['Innkeeper Lina', '👩', 'Tired? Rest here and review your word cards. A rested mind fights better — every plan step gives you one more fight.'],
     smith: ['Smith Bayram', '🧔', 'Good steel follows good English. Bring me coins and I will forge you something worthy of your level.'],
     crier: ['Town crier', '📣', 'Hear ye! Speak with the travellers of this town — but only in English!'],
-    guard: ['Gate guard', '💂', 'The road east is closed until the beast of this land is defeated.']
+    guard: ['Gate guard', '💂', 'The road east is closed until the beast of this land is defeated.'],
+    teller: ['Rawi the storyteller', '🧓', 'Sit by the fire, traveller. Every evening I tell a story — in English, at your level.']
   };
 
   /* ================================================================ the world scene */
@@ -400,6 +401,7 @@
         npc('smith', 12, 31.2, { skin: 3, hair: 0, hairc: 0, outfit: 5 }, 'hunter'); npc('crier', 14.5, 23, { skin: 0, hair: 2, hairc: 2, outfit: 3 }, 'trader');
         S.hurt = (w.clanHurt || []).slice(0, 4).map(function (c, k) { var key = ensureChar(S, c.avatar || { look: {} }); var sp = S.add.sprite((5.2 + k * 1.5) * TS, 19.4 * TS, key, 0).setOrigin(0.5, 0.5).setAngle(90).setAlpha(c.wound.fallen ? 0.55 : 0.9); sp.setDepth(sp.y); return { spr: sp, c: c }; });
         if (w.reached <= t) npc('guard', 37.5, 18.4, { skin: 4, hair: 0, hairc: 0, outfit: 1 }, 'thief');
+        if (H.lens && window.SAWA_LENS && window.SAWA_LENS.readers) npc('teller', 16.5, 18.4, { skin: 2, hair: 3, hairc: 4, outfit: 2 }, ''); // camp stories (Sawa Lens "Stories for you")
         // the caravanserai the community builds this week (it grows as the week goes on)
         S.serai = function (pct) {
           var st = pct >= 100 ? 4 : pct >= 75 ? 3 : pct >= 45 ? 2 : pct >= 15 ? 1 : 0, key = 'serai' + t + '_' + st;
@@ -558,6 +560,20 @@
         if (id === 'smith') return H.stage() >= 4 ? dialog(L[0], L[2], [{ label: 'Open the forge', primary: true, run: function () { H.panel('forge'); } }], L[1]) : dialog(L[0], 'Come back when you are ready to carry a weapon. (Jobs and gear open at stage 4.)', [], L[1]);
         if (id === 'crier') return dialog(L[0], L[2] + ' And if a word is hard, ask the caravan — someone will explain it.', [{ label: 'Open the town chat', primary: true, run: function () { CHAT.show(); } }, { label: '🐫 Caravan board', run: function () { CARAVAN.show(); } }], L[1]);
         if (id === 'guard') return dialog(L[0], L[2] + ' Speak with Elder Wen to learn how.', [], L[1]);
+        if (id === 'teller') { // camp stories: today's story or the next chapter, and a gift once you've read one today
+          H.lens.api('readers').then(function (h) {
+            var sr = h.series && !h.series.tomorrow ? h.series : null, st = h.today, btns = [];
+            var txt = h.readToday ? 'You read a story today! Stories make a traveller wise. Take my gift for the road.'
+              : sr ? 'Do you remember “' + sr.title + '”? Chapter ' + sr.next + ' is waiting for you tonight.'
+                : st ? 'Tonight’s story is called “' + st.title + '”. ' + (st.teaser || '') : 'You have heard all my stories! New ones are coming soon.';
+            if (h.readToday) btns.push({ label: '🎁 Take the gift', primary: true, run: function () { H.api('/world/story', { method: 'POST' }).then(function (j) { if (j.world) H.setWorld(j.world); hud(); SFX.quest(); say('+' + j.coins + ' 🪙 +' + j.elixirs + ' ⚗'); }, function (x) { say(x.message); }); } });
+            if (sr) btns.push({ label: '📚 Read chapter ' + sr.next, primary: !h.readToday, run: function () { H.go('stories'); } });
+            else if (st && !h.readToday) btns.push({ label: '📖 Read it (' + st.minutes + ' min)', primary: true, run: function () { H.go('story-' + st.id); } });
+            btns.push({ label: 'All stories', run: function () { H.go('stories'); } });
+            dialog.who = 'teller'; dialog(L[0], txt, btns, L[1]);
+          }, function () { dialog(L[0], L[2], [{ label: 'All stories', primary: true, run: function () { H.go('stories'); } }], L[1]); });
+          return;
+        }
       },
       encounter: function (mo) {
         var S = this, now = S.now(); if (S.frozen || S.busy || busyNow() || S.cool > now || mo.flee > now) return;
@@ -1042,7 +1058,7 @@
      WebAudio, no audio files. "Voices" in the menu switches voices and effects off; music has its own switch. */
   var CAST = {
     me: { pitch: 1.05, rate: 1.05 }, elder: { pitch: 0.75, rate: 0.85 }, inn: { pitch: 1.3, rate: 0.98 }, smith: { pitch: 0.6, rate: 0.9 },
-    crier: { pitch: 1.1, rate: 1.08 }, guard: { pitch: 0.7, rate: 0.95 }, boss: { pitch: 0.45, rate: 0.82 }, bandit: { pitch: 0.65, rate: 1.05 }, shadow: { pitch: 0.55, rate: 0.9 }
+    crier: { pitch: 1.1, rate: 1.08 }, guard: { pitch: 0.7, rate: 0.95 }, teller: { pitch: 0.8, rate: 0.82 }, boss: { pitch: 0.45, rate: 0.82 }, bandit: { pitch: 0.65, rate: 1.05 }, shadow: { pitch: 0.55, rate: 0.9 }
   };
   var BARKS = {
     hit: ['Take that!', 'Yes!', 'Got it!', 'Easy!', 'Here we go!'], quick: ['Too fast for you!', 'Lightning!'], combo: ['Combo!', 'I am on fire!', 'Keep going!'],

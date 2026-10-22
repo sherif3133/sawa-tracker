@@ -77,7 +77,7 @@ final class Sawa_Tracker_World {
 	}
 
 	public static function routes() {
-		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/flee', 'POST', 'flee' ), array( '/world/tea', 'POST', 'tea' ), array( '/world/rematch', 'POST', 'rematch' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
+		foreach ( array( array( '/world', 'GET', 'state_rest' ), array( '/world/travel', 'POST', 'travel' ), array( '/world/fight', 'POST', 'fight' ), array( '/world/answer', 'POST', 'answer' ), array( '/world/claim', 'POST', 'claim' ), array( '/world/step', 'POST', 'step' ), array( '/world/skill', 'POST', 'skill' ), array( '/world/flee', 'POST', 'flee' ), array( '/world/tea', 'POST', 'tea' ), array( '/world/story', 'POST', 'story_gift' ), array( '/world/rematch', 'POST', 'rematch' ), array( '/world/ranks', 'GET', 'ranks' ), array( '/world/report', 'GET', 'report' ), array( '/world/shared', 'POST', 'shared' ) ) as $r ) {
 			register_rest_route( Sawa_Tracker_Rest::NS, $r[0], array( 'methods' => $r[1], 'callback' => array( __CLASS__, $r[2] ), 'permission_callback' => array( 'Sawa_Tracker_Rest', 'member' ) ) );
 		}
 	}
@@ -596,8 +596,24 @@ final class Sawa_Tracker_World {
 		return self::battle_start( $uid, 'elite', $qs, $foe, array( 'town' => $t, 'support' => $support ) );
 	}
 
-	const TEA_COINS = 25;
-	const TEA_DAY   = 3;
+	const TEA_COINS   = 25;
+	const TEA_DAY     = 3;
+	const STORY_COINS = 20;
+
+	/** Rawi the storyteller: once a day, a gift for finishing a story in Sawa Lens "Stories for you". */
+	public static function story_gift() {
+		$uid = self::uid();
+		if ( ! class_exists( 'Sawa_Lens_Readers' ) || ! Sawa_Lens_Readers::read_today( $uid ) ) {
+			return new WP_Error( 'story', 'Read one of your stories today first, then come back and tell me about it!', array( 'status' => 400 ) );
+		}
+		if ( Sawa_Tracker_Game::m( $uid, 'story_gift', '' ) === Sawa_Tracker_Game::today() ) {
+			return new WP_Error( 'story', 'You have my gift for today. Come back tomorrow with a new story!', array( 'status' => 400 ) );
+		}
+		Sawa_Tracker_Game::set( $uid, 'story_gift', Sawa_Tracker_Game::today() );
+		Sawa_Tracker_Raids::add_coins( $uid, self::STORY_COINS, 'story' );
+		Sawa_Tracker_RPG::add_elixirs( $uid, 1 );
+		return array( 'coins' => self::STORY_COINS, 'elixirs' => 1, 'world' => self::state( $uid ) );
+	}
 
 	/** Healing tea at the inn: coins buy back 40% of your health (three cups a day; it can't heal a wound). */
 	public static function tea() {
