@@ -8,6 +8,8 @@
  *     than one every 20 seconds don't count.
  *   - Each counted reply up to the goal: +2 XP (on top of the chat XP). Reaching the goal: +25 XP and 10 coins.
  *   - Every counted reply also moves the weekly "reply" quest on the Silk Road.
+ *   - The best helper of the week (the most counted replies, at least 5) is named in the live feed and the weekly
+ *     report, and gets 30 coins, an elixir, 30 XP and the title "Helper of the Week".
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -28,6 +30,64 @@ final class Sawa_Tracker_Replies {
 	/** Result for the last message sent: { counted, why, n, goal, done, xp, bonus }, for the send response. */
 	public static $last = null;
 
+	const HELPER_MIN = 5;
+
+	/** Counted replies this week, per student (and last week's, kept until it is rewarded). */
+	private static function tally( $uid ) {
+		$week = Sawa_Tracker_Game::week_start();
+		$t    = get_option( 'sawa_tr_helpers', array() );
+		$t    = is_array( $t ) ? $t : array();
+		if ( ( $t['week'] ?? '' ) !== $week ) {
+			$t = array( 'week' => $week, 'c' => array(), 'prev' => isset( $t['week'] ) ? array( 'week' => $t['week'], 'c' => (array) $t['c'] ) : null );
+		}
+		if ( $uid ) {
+			$t['c'][ (int) $uid ] = (int) ( $t['c'][ (int) $uid ] ?? 0 ) + 1;
+		}
+		update_option( 'sawa_tr_helpers', $t, false );
+		return $t;
+	}
+
+	/** This week's best helpers so far: [{id, name, n}], most replies first. */
+	public static function leaders( $n = 3 ) {
+		$t = get_option( 'sawa_tr_helpers', array() );
+		if ( ! is_array( $t ) || ( $t['week'] ?? '' ) !== Sawa_Tracker_Game::week_start() ) {
+			return array();
+		}
+		arsort( $t['c'] );
+		$out = array();
+		foreach ( array_slice( $t['c'], 0, $n, true ) as $id => $c ) {
+			$out[] = array( 'id' => (int) $id, 'name' => Sawa_Tracker_Game::person( (int) $id )['name'], 'n' => (int) $c );
+		}
+		return $out;
+	}
+
+	/** Last week's best helper gets their reward and a shout-out, once. */
+	public static function award_last_week() {
+		$t = get_option( 'sawa_tr_helpers', array() );
+		if ( is_array( $t ) && ( $t['week'] ?? '' ) !== Sawa_Tracker_Game::week_start() ) {
+			$t = self::tally( 0 ); // a new week started: last week becomes "prev"
+		}
+		$p = is_array( $t ) ? ( $t['prev'] ?? null ) : null;
+		if ( ! $p || ! $p['c'] || ! add_option( 'sawa_tr_helper_paid_' . $p['week'], time(), '', 'no' ) ) {
+			return;
+		}
+		arsort( $p['c'] );
+		$uid = (int) key( $p['c'] );
+		$n   = (int) current( $p['c'] );
+		if ( $n < self::HELPER_MIN || ! Sawa_Tracker_Game::is_member( $uid ) ) {
+			return;
+		}
+		Sawa_Tracker_Raids::add_coins( $uid, 30 );
+		Sawa_Tracker_RPG::add_elixirs( $uid, 1 );
+		Sawa_Tracker_XP::award( $uid, 30, 'helper', false );
+		$w = Sawa_Tracker_World::get( $uid );
+		if ( ! in_array( 'Helper of the Week', $w['titles'], true ) ) {
+			$w['titles'][] = 'Helper of the Week';
+			Sawa_Tracker_World::save( $uid, $w );
+		}
+		Sawa_Tracker_Game::event( $uid, 'chat_helper', null, array( 'n' => $n, 'week' => $p['week'] ) );
+	}
+
 	public static function init() {
 		add_action( 'sawa_tracker_message_sent', array( __CLASS__, 'on_message' ), 20, 5 );
 	}
@@ -43,6 +103,7 @@ final class Sawa_Tracker_Replies {
 
 	/** Today's progress, for the chat and the game. */
 	public static function goal( $uid ) {
+		self::award_last_week();
 		$s = self::state( $uid );
 		return array(
 			'n'     => (int) $s['n'],
@@ -134,6 +195,7 @@ final class Sawa_Tracker_Replies {
 				Sawa_Tracker_Raids::add_coins( $uid, self::BONUS_COINS );
 			}
 			Sawa_Tracker_World::progress( $uid, 'reply' );
+			self::tally( $uid );
 		}
 		self::$last = $out + self::goal( $uid );
 	}

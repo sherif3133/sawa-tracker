@@ -1189,11 +1189,12 @@
     H.api('/world/report').then(function (d) {
       var lines = [];
       b.innerHTML = '<h4>⭐ Most XP this week</h4><ol class="sg-rank">' + d.xp.map(function (p, k) { lines.push((k + 1) + '. ' + p.name + ' — ' + p.week + ' XP'); return '<li><span>' + (k + 1) + '</span><div><b>' + esc(p.name) + '</b><small>Lv ' + p.level + '</small></div><em>' + p.week + ' XP</em></li>'; }).join('') + '</ol>'
+        + (d.helpers && d.helpers.length ? '<h4>🤝 Best helpers in the chat</h4><p>' + d.helpers.map(function (p) { return esc(p.name) + ' (' + p.n + ' replies)'; }).join(' · ') + '</p>' : '')
         + (d.words.length ? '<h4>📚 Most new words</h4><p>' + d.words.map(function (p) { return esc(p.name) + ' (' + p.words + ')'; }).join(' · ') + '</p>' : '')
         + (d.moments.length ? '<h4>🏆 Big moments</h4><ul class="sg-moments">' + d.moments.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>' : '<p class="small">No big moments yet this week. Be the first!</p>')
         + (H.isAdmin() ? '<div class="sg-opts"><button class="pri" data-r="copy">Copy as a Skool post</button></div>' : '<div class="sg-opts"><button class="pri" data-r="share">Share my card</button></div>');
       var cp = b.querySelector('[data-r="copy"]');
-      if (cp) cp.onclick = function () { var t = '🐫 This week on the Silk Road!\n\n⭐ Most XP:\n' + lines.join('\n') + (d.words.length ? '\n\n📚 Most new words: ' + d.words.map(function (p) { return p.name + ' (' + p.words + ')'; }).join(', ') : '') + (d.moments.length ? '\n\n🏆 Big moments:\n' + d.moments.map(function (m) { return '• ' + m; }).join('\n') : '') + '\n\nWho will be on top next week? Comment with your level! ⚔'; try { navigator.clipboard.writeText(t); say('Copied. Paste it on Skool!'); } catch (e) { say('Copy did not work in this browser.'); } };
+      if (cp) cp.onclick = function () { var t = '🐫 This week on the Silk Road!\n\n⭐ Most XP:\n' + lines.join('\n') + (d.helpers && d.helpers.length ? '\n\n🤝 Best helpers in the chat: ' + d.helpers.map(function (p) { return p.name + ' (' + p.n + ' replies)'; }).join(', ') : '') + (d.words.length ? '\n\n📚 Most new words: ' + d.words.map(function (p) { return p.name + ' (' + p.words + ')'; }).join(', ') : '') + (d.moments.length ? '\n\n🏆 Big moments:\n' + d.moments.map(function (m) { return '• ' + m; }).join('\n') : '') + '\n\nWho will be on top next week? Comment with your level! ⚔'; try { navigator.clipboard.writeText(t); say('Copied. Paste it on Skool!'); } catch (e) { say('Copy did not work in this browser.'); } };
       var sh = b.querySelector('[data-r="share"]'); if (sh) sh.onclick = function () { SHARE.show(); };
     }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
