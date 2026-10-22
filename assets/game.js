@@ -293,7 +293,7 @@
     var bars = '<div class="sg-hbars"><div class="sg-hpb me" data-bar="hp"><i style="width:' + (hr.hp / hr.hpMax * 100) + '%"></i><span>❤ ' + hr.hp + '/' + hr.hpMax + '</span></div>' + (hr.level >= 2 ? '<div class="sg-mpb" data-bar="mp"><i style="width:' + (hr.mana / hr.manaMax * 100) + '%"></i><span>💧 ' + hr.mana + '/' + hr.manaMax + '</span></div>' : '') + '<div class="sg-xpb" data-bar="xp"><i style="width:' + Math.min(100, (hr.xp - hr.xpFrom) / Math.max(1, hr.xpNext - hr.xpFrom) * 100) + '%"></i><span>Lv ' + hr.level + ' · ' + (hr.xpNext - hr.xp) + ' XP to next</span></div></div>';
     if (GAME.lastLv && hr.level > GAME.lastLv) GAME.levelUp(hr); GAME.lastLv = hr.level;
     $('.sg-top').innerHTML = '<div class="sg-who"><span class="sg-face">' + (me.avatar ? '<img src="' + esc(me.avatar) + '" alt="">' : '') + '<em class="sg-lv">' + hr.level + '</em></span><div><b>' + esc(me.name) + '</b><small>' + esc(w.town.icon + ' ' + w.town.name + ' · ' + w.town.level) + ' · ' + esc(hr.title) + '</small>' + bars + '</div></div>'
-      + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span>' + (w.elixirs ? '<span title="Elixirs">⚗ ' + w.elixirs + '</span>' : '') + '<span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span></div>';
+      + '<div class="sg-stats"><span title="Coins">🪙 ' + w.coins + '</span>' + (w.elixirs ? '<span title="Elixirs">⚗ ' + w.elixirs + '</span>' : '') + '<span title="Fights left today">⚡ ' + w.stamina.left + '/' + w.stamina.max + '</span>' + (w.stamina.clanDown ? '<span class="sg-wnd" data-bar="clan" title="A clanmate is hurt">🛡−' + w.stamina.clanDown + '</span>' : '') + (w.wound && w.wound.level ? '<span class="sg-wnd" data-bar="wound">' + (w.wound.fallen ? '💤 fallen' : '🩹 ' + w.wound.days + 'd') + '</span>' : '') + '</div>';
     var ready = w.daily.filter(function (q) { return q.done && !q.claimed; }).length + w.story.filter(function (s) { return s.state === 'claim'; }).length;
     var MAIN = { today: 1, cards: 1, quests: 1, caravan: 1, chat: 1, more: 1 }, cv = CARAVAN.s ? CARAVAN.s.badge : 0;
     var ev = $('.sg-event'); if (ev) { ev.textContent = w.event ? '🎉 ' + w.event : ''; ev.classList.toggle('on', !!w.event); }
@@ -384,6 +384,7 @@
         function npc(id, x, y, look, job) { var a = { look: look, job: job }; var key = ensureChar(S, a); var s = S.physics.add.sprite(x * TS, y * TS, key, 0).setOrigin(0.5, 1).setImmovable(true); s.body.setSize(10, 6).setOffset(3, 18); s.setDepth(s.y); s.npc = id; S.npcs.push(s); S.physics.add.collider(s, S.solids); return s; }
         npc('elder', 19.5, 14.2, { skin: 1, hair: 3, hairc: 5, outfit: 4 }, ''); npc('inn', 11.5, 16.4, { skin: 2, hair: 1, hairc: 1, outfit: 1 }, '');
         npc('smith', 12, 31.2, { skin: 3, hair: 0, hairc: 0, outfit: 5 }, 'hunter'); npc('crier', 14.5, 23, { skin: 0, hair: 2, hairc: 2, outfit: 3 }, 'trader');
+        S.hurt = (w.clanHurt || []).slice(0, 4).map(function (c, k) { var key = ensureChar(S, c.avatar || { look: {} }); var sp = S.add.sprite((5.2 + k * 1.5) * TS, 19.4 * TS, key, 0).setOrigin(0.5, 0.5).setAngle(90).setAlpha(c.wound.fallen ? 0.55 : 0.9); sp.setDepth(sp.y); return { spr: sp, c: c }; });
         if (w.reached <= t) npc('guard', 37.5, 18.4, { skin: 4, hair: 0, hairc: 0, outfit: 1 }, 'thief');
         // the boss of the town, in its lair east of the pond
         var b = w.town.boss;
@@ -474,8 +475,9 @@
         S.npcs.forEach(function (n) { var dn = Phaser.Math.Distance.Between(pl.x, pl.y, n.x, n.y); if (dn < best) { best = dn; near = { kind: 'npc', obj: n }; } });
         if (S.board && Phaser.Math.Distance.Between(pl.x, pl.y, S.board.x, S.board.y) < 28) near = { kind: 'board' };
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(pl.x, pl.y, n.spr.x, n.spr.y) < 20) near = { kind: 'note', obj: n }; });
+        (S.hurt || []).forEach(function (h) { if (Phaser.Math.Distance.Between(pl.x, pl.y, h.spr.x, h.spr.y) < 22) near = { kind: 'hurt', obj: h }; });
         Object.keys(S.others).forEach(function (id) { var o = S.others[id]; if (Phaser.Math.Distance.Between(pl.x, pl.y, o.spr.x, o.spr.y) < 24) near = { kind: 'player', obj: o }; });
-        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : 'Meet'); } }
+        if ((near && near.kind) !== (S.near && S.near.kind) || (near && S.near && near.obj !== S.near.obj)) { S.near = near; var ab = $('.sg-act'); if (ab) { ab.classList.toggle('on', !!near); ab.textContent = !near ? '' : (TOUCH ? '' : 'E · ') + (near.kind === 'npc' ? 'Talk' : near.kind === 'board' ? 'Caravan board' : near.kind === 'note' ? 'Read note' : near.kind === 'hurt' ? 'Help' : 'Meet'); } }
         // others glide to their last position
         Object.keys(S.others).forEach(function (id) { var o = S.others[id], s = o.spr; var dx = o.tx - s.x, dy = o.ty - s.y, dd = Math.hypot(dx, dy); if (dd > 1) { var st = Math.min(dd, 1.4 * dt / 16); s.x += dx / dd * st; s.y += dy / dd * st; var dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); s.anims.play(s.texture.key + '_w' + dir, true); } else { s.anims.stop(); s.setFrame(o.d * 3); } s.setDepth(s.y); if (o.aura) o.aura.setPosition(s.x, s.y - 1).setDepth(s.y - 1); });
         // light and dark
@@ -506,6 +508,7 @@
         Object.keys(S.others).forEach(function (id) { var s = S.others[id].spr; if (Math.abs(x - s.x) < 10 && y < s.y + 2 && y > s.y - 26) hit = { kind: 'player', obj: S.others[id] }; });
         S.npcs.forEach(function (n) { if (Math.abs(x - n.x) < 10 && y < n.y + 2 && y > n.y - 26 && Phaser.Math.Distance.Between(S.pl.x, S.pl.y, n.x, n.y) < 60) hit = { kind: 'npc', obj: n }; });
         S.notes.forEach(function (n) { if (Math.abs(x - n.spr.x) < 9 && Math.abs(y - n.spr.y + 6) < 10) hit = { kind: 'note', obj: n }; });
+        (S.hurt || []).forEach(function (h) { if (Math.abs(x - h.spr.x) < 14 && Math.abs(y - h.spr.y) < 10) hit = { kind: 'hurt', obj: h }; });
         return hit;
       },
       tap: function (hit) { this.near = hit; this.interact(); },
@@ -513,6 +516,7 @@
         var S = this, n = S.near; if (!n || S.frozen) return;
         if (n.kind === 'board') return CARAVAN.show();
         if (n.kind === 'note') return S.readNote(n.obj);
+        if (n.kind === 'hurt') return S.helpHurt(n.obj);
         if (n.kind === 'player') return S.meet(n.obj);
         var w = H.world(), id = n.obj.npc, L = NPC[id];
         dialog.who = id;
@@ -592,6 +596,7 @@
         if (S.emote && S.emote.until > now) tag('eme', S.pl.x, S.pl.y - 34, '<span class="emo">' + EMO[S.emote.e] + '</span>', 'bubble');
         S.npcs.forEach(function (n) { tag('n' + n.npc, n.x, n.y - 27, '<span class="nm npc">' + esc(NPC[n.npc][0]) + '</span>'); });
         if (S.board) { var cs = CARAVAN.s; tag('board', S.board.x, S.board.y - 30, '<span class="nm npc">🐫 Caravan board' + (cs && cs.badge ? ' <i class="sg-dotn">' + cs.badge + '</i>' : cs && cs.todo ? ' · ' + cs.todo + ' ?' : '') + '</span>'); }
+        (S.hurt || []).forEach(function (h) { var c = h.c; tag('h' + c.id, h.spr.x, h.spr.y - 14, '<span class="nm hurt">' + (c.wound.fallen ? '💤 ' : '🩹 ') + esc(c.name.split(' ')[0]) + ' · ' + c.wound.days + 'd</span>'); });
         if (S.boss) tag('boss', S.boss.x, S.boss.y - 52, '<span class="nm boss">' + esc(H.world().town.boss.name) + '</span>');
         S.notes.forEach(function (n) { if (Phaser.Math.Distance.Between(S.pl.x, S.pl.y, n.spr.x, n.spr.y) < 80) tag('t' + n.id, n.spr.x, n.spr.y - 18, '<span class="nt">✍ ' + esc(n.by.split(' ')[0]) + '</span>'); });
         Object.keys(S.labels).forEach(function (id) { if (!keep[id]) { S.labels[id].remove(); delete S.labels[id]; } });
@@ -609,6 +614,15 @@
           var mins = Math.max(1, Math.round(p.ago / 60)), hrs = Math.max(1, Math.round(p.ago / 3600)), when = p.ago <= 60 ? 'is here now' : 'was here ' + (p.ago < 3600 ? mins + (mins === 1 ? ' minute' : ' minutes') : hrs + (hrs === 1 ? ' hour' : ' hours')) + ' ago';
           dialog(pr.name, pr.name.split(' ')[0] + ' ' + when + '. ' + job + ' · ' + pr.level + (pr.title ? ' · ' + pr.title : '') + (pr.accuracy != null ? ' · battles: ' + pr.accuracy + '% right' : '') + (p.wanted ? ' · ⚠ wanted for theft' : '') + (p.ago > 60 ? '. You can still duel their shadow — it fights like they do.' : '.'), btns, pr.photo ? '<img src="' + esc(pr.photo) + '" alt="">' : '🙂');
         }, function (x) { say(x.message); });
+      },
+      /** A hurt clanmate at the inn: heal them, or revive them if they have fallen (it costs mana from studying). */
+      helpHurt: function (h) {
+        var S = this, c = h.c, first = c.name.split(' ')[0], fallen = c.wound.fallen;
+        var txt = first + ' has not studied for ' + c.wound.days + ' day' + (c.wound.days > 1 ? 's' : '') + (fallen ? ' and has fallen. Two revives from the clan bring them back (a Healer\'s counts twice).' : ' and is wounded: their health is ' + Math.round(c.wound.cap * 100) + '% of normal.') + (c.wound.level >= 2 ? ' Your clan has one fight less a day until they are back.' : '') + ' Studying is the real cure — send them a message!';
+        var act = function (path, label) { return { label: label, primary: true, run: function () { H.api(path, { method: 'POST', body: { user: c.id } }).then(function (j) { H.refreshWorld().then(function () { hud(); }); SFX.heal(); say(path === '/clan/heal' ? '💚 You healed ' + first + ' (+' + j.pct + '% health).' : j.back ? '✨ ' + first + ' is back on their feet!' : '✨ One revive done. One more clanmate is needed.', 4500); c.helped = true; }, function (x) { say(x.message, 4500); }); } }; };
+        var btns = c.helped ? [] : [fallen ? act('/clan/revive', '✨ Revive (−30 💧)') : act('/clan/heal', '💚 Heal (−20 💧)')];
+        btns.push({ label: '💬 Send a message', run: function () { CHAT.show(); } });
+        dialog(c.name, (c.helped ? 'You already helped ' + first + ' today. ' : '') + txt, btns, fallen ? '💤' : '🩹');
       },
       // ---------------------------------------------------------- notes
       loadNotes: function () { var S = this; H.api('/play/notes').then(function (j) { if (running && S.sys && S.pl && S.pl.active) S.setNotes(j.notes); }, function () {}); },
@@ -1173,6 +1187,8 @@
   var BAR_HELP = {
     hp: ['❤ Health', 'A monster hits you when you answer wrong. When health is 0, you wake up at the inn. Health comes back by itself — faster when you review cards.'],
     mp: ['💧 Mana', 'You get mana when you study: review cards, do your plan, write or speak. Use it in fights for skills like Focus (it removes a wrong answer).'],
+    wound: ['🩹 Wounded', 'Every full day without studying, your hero loses a quarter of their health. After 4 days you fall and cannot fight. Study today (5 minutes or more) and the wound is gone. Your clan can heal you a little, or revive you.'],
+    clan: ['🛡 Your clan is hurt', 'A clanmate has not studied for 2 days or more, so everyone in your clan has one fight less today. Find them lying at the inn: heal or revive them with your mana, and send them a message!'],
     xp: ['⭐ Level', 'You get XP when you use English: chat messages, writing, speaking, helping other travellers and winning fights. (Review cards give mana and health.) More XP = a higher level, more health, new gear and titles.']
   };
 

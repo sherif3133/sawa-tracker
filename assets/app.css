@@ -1060,3 +1060,7 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .sg-catch, .sg-lvch { margin: 2px 0 0; font-size: 13px; }
 .sg-lvch.up { color: #8be28b; font-weight: 700; }
 .sg-lvch.down { color: #f2c98a; }
+/* wounds: hurt clanmates at the inn, your wound in the HUD */
+.sg-wnd { background: rgba(226, 81, 58, .35); border-radius: 99px; padding: 0 7px; pointer-events: auto; cursor: pointer; }
+.sg-lb .nm.hurt { background: rgba(120, 30, 30, .85); }
+.hc-warn { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(226, 81, 58, .28); border: 1px solid #e2513a; font-size: 14px; }

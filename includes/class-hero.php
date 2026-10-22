@@ -98,10 +98,11 @@ final class Sawa_Tracker_Hero {
 	public static function hp( $uid ) {
 		$h   = self::raw( $uid );
 		$max = self::max_hp( $uid );
+		$cap = class_exists( 'Sawa_Tracker_Wounds' ) ? Sawa_Tracker_Wounds::cap( $uid, $max ) : $max; // days without studying hurt
 		if ( null === $h['hp'] ) {
-			return $max;
+			return $cap;
 		}
-		return (int) min( $max, $h['hp'] + floor( ( time() - (int) $h['hpAt'] ) / 60 ) );
+		return (int) min( $cap, $h['hp'] + floor( ( time() - (int) $h['hpAt'] ) / 60 ) );
 	}
 
 	public static function set_hp( $uid, $hp ) {

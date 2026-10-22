@@ -14,6 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/class-combat.php'; // monster and traveller fighting styles
+require_once __DIR__ . '/class-wounds.php'; // heroes who don't study get hurt, and the clan feels it
 
 final class Sawa_Tracker_World {
 
@@ -69,6 +70,7 @@ final class Sawa_Tracker_World {
 
 	public static function init() {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
+		Sawa_Tracker_Wounds::init();
 		add_action( 'sawa_lens_activity', function ( $uid, $kind, $times ) { self::progress( $uid, $kind, max( 1, (int) $times ) ); }, 10, 3 );
 		add_action( 'sawa_lens_plan_step', function ( $uid, $k ) { self::progress( $uid, 'perfect' === $k ? 'perfect' : 'plan' ); }, 10, 2 );
 		add_action( 'sawa_lens_mastered', function ( $uid ) { self::progress( $uid, 'mastered' ); } );
@@ -158,7 +160,8 @@ final class Sawa_Tracker_World {
 		$plan  = get_user_meta( $uid, 'sawa_lens_plan', true );
 		$today = is_array( $plan ) && ( $plan['day'] ?? '' ) === Sawa_Tracker_Game::today();
 		$max   = self::STAMINA + ( $today ? count( (array) ( $plan['items'] ?? array() ) ) + ( empty( $plan['bonus'] ) ? 0 : 1 ) : 0 );
-		return array( 'left' => max( 0, $max - (int) $w['f']['used'] ), 'max' => $max );
+		$down = Sawa_Tracker_Wounds::penalty( $uid ); // hurt clanmates slow everyone down
+		return array( 'left' => max( 0, $max - $down - (int) $w['f']['used'] ), 'max' => $max - $down, 'clanDown' => $down );
 	}
 
 	/** Today's three quests for this student. */
@@ -245,6 +248,8 @@ final class Sawa_Tracker_World {
 			'avatar'   => Sawa_Tracker_Play::avatar( $uid ),
 			'hero'     => Sawa_Tracker_Hero::sheet( $uid ),
 			'pos'      => self::last_pos( $uid, $t ),
+			'wound'    => Sawa_Tracker_Wounds::of( $uid ),
+			'clanHurt' => Sawa_Tracker_Wounds::clan( $uid ),
 			'words'    => (int) apply_filters( 'sawa_tracker_word_count', 0, $uid ),
 			'party'    => Sawa_Tracker_Party::of( $uid ),
 			'event'    => 2 === self::xp_mult() ? 'Double XP weekend: fights give twice the XP!' : '',
@@ -459,6 +464,9 @@ final class Sawa_Tracker_World {
 		$w    = self::get( $uid );
 		$t    = $w['at'];
 		$town = self::TOWNS[ $t ];
+		if ( Sawa_Tracker_Wounds::of( $uid )['fallen'] ) {
+			return new WP_Error( 'hp', 'You have fallen: 4 days without studying. Study today to get up again — or ask your clan for a revive.', array( 'status' => 400 ) );
+		}
 		if ( Sawa_Tracker_Hero::hp( $uid ) < 0.15 * Sawa_Tracker_Hero::max_hp( $uid ) ) {
 			return new WP_Error( 'hp', 'You are too hurt to fight. Rest at the inn (review your cards) or wait a little — health comes back by itself.', array( 'status' => 400 ) );
 		}

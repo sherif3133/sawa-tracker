@@ -657,6 +657,8 @@
       + '<div class="hc-info"><b>' + esc(d.avatar.name) + '</b><small>' + (function () { var r = (d.roles || []).filter(function (x) { return x.id === d.avatar.role; })[0]; return r ? r.icon + ' ' + esc(r.name) + ' · ' : ''; })() + esc(h.title) + (d.job ? ' · ' + d.job.icon + ' ' + esc(d.job.name) : '') + ' · ' + d.town.icon + ' ' + esc(d.town.name) + ' (' + esc(d.town.level) + ')</small>'
       + hcBar('xp', h.xp - h.xpFrom, h.xpNext - h.xpFrom, 'Lv ' + h.level + ' · ' + (h.xpNext - h.xp) + ' XP to Lv ' + (h.level + 1)) + hcBar('hp', h.hp, h.hpMax, '❤ ' + h.hp + '/' + h.hpMax) + hcBar('mp', h.mana, h.manaMax, '💧 ' + h.mana + '/' + h.manaMax)
       + '<div class="hc-pills"><span title="Coins">🪙 ' + d.coins + '</span><span title="Elixirs">⚗ ' + d.elixirs + '</span><span title="Fights left today">⚡ ' + d.stamina.left + '/' + d.stamina.max + '</span><span title="Arena rank">🏆 ' + esc(h.rank) + '</span></div></div></div>'
+      + (d.wound && d.wound.level ? '<p class="hc-warn">' + (d.wound.fallen ? '💤 Your hero has fallen: ' : '🩹 Your hero is wounded: ') + d.wound.days + ' day' + (d.wound.days > 1 ? 's' : '') + ' without studying. Study today (5 minutes is enough) and you are back!</p>' : '')
+      + ((d.clanHurt || []).length ? '<p class="hc-warn">🛡 ' + d.clanHurt.map(function (c) { return esc(c.name.split(' ')[0]) + (c.fallen ? ' has fallen' : ' is hurt') + ' (' + c.days + 'd)'; }).join(', ') + '. Your clan fights less until they are back: heal them at the inn, and send them a message!</p>' : '')
       + '<div class="hc-gear">' + gear + '</div>'
       + '<details class="hc-skills"><summary>✨ Skills · ' + open + ' of ' + d.skills.length + ' open · ' + d.mastered + ' skill point' + (d.mastered === 1 ? '' : 's') + ' mastered</summary><ul>' + skills + '</ul><p class="small muted">💧 skills use mana in battles; you get mana by studying. ✓ skills come from mastering points in your skill tree.</p></details>'
       + (next ? '<p class="hc-next">⭐ Next: ' + next + '</p>' : '')
@@ -955,13 +957,15 @@
       case 'coop_call': return name(e.who) + ' needs help against the ' + esc(d.icon || '') + ' ' + esc(d.foe) + '! Answer the call on the caravan board ⚔';
       case 'coop_support': return name(e.who) + ' answered your call and will fight the ' + esc(d.foe) + ' with you ⚔';
       case 'coop_won': return name(e.who) + (d.won ? ' beat the ' + esc(d.foe) + ' with your help! +20 XP +15 🪙 🏆' : ' fought the ' + esc(d.foe) + ' with your help, but it got away. Maybe next time!');
+      case 'clan_heal': return name(e.who) + ' healed your hero (+' + d.pct + '% health) 💚 Study today and you are fully back!';
+      case 'clan_revive': return name(e.who) + (d.back ? ' revived your hero! You are back on your feet ✨ Study today so you don\'t fall again.' : ' tried to revive your hero ✨ One more clanmate is needed — or study today.');
       case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
       case 'reply': return name(e.who) + ' رد على رسالتك' + (d.voice ? ' برسالة صوتية' : d.sticker ? ' بـ ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', feedback_fixed: 'check', feedback_planned: 'pen' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];

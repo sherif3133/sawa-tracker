@@ -230,6 +230,8 @@ final class Sawa_Tracker_Play {
 			'skills'   => $skills,
 			'mastered' => (int) ( $rpg['english']['mastered'] ?? 0 ),
 			'roles'    => Sawa_Tracker_Combat::roles(),
+			'wound'    => Sawa_Tracker_Wounds::of( $uid ),
+			'clanHurt' => array_map( function ( $c ) { return array( 'name' => $c['name'], 'days' => $c['wound']['days'], 'fallen' => $c['wound']['fallen'] ); }, Sawa_Tracker_Wounds::clan( $uid ) ),
 			'coins'    => Sawa_Tracker_Raids::coins( $uid ),
 			'elixirs'  => $rpg['elixirs'],
 			'stamina'  => Sawa_Tracker_World::stamina( $uid, $w ),

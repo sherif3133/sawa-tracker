@@ -47,3 +47,4 @@ After changing any Arabic text in `app.js`:
 - **Script errors** from Sawa files are reported as kind `error`.
 - **Reward:** 5 coins for the first feedback of the day.
 - **Admin page:** counts per screen × reaction, filters, CSV (with a BOM for Arabic in Excel). Setting **Planned** or **Fixed** with a reply notifies the student.
+- **Wounds** (`includes/class-wounds.php`): every full day without studying (5+ minutes) takes a quarter of a hero's health; after 4 days the hero falls and can't fight. Studying ends the wound. Clanmates can help a little with mana: a heal (+10%, +25% from a Healer, two a day) or a revive for a fallen hero (two clanmates; a Healer's counts twice). While a clanmate is hurt for 2+ days or fallen, everyone else in the clan has one fight less a day (two at most). Hurt clanmates lie at the inn in the game, and the Today card says who.
