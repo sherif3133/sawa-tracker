@@ -37,8 +37,8 @@
   var R = host.attachShadow({ mode: 'open' });
   R.innerHTML = '<style>'
     + ':host{all:initial}*{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}'
-    + '.fab{position:fixed;left:10px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:2147483000;border:2px solid #e7c873;background:#14193a;color:#fff;border-radius:99px;padding:7px 12px;font:700 13px/1 inherit;box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer;opacity:.92}'
-    + '.fab.game{left:8px;bottom:auto;top:calc(150px + env(safe-area-inset-top,0px));padding:7px 9px}.fab.game small{display:none}.fab:hover{opacity:1}.fab small{font-weight:600;color:#e7c873;margin-left:4px}'
+    + '.fab{position:fixed;right:12px;left:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:2147483000;width:44px;height:44px;display:grid;place-items:center;border:2px solid #e7c873;background:#14193a;color:#fff;border-radius:50%;padding:0;font:700 18px/1 inherit;box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer;opacity:.92}'
+    + '.fab.game{left:8px;right:auto;bottom:auto;top:calc(150px + env(safe-area-inset-top,0px))}.fab small{display:none}.fab:hover{opacity:1}'
     + '.sheet{position:fixed;inset:auto 0 0 0;margin:0 auto;max-width:520px;z-index:2147483001;background:#fffaf0;color:#2b2233;border-radius:16px 16px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.35);padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));max-height:85vh;overflow:auto;display:none}'
     + '.sheet.on{display:block}.h{display:flex;align-items:center;justify-content:space-between;gap:8px}.h b{font-size:17px}.x{border:0;background:none;font-size:22px;cursor:pointer;color:#6b5f7a}'
     + '.sub{margin:4px 0 10px;color:#6b5f7a;font-size:13px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}'
