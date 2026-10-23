@@ -1514,7 +1514,7 @@
 			"title": "Fixes from the 23 Oct playtest: the town loads fully the first time after you create your traveller (the boss and the rest of the town were missing until you came back), the reply goal shows once in Today's plan, the 500-words list shows short meanings instead of long dictionary text, the beta questions ask \"Was anything unclear?\" so Yes means yes, and the feed says \"joined us\" instead of a class nobody picked",
 			"status": "live",
 			"note": "",
-			"ver": "Sawa Tracker 2.16.3",
+			"ver": "Sawa Tracker 2.16.2",
 			"date": "2026-10-23",
 			"file": "sawa-tracker assets/game.js, feedback.js, app.js",
 			"audience": "all"
