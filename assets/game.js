@@ -454,10 +454,23 @@
         S.joy = { on: false, dx: 0, dy: 0 };
         S.input.on('pointerdown', function (p) {
           var hit = S.pickAt(p.worldX, p.worldY); if (hit) { S.tap(hit); return; }
-          if (p.wasTouch || window.matchMedia('(pointer: coarse)').matches) { S.joy = { on: true, id: p.id, x0: p.x, y0: p.y, dx: 0, dy: 0 }; S.showJoy(p.x, p.y, 0, 0); }
+          if (p.wasTouch || window.matchMedia('(pointer: coarse)').matches) { S.joy = { on: true, id: p.id, tid: p.identifier, x0: p.x, y0: p.y, dx: 0, dy: 0 }; S.showJoy(p.x, p.y, 0, 0); }
         });
-        S.input.on('pointermove', function (p) { if (S.joy.on && p.id === S.joy.id) { var dx = p.x - S.joy.x0, dy = p.y - S.joy.y0, d = Math.hypot(dx, dy), m = 46; if (d > m) { dx = dx / d * m; dy = dy / d * m; } S.joy.dx = dx / m; S.joy.dy = dy / m; S.showJoy(S.joy.x0, S.joy.y0, dx, dy); } });
-        S.input.on('pointerup', function (p) { if (S.joy.on && p.id === S.joy.id) { S.joy = { on: false, dx: 0, dy: 0 }; S.showJoy(); } });
+        S.joyMove = function (x, y) { var dx = x - S.joy.x0, dy = y - S.joy.y0, d = Math.hypot(dx, dy), m = 46; if (d > m) { dx = dx / d * m; dy = dy / d * m; } S.joy.dx = dx / m; S.joy.dy = dy / m; S.showJoy(S.joy.x0, S.joy.y0, dx, dy); };
+        S.joyEnd = function () { S.joy = { on: false, dx: 0, dy: 0 }; S.showJoy(); };
+        S.input.on('pointermove', function (p) { if (S.joy.on && p.id === S.joy.id) S.joyMove(p.x, p.y); });
+        S.input.on('pointerup', function (p) { if (S.joy.on && p.id === S.joy.id) S.joyEnd(); });
+        // The game lives in a shadow root, where Phaser's touchmove check (document.elementFromPoint) never finds the canvas,
+        // so a dragging finger was ignored on phones. Read the finger from the touch events themselves (once per page).
+        var cvEl = ROOT.querySelector('.sg-cv');
+        if (cvEl && !cvEl.joyTouch) {
+          cvEl.joyTouch = true;
+          var world = function () { var w = G && G.phaser && G.phaser.scene.getScene('World'); return w && w.joy && w.joy.on && w.joyMove ? w : null; };
+          var mine = function (e, w) { return [].filter.call(e.changedTouches, function (t) { return t.identifier === w.joy.tid; })[0]; };
+          cvEl.addEventListener('touchmove', function (e) { var w = world(), t = w && mine(e, w); if (!t) return; var r = cvEl.getBoundingClientRect(), k = w.scale.width / r.width; w.joyMove((t.clientX - r.left) * k, (t.clientY - r.top) * k); }, { passive: true });
+          var end = function (e) { var w = world(); if (w && mine(e, w)) w.joyEnd(); };
+          cvEl.addEventListener('touchend', end, { passive: true }); cvEl.addEventListener('touchcancel', end, { passive: true });
+        }
         // others, notes
         S.syncT = 0; S.lastSync = 0; S.sync(); S.loadNotes();
         S.events.on('shutdown', function () { S.scale.off('resize', S.fitZoom, S); Object.keys(S.labels).forEach(function (k) { S.labels[k].remove(); }); });
