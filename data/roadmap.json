@@ -1769,7 +1769,7 @@
 			"app": "extension",
 			"group": "YouTube",
 			"title": "Clearer word colours (by shape too) + legend",
-			"status": "built",
+			"status": "live",
 			"note": "Student feedback: the old colours were too similar. One source of styles: content/marks.js (Okabe-Ito colours, WCAG contrast checked). Same marks on YouTube captions, the transcript and websites.",
 			"ver": "0.9.3",
 			"file": "language-lens/extension/content/marks.js"
@@ -1782,7 +1782,7 @@
 			"app": "extension",
 			"group": "YouTube",
 			"title": "Caption controls and Shadow mode",
-			"status": "built",
+			"status": "live",
 			"note": "Student feedback (compared with Language Reactor); our own design, on whole sentences (0.8.2).",
 			"ver": "0.9.3",
 			"file": "language-lens/extension/content/yt-controls.js"
@@ -1795,7 +1795,7 @@
 			"app": "extension",
 			"group": "Settings",
 			"title": "Meanings on click or hover (YouTube and websites)",
-			"status": "built",
+			"status": "live",
 			"note": "Student feedback (Mohamed Hassan, Skool): brushing the mouse over a word stopped the video. Popup settings with an info tip in English and Arabic.",
 			"ver": "0.9.3",
 			"file": "language-lens/extension/content/yt.js"
@@ -1808,7 +1808,7 @@
 			"app": "extension",
 			"group": "Word card",
 			"title": "Clear Curious vs saved in the word card",
-			"status": "built",
+			"status": "live",
 			"note": "Student feedback: \"already curious\" read like \"already saved\".",
 			"ver": "0.9.3",
 			"file": "language-lens/extension/content/card.js"
