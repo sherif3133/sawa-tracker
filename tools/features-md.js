@@ -7,7 +7,7 @@ const path = require('path');
 const SRC = path.join(__dirname, '..', 'data', 'roadmap.json');
 const OUT = process.argv[2] || path.join(__dirname, '..', '..', 'FEATURES.md');
 const R = JSON.parse(fs.readFileSync(SRC, 'utf8'));
-const PLUGIN = { lens: 'plugin `sawa-lens`, the app at `/app`', tracker: 'plugin `sawa-tracker`, the Play tab', extension: 'browser extension `language-lens`', site: 'plugin `sawa-site`', testimonials: 'plugin `sawa-testimonials`' };
+const PLUGIN = { lens: 'plugin `sawa-lens`, the app at `/app`', tracker: 'plugin `sawa-tracker`, the Play tab', extension: 'browser extension `language-lens`', site: 'plugin `sawa-site`', testimonials: 'plugin `sawa-testimonials`', inbox: 'plugin `sawa-inbox`, wp-admin → Sawa Inbox' };
 const DONE = ['live', 'beta'];
 const cell = (s) => String(s || '').replace(/\|/g, '\\|');
 const status = (i) => i.status + (i.note ? ' (' + i.note + ')' : '');

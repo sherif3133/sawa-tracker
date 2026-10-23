@@ -6,7 +6,8 @@
 		"tracker": "The Silk Road and community",
 		"extension": "Language Lens",
 		"site": "The website",
-		"testimonials": "Testimonials"
+		"testimonials": "Testimonials",
+		"inbox": "Sawa Inbox"
 	},
 	"items": [
 		{
@@ -1698,6 +1699,19 @@
 			"note": "2,664 expressions (WordNet 3.0 + Sawa's own meanings), with forms like gave it up, looking forward to, made up his mind. The same meanings are in the /app and Silk Road dictionary (Sawa Lens 0.25.2).",
 			"ver": "0.7.1",
 			"file": "language-lens/extension/core/lens-core.js"
+		},
+		{
+			"desc": "Sherif's YouTube comments in one inbox in wp-admin. Claude drafts a reply in his voice only for questions about joining, price, the apps or Skool access; he edits and approves each one with one tap before it is posted. Other comments are just listed. Official YouTube Data API only.",
+			"date": "2026-10-23",
+			"audience": "admin",
+			"id": "social-inbox",
+			"app": "inbox",
+			"group": "Social replies",
+			"title": "Sawa Inbox: approve-to-post replies to YouTube comments",
+			"status": "beta",
+			"note": "Waiting for the Google Cloud OAuth client to connect YouTube. Instagram and Facebook come later through Meta (notes ready, nothing submitted).",
+			"ver": "0.1.0",
+			"file": "sawa-inbox/includes/class-inbox.php"
 		}
 	],
 	"versions": "Sawa Lens 0.25.2 · Sawa Tracker 2.16.5 · Language Lens 0.7.1 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
