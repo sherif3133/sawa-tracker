@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Sawa Tracker
  * Description:       A game-like study tracker for Sawa English learners: streaks, habit health, levels, classes and skills, a weekly community boss, badges, a live feed and a leaderboard. Put [sawa_tracker] on a page.
- * Version:           2.16.5
+ * Version:           2.17.0
  * Author:            Sawa English
  * Requires at least: 6.0
  * Requires PHP:      7.4
@@ -14,12 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SAWA_TR_VER', '2.16.5' );
+define( 'SAWA_TR_VER', '2.17.0' );
 define( 'SAWA_TR_DB', 8 );
 define( 'SAWA_TR_FILE', __FILE__ );
 define( 'SAWA_TR_URL', plugin_dir_url( __FILE__ ) );
 define( 'SAWA_TR_DIR', plugin_dir_path( __FILE__ ) );
 
+require_once SAWA_TR_DIR . 'includes/class-lang.php';
 require_once SAWA_TR_DIR . 'includes/class-game.php';
 require_once SAWA_TR_DIR . 'includes/class-media.php';
 require_once SAWA_TR_DIR . 'includes/class-social.php';
