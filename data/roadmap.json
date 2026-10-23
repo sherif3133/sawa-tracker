@@ -1324,6 +1324,19 @@
 			"audience": "all"
 		},
 		{
+			"id": "lens-story-seasons",
+			"app": "lens",
+			"group": "",
+			"title": "Story seasons: 8-episode series with cliffhangers (The Interview A2, Night Shift B1)",
+			"desc": "Heroes aged 22-35 with job problems, one episode a day (+2 at weekends), \"Previously\" comeback box, light choices, words that come back, a phrase you can steal; design in sawa-lens/docs/stories-v2-design.md",
+			"status": "building",
+			"note": "",
+			"ver": "",
+			"date": "2026-10-23",
+			"file": "sawa-lens/docs/stories-v2-design.md",
+			"audience": "all"
+		},
+		{
 			"id": "tracker-silk-road-later-ideas",
 			"app": "tracker",
 			"group": "",
