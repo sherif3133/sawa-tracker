@@ -1701,6 +1701,19 @@
 			"file": "language-lens/extension/core/lens-core.js"
 		},
 		{
+			"desc": "YouTube sends captions in short pieces, often half a sentence. Language Lens now joins them into full sentences: the Arabic under the caption is the meaning of the whole sentence (AI, cached per sentence), not of one piece, and phrases split over two pieces (give | up) are underlined on both. Plain verb + preposition pairs like \"think about\" and \"look at\" are no longer underlined as idioms.",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "lens-caption-sentences",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Captions read as whole sentences (translation and phrases)",
+			"status": "built",
+			"note": "Phrase rules and sentence rules are data on the server (sawa-lens assets/lens-rules.json, /rules), so they change without a new zip. Needs Sawa Lens 0.27.0 for the AI sentence translation; older servers keep YouTube's translation, joined per sentence.",
+			"ver": "0.8.2",
+			"file": "language-lens/extension/core/captions.js"
+		},
+		{
 			"desc": "Sherif's YouTube comments in one inbox in wp-admin. Claude drafts a reply in his voice only for questions about joining, price, the apps or Skool access; he edits and approves each one with one tap before it is posted. Other comments are just listed. Official YouTube Data API only.",
 			"date": "2026-10-23",
 			"audience": "admin",
