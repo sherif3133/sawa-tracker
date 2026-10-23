@@ -135,7 +135,7 @@ final class Sawa_Tracker_Game {
 			'yt_key'       => '',
 			'blocked_words' => '',
 			'skool_url'    => 'https://www.skool.com/sawa-english-7655',
-			'clan_size'    => 8,
+			'clan_size'    => 5,
 		);
 	}
 
@@ -580,6 +580,7 @@ final class Sawa_Tracker_Game {
 			);
 		}
 		self::boss_hit( $minutes );
+		do_action( 'sawa_tr_logged', $uid, $minutes ); // accountability partners: studied today / back again
 		$badges = self::check_badges( $uid );
 		self::bust_boards();
 		return array(

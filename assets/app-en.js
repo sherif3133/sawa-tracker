@@ -664,8 +664,9 @@
     $('#app').innerHTML = header()
       + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>Welcome, ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="Today ' + s.todayMinutes + ' of ' + s.goal + ' minutes"><span><b>' + s.todayMinutes + '</b> of ' + s.goal + ' min</span></div></section>'
-      + newThingCard() + statCards(s) + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
+      + newThingCard() + statCards(s) + '<div id="pt-slot">' + partnersHtml() + '</div>' + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
     loadHero(); paintBoard(); // your stats and the leaderboard come first on Home
+    if (!S.ptLoading) loadPartners(); // accountability partners: on Home too, since Play opens only at stage 3
     if (EMB) markHomeParts();
   }
   /** In the one app, Home is one page grid: name each block (part="t-…") so sawa-lens app.css can place it with ::part(). Nothing changes here. */
@@ -1035,12 +1036,18 @@
       case 'chat_helper': return '🤝 ' + name(e.who) + ' was the best helper in the chat this week: ' + d.n + ' replies to classmates! +30 🪙, an elixir and the title Helper of the Week';
       case 'chat_review': return '📝 We checked your ' + (d.msgs ? 'chat English (' + d.msgs + ' message' + (d.msgs === 1 ? '' : 's') + (d.voice ? ' and ' + d.voice + ' voice note' + (d.voice === 1 ? '' : 's') : '') + ')' : d.voice + ' voice note' + (d.voice === 1 ? '' : 's')) + ': ' + (d.errors ? d.errors + ' thing' + (d.errors === 1 ? '' : 's') + ' to fix' + (d.focus ? ', mostly <b dir="ltr">' + esc(d.focus) + '</b>' : '') + '. See them in Learn → Progress.' : 'no mistakes — great English!') + (d.good ? ' ' + d.good + ' points used well ✨' : '');
       case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
+      case 'partner_quiet': return name(e.who) + ' hasn\'t studied yet today. Send a nudge?' + (e.who && S.pt && S.pt.partners.some(function (p) { return p.id === e.who.id; }) ? '<span class="pt-nb">' + NUDGES.map(function (t, i) { return '<button class="btn sm-btn" data-act="pt-nudge" data-id="' + e.who.id + '" data-t="' + i + '">' + t + '</button>'; }).join('') + '</span>' : '');
+      case 'partner_nudge': return name(e.who) + ' sent you: <span>"' + (NUDGES[d.t] || NUDGES[0]) + '"</span>';
+      case 'partner_back': return name(e.who) + ' is back studying 🎉';
+      case 'partner_invite': return name(e.who) + ' wants you as a study partner 🤝 <span class="pt-nb">' + (e.who ? '<button class="btn primary sm-btn" data-act="pt-accept" data-id="' + e.who.id + '">Accept</button>' : '') + '</span>';
+      case 'partner_matched': return name(e.who) + ' is now your study partner 🤝 Say hello in the clan chat.';
+      case 'partner_joined': return name(e.who) + ' joined your clan as a partner 🤝';
       case 'reply': return name(e.who) + ' replied to your message' + (d.voice ? ' with a voice note' : d.sticker ? ' with ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' did something';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', road: 'check', road_week: 'medal', road_group: 'users', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', chat_helper: 'medal', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', road: 'check', road_week: 'medal', road_group: 'users', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', chat_helper: 'medal', feedback_fixed: 'check', feedback_planned: 'pen', partner_quiet: 'users', partner_nudge: 'chat', partner_back: 'check', partner_invite: 'users', partner_matched: 'users', partner_joined: 'users' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -1350,7 +1357,9 @@
     var standings = st.length ? '<section class="card"><div class="card-h"><h3>Clan race this week</h3><span class="muted small">Average goal days per member</span></div><ol class="rows">'
       + st.map(function (r) { return '<li class="row' + (c && r.id === c.id ? ' me' : '') + '"><span class="rank r' + Math.min(r.rank, 4) + '">' + r.rank + '</span><span class="clan-mono">' + mono(r.name) + '</span><div class="r-main"><div class="r-name"><span dir="auto">' + esc(r.name) + '</span></div><div class="r-meta"><span>' + r.size + ' members</span><span class="st">' + ico('flame', 'tiny') + r.streak + '</span></div></div><b class="score">' + r.score.toFixed(1) + '</b></li>'; }).join('')
       + '</ol></section>' : '';
-    if (!c) return '<div class="grid clan-grid"><div class="col main"><section class="card center-card"><div class="big-ic">' + ico('shield') + '</div><h2>You\'re not in a clan yet</h2><p class="muted">A clan is a small team that keeps a streak together. Sherif assigns the clans, and yours will show up here soon.</p></section></div><div class="col side">' + standings + '</div></div>';
+    if (!S.pt && !S.ptLoading) loadPartners();
+    var pts = '<div id="pt-slot">' + partnersHtml() + '</div>';
+    if (!c) return '<div class="grid clan-grid"><div class="col main">' + pts + '</div><div class="col side">' + standings + '</div></div>';
     var rank = st.filter(function (r) { return r.id === c.id; })[0];
     var members = c.members.map(function (m) {
       var me = m.id === S.data.me.id;
@@ -1360,13 +1369,83 @@
         + '<div class="r-acts">' + (!me && canHelp() ? '<button class="icon-btn sm" data-act="cast-on" data-id="' + m.id + '" aria-label="Use a skill on ' + esc(m.name) + '">' + ico('bolt') + '</button>' : '') + '<button class="icon-btn sm" data-act="profile" data-id="' + m.id + '" aria-label="Profile">' + ico('info') + '</button></div></li>';
     }).join('');
     var left = Math.max(0, c.need - c.today);
-    return '<div class="grid clan-grid"><div class="col main">'
+    return '<div class="grid clan-grid"><div class="col main">' + pts
       + '<section class="card clan-hero"><span class="clan-big">' + mono(c.name) + '</span><div class="clan-info"><span class="eyebrow">Your clan</span><h2 dir="auto">' + esc(c.name) + '</h2>'
       + '<div class="pills"><span class="pill">' + ico('flame', 'tiny') + ' Clan streak ' + c.streak + ' days</span><span class="pill">' + c.score.toFixed(1) + ' goal days per member</span>' + (rank ? '<span class="pill lv">#' + rank.rank + ' of ' + st.length + '</span>' : '') + '</div>'
       + '<p class="muted small">' + c.today + ' of ' + c.size + ' studied today. ' + (left ? (left === 1 ? 'One more needed' : 'Need ' + left + ' more') + ' for the clan streak to continue.' : 'The clan streak is safe today.') + '</p></div>'
       + '<button class="btn primary" data-act="open-clan-chat">' + ico('chat') + ' Clan chat</button></section>'
       + '<section class="card"><div class="card-h"><h3>Members</h3><span class="muted small">Squares = days you reached your goal this week</span></div><ol class="rows">' + members + '</ol></section>'
       + '</div><div class="col side">' + standings + '</div></div>';
+  }
+
+  /* ------------------------------------------------------------ accountability partners */
+  var NUDGES = ['Missed you today! Even 10 minutes counts 💪', 'Want to do 10 minutes together at 9?', 'How\'s your week going?'];
+  var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function loadPartners() {
+    var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (x) {}
+    S.ptLoading = true;
+    return api('/partners').then(function (j) {
+      S.pt = j; S.ptLoading = false; paintPartners();
+      if (tz && j.tz !== tz) api('/partners/settings', { method: 'POST', body: { tz: tz } }).then(function (k) { S.pt = k; }, function () {});
+    }, function () { S.ptLoading = false; });
+  }
+  function ptDo(path, body, btn) {
+    busy(btn, true, '…');
+    return api(path, { method: 'POST', body: body || {} }).then(function (j) { S.pt = j; paintPartners(); return j; }, function (x) { busy(btn, false); toast(x.message, 'bad'); throw x; });
+  }
+  function paintPartners() { var el = $('#pt-slot'); if (el) el.innerHTML = partnersHtml(); }
+  function partnersHtml() {
+    var p = S.pt;
+    if (!p) return '<section class="card"><div class="loading"><span class="spin"></span></div></section>';
+    var inv = p.invites.length ? '<section class="card pt-inv"><h3>Partner invites</h3><ul class="rows">' + p.invites.map(function (i) {
+      return '<li class="row"><div class="r-main"><b dir="auto">' + esc(i.name) + '</b> <small class="muted" dir="ltr">' + i.size + '/5</small></div><button class="btn primary sm-btn" data-act="pt-accept" data-id="' + i.id + '">Accept</button><button class="btn ghost sm-btn" data-act="pt-decline" data-id="' + i.id + '">No, thanks</button></li>';
+    }).join('') + '</ul></section>' : '';
+    if (!p.clan) {
+      return inv + '<section class="card center-card pt-alone"><div class="big-ic">' + ico('users') + '</div><h2>Study with partners</h2><p class="muted">A clan of 5: you and 4 partners who study every day and cheer each other on.</p>'
+        + (p.looking ? '<p class="pt-wait">' + ico('check', 'tiny') + ' We\'re looking for partners who study at your time and near your level. You\'ll get a notification as soon as we find them.</p><button class="btn ghost" data-act="pt-stop">Stop looking</button>'
+          : '<button class="btn primary wide" data-act="pt-match">' + ico('users', 'tiny') + ' Find partners for me</button>')
+        + '<button class="btn wide" data-act="pt-list">I\'ll find them myself</button></section>';
+    }
+    var rows = p.partners.map(function (m) {
+      var sent = p.nudged.indexOf(m.id) >= 0;
+      return '<li class="row">' + avatar(m, 34) + '<div class="r-main"><b dir="auto">' + esc(m.name) + '</b></div><span class="today-chip ' + (m.today ? 'yes' : 'no') + '">' + (m.today ? ico('check', 'tiny') + ' studied today' : 'Not yet') + '</span>'
+        + (m.today ? '' : '<button class="btn sm-btn" data-act="pt-nudge-pick" data-id="' + m.id + '"' + (sent ? ' disabled' : '') + '>' + (sent ? 'Sent ✓' : 'Nudge') + '</button>') + '</li>';
+    }).join('');
+    return inv + '<section class="card pt-card"><div class="card-h"><h3>Your partners today</h3><span class="muted small" dir="ltr">' + p.size + '/' + p.cap + '</span></div>'
+      + (rows ? '<ol class="rows">' + rows + '</ol>' : '<p class="muted small">You\'re alone in your clan for now. Add partners.</p>')
+      + '<div class="pt-acts">' + (p.size < p.cap ? '<button class="btn sm-btn" data-act="pt-list">' + ico('plus', 'tiny') + ' Add a partner</button>' : '') + '<button class="btn ghost sm-btn" data-act="pt-settings">Nudge settings</button></div></section>';
+  }
+  function openLooking() {
+    openModal(mHead('Looking for partners', 'Most active first. Send an invite, or message them in the Skool community.') + '<div class="stack"><input type="search" id="pt-q" placeholder="Search by name" dir="auto" aria-label="Search by name"><ul class="pick-list pt-people" id="pt-people"><li class="muted small pad">Loading…</li></ul></div>', 'narrow');
+    var q = $('#pt-q'), t;
+    if (q) q.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { loadLooking(q.value.trim()); }, 300); });
+    loadLooking('');
+  }
+  function loadLooking(q) {
+    api('/partners/looking', { query: q ? { q: q } : null }).then(function (j) {
+      var el = $('#pt-people'); if (!el) return;
+      var sent = (S.pt && S.pt.sent) || [];
+      el.innerHTML = j.people.length ? j.people.map(function (p) {
+        var s = sent.indexOf(p.id) >= 0;
+        return '<li class="pt-person">' + avatar(p, 34) + '<span><b dir="auto">' + esc(p.name) + '</b> <small dir="ltr">' + esc(p.level) + '</small><br><small class="muted">' + (p.last ? 'Active ' + ago(p.last) : 'Not started yet') + ' · ' + p.days14 + ' of 14 days</small></span>'
+          + '<button class="btn sm-btn' + (s ? '' : ' primary') + '" data-act="pt-invite" data-id="' + p.id + '"' + (s ? ' disabled' : '') + '>' + (s ? 'Sent ✓' : 'Invite') + '</button></li>';
+      }).join('') : '<li class="muted small pad">Nobody right now. Try "Find partners for me".</li>';
+    }, function (x) { toast(x.message, 'bad'); });
+  }
+  function openNudge(id) {
+    var m = ((S.pt && S.pt.partners) || []).filter(function (x) { return x.id === id; })[0];
+    openModal(mHead('Send a nudge' + (m ? ' to <span dir="auto">' + esc(m.name) + '</span>' : ''), 'A friendly message in one tap') + '<div class="stack">' + NUDGES.map(function (t, i) {
+      return '<button class="btn wide" data-act="pt-nudge" data-id="' + id + '" data-t="' + i + '">' + t + '</button>';
+    }).join('') + '</div>', 'narrow');
+  }
+  function openPtSettings() {
+    var p = S.pt || {};
+    openModal(mHead('Nudge settings', 'Your partners only see "studied today ✓" or "not yet", never the details.') + '<div class="stack">'
+      + '<label class="f">Rest day <small>No nudges on this day</small><select id="pt-rest"><option value="">None</option>' + WEEKDAYS.map(function (d, i) { return '<option value="' + i + '"' + (String(i) === p.restDay ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select></label>'
+      + '<label class="pt-chk"><input type="checkbox" id="pt-pause"' + (p.pause && p.pause >= S.data.today ? ' checked' : '') + '> Pause nudges for 3 days (exams, illness)</label>'
+      + '<label class="pt-chk"><input type="checkbox" id="pt-show"' + (p.hidden ? '' : ' checked') + '> Show me in the "Looking for partners" list</label>'
+      + '<button class="btn primary" data-act="pt-save">Save</button>'
+      + (p.clan ? '<button class="btn ghost" data-act="pt-leave">Leave the clan</button>' : '') + '</div>', 'narrow');
   }
 
   /* ------------------------------------------------------------ chat */
@@ -2041,6 +2120,17 @@
       case 'rec-cancel': if (C.rec) { C.rec.send = false; C.rec.rec.stop(); } break;
       case 'rec-send': if (C.rec) { C.rec.send = true; C.rec.rec.stop(); } break;
       case 'notifs': openNotifs(); break;
+      case 'pt-match': ptDo('/partners/match', null, el).then(function (j) { toast(j.clan ? 'We found you partners! 🎉' : 'We\'re looking. You\'ll get a notification as soon as we find them.', 'good'); if (j.clan) loadClan(); }, function () {}); break;
+      case 'pt-stop': ptDo('/partners/settings', { stopLooking: 1 }, el).catch(function () {}); break;
+      case 'pt-list': openLooking(); break;
+      case 'pt-invite': ptDo('/partners/invite', { id: +el.dataset.id }, el).then(function () { el.textContent = 'Sent ✓'; el.disabled = true; el.classList.remove('primary'); toast('Invite sent', 'good'); }, function () {}); break;
+      case 'pt-accept': closeModal(); ptDo('/partners/accept', { id: +el.dataset.id }, el).then(function () { toast('You\'re partners now! 🤝', 'good'); loadClan(); }, function () {}); break;
+      case 'pt-decline': ptDo('/partners/decline', { id: +el.dataset.id }, el).catch(function () {}); break;
+      case 'pt-nudge-pick': openNudge(+el.dataset.id); break;
+      case 'pt-nudge': ptDo('/partners/nudge', { id: +el.dataset.id, t: +el.dataset.t }, el).then(function () { closeModal(); toast('Nudge sent 💌', 'good'); }, function () {}); break;
+      case 'pt-settings': openPtSettings(); break;
+      case 'pt-save': ptDo('/partners/settings', { restDay: $('#pt-rest').value, pause: $('#pt-pause').checked ? 1 : 0, hidden: $('#pt-show').checked ? 0 : 1 }, el).then(function () { closeModal(); toast('Saved', 'good'); }, function () {}); break;
+      case 'pt-leave': if (confirm('Leave your clan and partners?')) ptDo('/partners/leave', null, el).then(function () { closeModal(); loadClan(); }, function () {}); break;
       case 'settings': openSettings(); break;
       case 'pick-avatar': $('#av-file').click(); break;
       case 'save-goal':

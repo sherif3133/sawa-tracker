@@ -6,9 +6,9 @@
  *   4 days they have fallen and can't fight. Studying again ends it: from that day the wound is gone and health
  *   comes back as usual.
  * - Clanmates can help a little, once a day each, with mana (which only comes from studying): a heal gives back a
- *   tenth of the health (a quarter from a Healer), at most two heals a day. A fallen hero needs two revives from
- *   different clanmates (a Healer's revive counts twice) and comes back at half health.
- * - While a clanmate is badly hurt (2+ days) or fallen, everyone else in the clan has one fight less a day (two
+ *   tenth of the health (a quarter from a Healer), at most two heals a day. A fallen hero needs one revive from a
+ *   clanmate (clans are 5 partners now) and comes back at half health.
+ * - While a clanmate has been away 7+ days, everyone else in the clan has one fight less a day (two
  *   with two or more hurt clanmates). Nobody progresses as fast when someone is missing. Clanmates gone for more than
  *   two weeks count as away and don't slow the clan down.
  */
@@ -26,6 +26,8 @@ final class Sawa_Tracker_Wounds {
 	const HEALS_DAY   = 2;
 	const HEAL_MANA   = 20;
 	const REVIVE_MANA = 30;
+	const REVIVES     = 1; // revives needed to stand up again
+	const PENALTY_DAYS = 7; // a missing clanmate slows the clan only after a week away
 	const AWAY_DAYS   = 14; // after two weeks without studying a clanmate counts as away
 
 	private static $cache = array();
@@ -79,7 +81,7 @@ final class Sawa_Tracker_Wounds {
 		$m      = self::missed( $uid );
 		$lv     = min( self::FALL_DAYS, $m['missed'] );
 		$c      = self::care( $uid );
-		$revive = $c['revive'] >= 2 ? 0.5 : 0;
+		$revive = $c['revive'] >= self::REVIVES ? 0.5 : 0;
 		$cap    = min( 1, max( $revive, 1 - self::PER_DAY * $lv ) + (float) $c['heal'] );
 		return array( 'level' => $lv, 'days' => $m['missed'], 'cap' => round( $cap, 2 ), 'fallen' => $lv >= self::FALL_DAYS && $cap <= 0, 'revives' => (int) $c['revive'], 'heals' => (int) $c['n'] );
 	}
@@ -111,9 +113,9 @@ final class Sawa_Tracker_Wounds {
 		return $out;
 	}
 
-	/** One fight less a day for every clanmate who is badly hurt or fallen (at most two). */
+	/** One fight less a day for every clanmate away 7+ days (at most two). */
 	public static function penalty( $uid ) {
-		return min( 2, count( array_filter( self::clan( $uid ), function ( $c ) { return $c['wound']['level'] >= 2; } ) ) );
+		return min( 2, count( array_filter( self::clan( $uid ), function ( $c ) { return $c['wound']['days'] >= self::PENALTY_DAYS; } ) ) );
 	}
 
 	private static function check( $uid, $to ) {
@@ -176,7 +178,7 @@ final class Sawa_Tracker_Wounds {
 		$c['by'][]   = $uid;
 		Sawa_Tracker_Game::set( $to, 'wcare', $c );
 		self::$cache = array();
-		$back = $c['revive'] >= 2;
+		$back = $c['revive'] >= self::REVIVES;
 		if ( $back ) {
 			Sawa_Tracker_Hero::set_hp( $to, (int) round( 0.5 * Sawa_Tracker_Hero::max_hp( $to ) ) );
 		}

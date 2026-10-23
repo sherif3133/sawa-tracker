@@ -661,8 +661,9 @@
     $('#app').innerHTML = header()
       + '<section class="hello"><div class="who">' + avatar(me, 56) + '<div><h1>أهلًا يا ' + esc(me.firstName) + '</h1><p class="muted">' + esc(sub) + '</p></div></div>'
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="النهارده ' + s.todayMinutes + ' من ' + s.goal + ' دقيقة"><span><b>' + s.todayMinutes + '</b>من ' + s.goal + ' د</span></div></section>'
-      + newThingCard() + statCards(s) + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
+      + newThingCard() + statCards(s) + '<div id="pt-slot">' + partnersHtml() + '</div>' + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
     loadHero(); paintBoard(); // your stats and the leaderboard come first on Home
+    if (!S.ptLoading) loadPartners(); // accountability partners: on Home too, since Play opens only at stage 3
     if (EMB) markHomeParts();
   }
   /** In the one app, Home is one page grid: name each block (part="t-…") so sawa-lens app.css can place it with ::part(). Nothing changes here. */
@@ -1032,12 +1033,18 @@
       case 'chat_helper': return '🤝 ' + name(e.who) + ' was the best helper in the chat this week: ' + d.n + ' replies to classmates! +30 🪙, an elixir and the title Helper of the Week';
       case 'chat_review': return '📝 We checked your ' + (d.msgs ? 'chat English (' + d.msgs + ' message' + (d.msgs === 1 ? '' : 's') + (d.voice ? ' and ' + d.voice + ' voice note' + (d.voice === 1 ? '' : 's') : '') + ')' : d.voice + ' voice note' + (d.voice === 1 ? '' : 's')) + ': ' + (d.errors ? d.errors + ' thing' + (d.errors === 1 ? '' : 's') + ' to fix' + (d.focus ? ', mostly <b dir="ltr">' + esc(d.focus) + '</b>' : '') + '. See them in Learn → Progress.' : 'no mistakes — great English!') + (d.good ? ' ' + d.good + ' points used well ✨' : '');
       case 'coop_built': return '🏰 The community built the caravanserai this week! ' + d.builders + ' builders got 30 🪙 + 1 ⚗.';
+      case 'partner_quiet': return name(e.who) + ' لسه مذاكرش النهارده. تبعتله تشجيع؟' + (e.who && S.pt && S.pt.partners.some(function (p) { return p.id === e.who.id; }) ? '<span class="pt-nb">' + NUDGES.map(function (t, i) { return '<button class="btn sm-btn" data-act="pt-nudge" data-id="' + e.who.id + '" data-t="' + i + '">' + t + '</button>'; }).join('') + '</span>' : '');
+      case 'partner_nudge': return name(e.who) + ' بعتلك: <span>"' + (NUDGES[d.t] || NUDGES[0]) + '"</span>';
+      case 'partner_back': return name(e.who) + ' رجع يذاكر تاني 🎉';
+      case 'partner_invite': return name(e.who) + ' عايزك تبقى شريكه في المذاكرة 🤝 <span class="pt-nb">' + (e.who ? '<button class="btn primary sm-btn" data-act="pt-accept" data-id="' + e.who.id + '">اقبل</button>' : '') + '</span>';
+      case 'partner_matched': return name(e.who) + ' بقى شريكك في المذاكرة 🤝 قول له أهلًا في شات الكلان.';
+      case 'partner_joined': return name(e.who) + ' انضم لكلانك كشريك 🤝';
       case 'reply': return name(e.who) + ' رد على رسالتك' + (d.voice ? ' برسالة صوتية' : d.sticker ? ' بـ ' + esc(d.sticker) : d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');
     }
     return name(e.who) + ' عمل حاجة';
   }
   function eventIcon(e) {
-    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', road: 'check', road_week: 'medal', road_group: 'users', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', chat_helper: 'medal', feedback_fixed: 'check', feedback_planned: 'pen' };
+    var m = { log: 'pen', day_done: 'check', skill: 'bolt', level_up: 'up', badge: 'medal', boss_down: 'boss', streak_lost: 'flame', freeze_used: 'snow', joined: 'users', quest_done: 'target', group_invite: 'chat', reply: 'reply', thread_reply: 'thread', mention: 'bell', mention_all: 'mega', mention_clan: 'shield', mastered: 'medal', raid: 'shield', hunt: 'target', returned: 'check', town: 'trophy', road: 'check', road_week: 'medal', road_group: 'users', party_down: 'sword', party_win: 'trophy', party_invite: 'users', party_live: 'bolt', party_boss: 'boss', coop_ask: 'chat', coop_answer: 'reply', coop_helped: 'medal', coop_guide: 'users', coop_pair: 'check', coop_built: 'trophy', coop_call: 'sword', coop_support: 'users', coop_won: 'trophy', clan_heal: 'check', clan_revive: 'up', chat_review: 'pen', chat_helper: 'medal', feedback_fixed: 'check', feedback_planned: 'pen', partner_quiet: 'users', partner_nudge: 'chat', partner_back: 'check', partner_invite: 'users', partner_matched: 'users', partner_joined: 'users' };
     return m[e.type] || 'spark';
   }
   var REACTS = ['👏', '🔥', '💪', '❤️'];
@@ -1347,7 +1354,9 @@
     var standings = st.length ? '<section class="card"><div class="card-h"><h3>سباق الكلانات الأسبوع ده</h3><span class="muted small">متوسط أيام الهدف لكل عضو</span></div><ol class="rows">'
       + st.map(function (r) { return '<li class="row' + (c && r.id === c.id ? ' me' : '') + '"><span class="rank r' + Math.min(r.rank, 4) + '">' + r.rank + '</span><span class="clan-mono">' + mono(r.name) + '</span><div class="r-main"><div class="r-name"><span dir="auto">' + esc(r.name) + '</span></div><div class="r-meta"><span>' + r.size + ' أعضاء</span><span class="st">' + ico('flame', 'tiny') + r.streak + '</span></div></div><b class="score">' + r.score.toFixed(1) + '</b></li>'; }).join('')
       + '</ol></section>' : '';
-    if (!c) return '<div class="grid clan-grid"><div class="col main"><section class="card center-card"><div class="big-ic">' + ico('shield') + '</div><h2>لسه مش في كلان</h2><p class="muted">الكلان فريق صغير بيحافظ على ستريك سوا. شريف هو اللي بيوزع الكلانات، وكلانك هيظهر هنا قريب.</p></section></div><div class="col side">' + standings + '</div></div>';
+    if (!S.pt && !S.ptLoading) loadPartners();
+    var pts = '<div id="pt-slot">' + partnersHtml() + '</div>';
+    if (!c) return '<div class="grid clan-grid"><div class="col main">' + pts + '</div><div class="col side">' + standings + '</div></div>';
     var rank = st.filter(function (r) { return r.id === c.id; })[0];
     var members = c.members.map(function (m) {
       var me = m.id === S.data.me.id;
@@ -1357,13 +1366,83 @@
         + '<div class="r-acts">' + (!me && canHelp() ? '<button class="icon-btn sm" data-act="cast-on" data-id="' + m.id + '" aria-label="استخدم مهارة على ' + esc(m.name) + '">' + ico('bolt') + '</button>' : '') + '<button class="icon-btn sm" data-act="profile" data-id="' + m.id + '" aria-label="البروفايل">' + ico('info') + '</button></div></li>';
     }).join('');
     var left = Math.max(0, c.need - c.today);
-    return '<div class="grid clan-grid"><div class="col main">'
+    return '<div class="grid clan-grid"><div class="col main">' + pts
       + '<section class="card clan-hero"><span class="clan-big">' + mono(c.name) + '</span><div class="clan-info"><span class="eyebrow">الكلان بتاعك</span><h2 dir="auto">' + esc(c.name) + '</h2>'
       + '<div class="pills"><span class="pill">' + ico('flame', 'tiny') + ' ستريك الكلان ' + c.streak + ' يوم</span><span class="pill">' + c.score.toFixed(1) + ' يوم هدف لكل عضو</span>' + (rank ? '<span class="pill lv">رقم ' + rank.rank + ' من ' + st.length + '</span>' : '') + '</div>'
       + '<p class="muted small">' + c.today + ' من ' + c.size + ' ذاكروا النهارده. ' + (left ? (left === 1 ? 'محتاجين واحد كمان' : 'محتاجين ' + left + ' كمان') + ' عشان ستريك الكلان يكمل.' : 'ستريك الكلان في الأمان النهارده.') + '</p></div>'
       + '<button class="btn primary" data-act="open-clan-chat">' + ico('chat') + ' شات الكلان</button></section>'
       + '<section class="card"><div class="card-h"><h3>الأعضاء</h3><span class="muted small">المربعات = أيام وصلت فيها لهدفك الأسبوع ده</span></div><ol class="rows">' + members + '</ol></section>'
       + '</div><div class="col side">' + standings + '</div></div>';
+  }
+
+  /* ------------------------------------------------------------ accountability partners */
+  var NUDGES = ['وحشتنا النهارده! حتى ١٠ دقايق بتفرق 💪', 'تيجي نذاكر ١٠ دقايق سوا الساعة ٩؟', 'أسبوعك ماشي إزاي؟'];
+  var WEEKDAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
+  function loadPartners() {
+    var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (x) {}
+    S.ptLoading = true;
+    return api('/partners').then(function (j) {
+      S.pt = j; S.ptLoading = false; paintPartners();
+      if (tz && j.tz !== tz) api('/partners/settings', { method: 'POST', body: { tz: tz } }).then(function (k) { S.pt = k; }, function () {});
+    }, function () { S.ptLoading = false; });
+  }
+  function ptDo(path, body, btn) {
+    busy(btn, true, '…');
+    return api(path, { method: 'POST', body: body || {} }).then(function (j) { S.pt = j; paintPartners(); return j; }, function (x) { busy(btn, false); toast(x.message, 'bad'); throw x; });
+  }
+  function paintPartners() { var el = $('#pt-slot'); if (el) el.innerHTML = partnersHtml(); }
+  function partnersHtml() {
+    var p = S.pt;
+    if (!p) return '<section class="card"><div class="loading"><span class="spin"></span></div></section>';
+    var inv = p.invites.length ? '<section class="card pt-inv"><h3>دعوات شركاء</h3><ul class="rows">' + p.invites.map(function (i) {
+      return '<li class="row"><div class="r-main"><b dir="auto">' + esc(i.name) + '</b> <small class="muted" dir="ltr">' + i.size + '/5</small></div><button class="btn primary sm-btn" data-act="pt-accept" data-id="' + i.id + '">اقبل</button><button class="btn ghost sm-btn" data-act="pt-decline" data-id="' + i.id + '">لأ، شكرًا</button></li>';
+    }).join('') + '</ul></section>' : '';
+    if (!p.clan) {
+      return inv + '<section class="card center-card pt-alone"><div class="big-ic">' + ico('users') + '</div><h2>ذاكر مع شركاء</h2><p class="muted">كلان من ٥: إنت و٤ شركاء بتذاكروا كل يوم وبتشجعوا بعض.</p>'
+        + (p.looking ? '<p class="pt-wait">' + ico('check', 'tiny') + ' بندورلك على شركاء بيذاكروا في نفس وقتك وقريبين من مستواك. هيوصلك إشعار أول ما نلاقيهم.</p><button class="btn ghost" data-act="pt-stop">وقّف البحث</button>'
+          : '<button class="btn primary wide" data-act="pt-match">' + ico('users', 'tiny') + ' لاقيلي شركاء</button>')
+        + '<button class="btn wide" data-act="pt-list">هلاقيهم بنفسي</button></section>';
+    }
+    var rows = p.partners.map(function (m) {
+      var sent = p.nudged.indexOf(m.id) >= 0;
+      return '<li class="row">' + avatar(m, 34) + '<div class="r-main"><b dir="auto">' + esc(m.name) + '</b></div><span class="today-chip ' + (m.today ? 'yes' : 'no') + '">' + (m.today ? ico('check', 'tiny') + ' ذاكر النهارده' : 'لسه') + '</span>'
+        + (m.today ? '' : '<button class="btn sm-btn" data-act="pt-nudge-pick" data-id="' + m.id + '"' + (sent ? ' disabled' : '') + '>' + (sent ? 'اتبعت ✓' : 'شجّعه') + '</button>') + '</li>';
+    }).join('');
+    return inv + '<section class="card pt-card"><div class="card-h"><h3>شركاءك النهارده</h3><span class="muted small" dir="ltr">' + p.size + '/' + p.cap + '</span></div>'
+      + (rows ? '<ol class="rows">' + rows + '</ol>' : '<p class="muted small">لسه لوحدك في الكلان. ضيف شركاء.</p>')
+      + '<div class="pt-acts">' + (p.size < p.cap ? '<button class="btn sm-btn" data-act="pt-list">' + ico('plus', 'tiny') + ' ضيف شريك</button>' : '') + '<button class="btn ghost sm-btn" data-act="pt-settings">إعدادات التشجيع</button></div></section>';
+  }
+  function openLooking() {
+    openModal(mHead('بيدوروا على شركاء', 'الأنشط الأول. ابعتلهم دعوة، أو كلمهم في مجتمع سكول.') + '<div class="stack"><input type="search" id="pt-q" placeholder="دوّر بالاسم" dir="auto" aria-label="دوّر بالاسم"><ul class="pick-list pt-people" id="pt-people"><li class="muted small pad">بيحمّل…</li></ul></div>', 'narrow');
+    var q = $('#pt-q'), t;
+    if (q) q.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { loadLooking(q.value.trim()); }, 300); });
+    loadLooking('');
+  }
+  function loadLooking(q) {
+    api('/partners/looking', { query: q ? { q: q } : null }).then(function (j) {
+      var el = $('#pt-people'); if (!el) return;
+      var sent = (S.pt && S.pt.sent) || [];
+      el.innerHTML = j.people.length ? j.people.map(function (p) {
+        var s = sent.indexOf(p.id) >= 0;
+        return '<li class="pt-person">' + avatar(p, 34) + '<span><b dir="auto">' + esc(p.name) + '</b> <small dir="ltr">' + esc(p.level) + '</small><br><small class="muted">' + (p.last ? 'آخر نشاط ' + ago(p.last) : 'لسه مبدأش') + ' · ' + p.days14 + ' من ١٤ يوم</small></span>'
+          + '<button class="btn sm-btn' + (s ? '' : ' primary') + '" data-act="pt-invite" data-id="' + p.id + '"' + (s ? ' disabled' : '') + '>' + (s ? 'اتبعتت ✓' : 'ادعوه') + '</button></li>';
+      }).join('') : '<li class="muted small pad">مفيش حد دلوقتي. جرّب "لاقيلي شركاء".</li>';
+    }, function (x) { toast(x.message, 'bad'); });
+  }
+  function openNudge(id) {
+    var m = ((S.pt && S.pt.partners) || []).filter(function (x) { return x.id === id; })[0];
+    openModal(mHead('ابعت تشجيع' + (m ? ' لـ <span dir="auto">' + esc(m.name) + '</span>' : ''), 'رسالة لطيفة بضغطة واحدة') + '<div class="stack">' + NUDGES.map(function (t, i) {
+      return '<button class="btn wide" data-act="pt-nudge" data-id="' + id + '" data-t="' + i + '">' + t + '</button>';
+    }).join('') + '</div>', 'narrow');
+  }
+  function openPtSettings() {
+    var p = S.pt || {};
+    openModal(mHead('إعدادات التشجيع', 'شركاءك بيشوفوا بس "ذاكر النهارده ✓" أو "لسه"، مش التفاصيل.') + '<div class="stack">'
+      + '<label class="f">يوم الراحة <small>مفيش تشجيع في اليوم ده</small><select id="pt-rest"><option value="">مفيش</option>' + WEEKDAYS.map(function (d, i) { return '<option value="' + i + '"' + (String(i) === p.restDay ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select></label>'
+      + '<label class="pt-chk"><input type="checkbox" id="pt-pause"' + (p.pause && p.pause >= S.data.today ? ' checked' : '') + '> وقّف التشجيع ٣ أيام (امتحانات، تعب)</label>'
+      + '<label class="pt-chk"><input type="checkbox" id="pt-show"' + (p.hidden ? '' : ' checked') + '> اظهر في قايمة "بيدوروا على شركاء"</label>'
+      + '<button class="btn primary" data-act="pt-save">احفظ</button>'
+      + (p.clan ? '<button class="btn ghost" data-act="pt-leave">سيب الكلان</button>' : '') + '</div>', 'narrow');
   }
 
   /* ------------------------------------------------------------ chat */
@@ -2038,6 +2117,17 @@
       case 'rec-cancel': if (C.rec) { C.rec.send = false; C.rec.rec.stop(); } break;
       case 'rec-send': if (C.rec) { C.rec.send = true; C.rec.rec.stop(); } break;
       case 'notifs': openNotifs(); break;
+      case 'pt-match': ptDo('/partners/match', null, el).then(function (j) { toast(j.clan ? 'لقينالك شركاء! 🎉' : 'بندورلك. هيوصلك إشعار أول ما نلاقي.', 'good'); if (j.clan) loadClan(); }, function () {}); break;
+      case 'pt-stop': ptDo('/partners/settings', { stopLooking: 1 }, el).catch(function () {}); break;
+      case 'pt-list': openLooking(); break;
+      case 'pt-invite': ptDo('/partners/invite', { id: +el.dataset.id }, el).then(function () { el.textContent = 'اتبعتت ✓'; el.disabled = true; el.classList.remove('primary'); toast('الدعوة اتبعتت', 'good'); }, function () {}); break;
+      case 'pt-accept': closeModal(); ptDo('/partners/accept', { id: +el.dataset.id }, el).then(function () { toast('بقيتوا شركاء! 🤝', 'good'); loadClan(); }, function () {}); break;
+      case 'pt-decline': ptDo('/partners/decline', { id: +el.dataset.id }, el).catch(function () {}); break;
+      case 'pt-nudge-pick': openNudge(+el.dataset.id); break;
+      case 'pt-nudge': ptDo('/partners/nudge', { id: +el.dataset.id, t: +el.dataset.t }, el).then(function () { closeModal(); toast('التشجيع اتبعت 💌', 'good'); }, function () {}); break;
+      case 'pt-settings': openPtSettings(); break;
+      case 'pt-save': ptDo('/partners/settings', { restDay: $('#pt-rest').value, pause: $('#pt-pause').checked ? 1 : 0, hidden: $('#pt-show').checked ? 0 : 1 }, el).then(function () { closeModal(); toast('اتحفظ', 'good'); }, function () {}); break;
+      case 'pt-leave': if (confirm('تسيب الكلان وشركاءك؟')) ptDo('/partners/leave', null, el).then(function () { closeModal(); loadClan(); }, function () {}); break;
       case 'settings': openSettings(); break;
       case 'pick-avatar': $('#av-file').click(); break;
       case 'save-goal':

@@ -1186,3 +1186,17 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .sg-pbox2 .sg-vops button.ok { background: #2f7a4f; color: #fff; } .sg-pbox2 .sg-vops button.no { background: #8a2f3a; color: #fff; }
 .sg-pbox2 .lw { border-bottom-color: #a8763f; }
 .sg-tw li b .sg-say { background: none; border: 0; font-size: 13px; padding: 0 2px; }
+
+/* Accountability partners (2.19.0): phone-first, every button is a real tap target. */
+.pt-alone .btn, .pt-card .sm-btn, .pt-inv .sm-btn, .pt-person .sm-btn, .pt-nb .sm-btn { min-height: 40px; }
+.pt-alone .btn.wide { max-width: 360px; }
+.pt-wait { font-size: 14px; display: flex; gap: 6px; align-items: center; justify-content: center; }
+.pt-card .row, .pt-inv .row { gap: 8px; flex-wrap: wrap; }
+.pt-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.pt-person { display: flex; gap: 10px; align-items: center; padding: 6px 2px; }
+.pt-person > span { flex: 1; min-width: 0; }
+.pt-nb { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pt-chk { display: flex; gap: 8px; align-items: center; min-height: 40px; }
+.pt-chk input { width: 20px; height: 20px; }
+#pt-q { width: 100%; min-height: 42px; }
+#pt-slot { display: grid; gap: 12px; margin-bottom: 12px; }

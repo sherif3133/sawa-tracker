@@ -719,6 +719,30 @@
 			"audience": "all"
 		},
 		{
+			"id": "tracker-accountability-partners-clans-of-5",
+			"app": "tracker",
+			"group": "Together",
+			"title": "Accountability partners: clans of 5, \"Find partners for me\" (by study hour, level, time zone) or pick them yourself from the \"Looking for partners\" list",
+			"status": "live",
+			"note": "On Home and in Play. Only app members. Old clans of 8 keep everyone but take nobody new until under 5.",
+			"ver": "2.19.0",
+			"date": "2026-10-23",
+			"file": "includes/class-partners.php, assets/app.js",
+			"audience": "all"
+		},
+		{
+			"id": "tracker-partner-nudge-8pm-not-yet-today",
+			"app": "tracker",
+			"group": "Together",
+			"title": "Partners get one bell at about 8 pm (student's own time) when someone hasn't studied yet, with 3 one-tap friendly nudges; \"back 🎉\" when they study; a daily email digest",
+			"status": "live",
+			"note": "Rest day and a 3-day pause; stops after 7 days away. Partners only see \"studied today ✓ / not yet\". Wounds: 1 revive is enough, clan penalty only after 7+ days away.",
+			"ver": "2.19.0",
+			"date": "2026-10-23",
+			"file": "includes/class-partners.php, class-wounds.php",
+			"audience": "all"
+		},
+		{
 			"id": "tracker-parties-with-chat-48-hour-party",
 			"app": "tracker",
 			"group": "Together",
