@@ -1762,6 +1762,58 @@
 			"file": "language-lens/extension/core/captions.js"
 		},
 		{
+			"desc": "Word colours that are easy to tell apart: they differ by shape as well as colour (colour-blind safe, readable over video and on light pages). Learning = yellow box, new for you = solid blue line, hard or rare = dotted orange line, phrase = double pink line; words you know have no colour. A legend in the popup and a choice: All 4, Learning only, or Off.",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "lens-word-marks",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Clearer word colours (by shape too) + legend",
+			"status": "built",
+			"note": "Student feedback: the old colours were too similar. One source of styles: content/marks.js (Okabe-Ito colours, WCAG contrast checked). Same marks on YouTube captions, the transcript and websites.",
+			"ver": "0.9.3",
+			"file": "language-lens/extension/content/marks.js"
+		},
+		{
+			"desc": "A slim control strip over the caption (hover on a computer, tap on a phone): previous, repeat and next sentence, loop one sentence, 0.75x speed, and Shadow mode: after each sentence the video waits for you to say it, then goes on. With the microphone on you hear yourself right after the speaker (your voice stays on your device). Phones: swipe the caption for the next or previous sentence, double-tap to repeat. Keys A S D R X W.",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "lens-caption-controls",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Caption controls and Shadow mode",
+			"status": "built",
+			"note": "Student feedback (compared with Language Reactor); our own design, on whole sentences (0.8.2).",
+			"ver": "0.9.3",
+			"file": "language-lens/extension/content/yt-controls.js"
+		},
+		{
+			"desc": "Choose how word meanings open on a computer, separately for YouTube and for websites: when you click a word, or when you hover over it. YouTube opens on click by default, so a mouse passing over the captions never stops the video; hover waits a moment before opening. Phones always use tap.",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "lens-click-or-hover",
+			"app": "extension",
+			"group": "Settings",
+			"title": "Meanings on click or hover (YouTube and websites)",
+			"status": "built",
+			"note": "Student feedback (Mohamed Hassan, Skool): brushing the mouse over a word stopped the video. Popup settings with an info tip in English and Arabic.",
+			"ver": "0.9.3",
+			"file": "language-lens/extension/content/yt.js"
+		},
+		{
+			"desc": "The word card says clearly what each button means: 💡 Curious = you only looked it up (XP, not in Review); Learning and I know it = saved by you. Pressing Learning after Curious saves the word to Review, with no confusing \"already\" message.",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "lens-curious-clear",
+			"app": "extension",
+			"group": "Word card",
+			"title": "Clear Curious vs saved in the word card",
+			"status": "built",
+			"note": "Student feedback: \"already curious\" read like \"already saved\".",
+			"ver": "0.9.3",
+			"file": "language-lens/extension/content/card.js"
+		},
+		{
 			"desc": "Sherif's YouTube comments in one inbox in wp-admin. Claude drafts a reply in his voice only for questions about joining, price, the apps or Skool access; he edits and approves each one with one tap before it is posted. Other comments are just listed. Official YouTube Data API only.",
 			"date": "2026-10-23",
 			"audience": "admin",
