@@ -1006,6 +1006,78 @@
 			"audience": "all"
 		},
 		{
+			"app": "extension",
+			"note": "",
+			"ver": "0.6.3",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "extension-tap-word-websites-phone",
+			"group": "Words on any website",
+			"title": "On a phone, tap a word on any website for its card (websites were hover-only); links and buttons still work as usual",
+			"status": "live",
+			"file": "content/page.js"
+		},
+		{
+			"app": "extension",
+			"note": "",
+			"ver": "0.6.3",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "extension-skip-foreign-language-text",
+			"group": "Words on any website",
+			"title": "Text a site marks as another language (French, Spanish …) is no longer coloured or looked up as English",
+			"status": "live",
+			"file": "content/page.js"
+		},
+		{
+			"app": "extension",
+			"note": "",
+			"ver": "0.6.3",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "extension-card-meaning-here",
+			"group": "Word card & popup",
+			"title": "Word card: 💬 Meaning here (what the word means in this sentence) is back as a small link, and bigger links for fingers",
+			"status": "live",
+			"file": "content/card.js"
+		},
+		{
+			"app": "extension",
+			"note": "",
+			"ver": "0.6.3",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "extension-popup-more-settings",
+			"group": "Word card & popup",
+			"title": "Shorter popup: everyday switches on top, the rest under More settings; phone wording (tap, not hover; no hotkeys); m.youtube.com counts as YouTube; “How to use it” opens the /lens/ guide",
+			"status": "live",
+			"file": "popup/"
+		},
+		{
+			"app": "extension",
+			"note": "",
+			"ver": "0.6.3",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "extension-phone-signin-next-step",
+			"group": "Word card & popup",
+			"title": "Phone sign-in: the connected page says the level test opened next, then go back to YouTube",
+			"status": "live",
+			"file": "content/connect.js, background.js"
+		},
+		{
+			"app": "extension",
+			"note": "See language-lens/ROADMAP.md, Simplify",
+			"ver": "",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "extension-simplify-options",
+			"group": "",
+			"title": "Simpler Language Lens: options waiting for Sherif (Today numbers, sign-up for non-members, music tools in the popup, word card buttons)",
+			"status": "planned",
+			"file": "ROADMAP.md"
+		},
+		{
 			"id": "extension-lens-switch-on-youtube",
 			"app": "extension",
 			"group": "YouTube",
@@ -1411,5 +1483,5 @@
 			"audience": "all"
 		}
 	],
-	"versions": "Sawa Lens 0.23.3 · Sawa Tracker 2.16.1 · Language Lens 0.6.2 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.23.3 · Sawa Tracker 2.16.1 · Language Lens 0.6.3 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
 }
