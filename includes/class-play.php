@@ -114,6 +114,9 @@ final class Sawa_Tracker_Play {
 	public static function sync( WP_REST_Request $r ) {
 		global $wpdb;
 		$uid  = self::uid();
+		if ( class_exists( 'Sawa_Lens_Usage' ) ) {
+			Sawa_Lens_Usage::mark( $uid, 'game' ); // weekly usage (Sawa Lens → Weekly usage): played today
+		}
 		$town = Sawa_Tracker_World::at( $uid );
 		$me   = Sawa_Tracker_Game::m( $uid, 'wpos', array() );
 		$me   = is_array( $me ) ? $me : array();
