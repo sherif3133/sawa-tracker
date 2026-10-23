@@ -962,7 +962,7 @@
       case 'boss_down': return '<b>The community defeated ' + esc(bossName(d.name)) + '!</b> ' + d.fighters + ' fought and each got +9 🪙';
       case 'streak_lost': return name(e.who) + ' lost a ' + d.streak + ' day streak. Send some support.';
       case 'freeze_used': return name(e.who) + ' kept a ' + d.streak + ' day streak with a freeze';
-      case 'joined': return name(e.who) + ' joined as ' + esc(cls(d.class).ar) + '. Welcome!';
+      case 'joined': return name(e.who) + ' joined us. Welcome!'; // no class: students pick their role in the Silk Road, not here
       case 'quest_done': return name(e.who) + ' completed today\'s quest' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
       case 'group_invite': return name(e.who) + ' added you to the group <b dir="auto">' + esc(d.name) + '</b>';
       case 'mention': return name(e.who) + ' mentioned you' + (d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');

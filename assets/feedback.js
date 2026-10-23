@@ -142,9 +142,9 @@
      Each moment is asked once, and never more than one question a day. */
   var ASKS = {
     first_battle: 'Your first battle! Was anything confusing? · أول معركة! فيه حاجة كانت مش واضحة؟',
-    first_caravan: 'You opened the caravan board. Was it clear what to do here? · كان واضح تعمل إيه هنا؟',
-    first_boss: 'You met a town boss. Did you know what you needed to do? · كنت عارف المطلوب منك؟',
-    first_level: 'Level up! Do you know what your new level gives you? · عارف المستوى الجديد بيديك إيه؟',
+    first_caravan: 'You opened the caravan board. Was anything unclear here? · فيه حاجة مش واضحة هنا؟',
+    first_boss: 'You met a town boss. Was anything unclear about what to do? · فيه حاجة مش واضحة في المطلوب منك؟',
+    first_level: 'Level up! Is anything unclear about what your new level gives you? · فيه حاجة مش واضحة في المستوى الجديد؟',
     first_week: 'You have been on the road for a week. What made you come back today? · إيه اللي خلاك ترجع النهارده؟'
   };
   window.addEventListener('sawa:moment', function (e) {

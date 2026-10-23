@@ -959,7 +959,7 @@
       case 'boss_down': return '<b>المجتمع هزم ' + esc(bossName(d.name)) + '!</b> ' + d.fighters + ' حاربوا وكل واحد خد +3 SP';
       case 'streak_lost': return name(e.who) + ' خسر ستريك ' + d.streak + ' يوم. ابعتله دعم.';
       case 'freeze_used': return name(e.who) + ' حافظ على ستريك ' + d.streak + ' يوم بتجميد';
-      case 'joined': return name(e.who) + ' انضم كـ' + esc(cls(d.class).ar) + '. أهلًا بيه!';
+      case 'joined': return name(e.who) + ' انضم لينا. أهلًا بيه!'; // no class: students pick their role in the Silk Road, not here
       case 'quest_done': return name(e.who) + ' خلّص مهمة النهارده' + (d.note ? ': <span dir="auto">"' + esc(d.note) + '"</span>' : '');
       case 'group_invite': return name(e.who) + ' ضافك لجروب <b dir="auto">' + esc(d.name) + '</b>';
       case 'mention': return name(e.who) + ' عمل لك منشن' + (d.text ? ': <span dir="auto">"' + esc(d.text) + '"</span>' : '');

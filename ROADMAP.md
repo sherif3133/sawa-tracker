@@ -2,6 +2,19 @@
 
 Built on 22 Oct 2026: the reply goal is an optional step in the app's Today plan (Sawa Lens `today_plan`), and chat English is checked automatically: messages queue per learner (`sawa_lens_chatq`), an hourly job checks each learner once a day in one batch (cap 150 a day, switch in Sawa Lens settings), errors go to the error log with source "chat", right uses pay the improvement bonus (`record_uses`), and the learner gets a private `chat_review` notification. Chat XP per message and the per-skill trends were already in place (`class-xp.php`, `Sawa_Lens_Skills::trends`). Also built: the weekly best helper in the chat (most counted replies, 5+; feed shout-out, weekly report, 30 coins + elixir + 30 XP + the title Helper of the Week) and voice notes in the daily check (up to two a day transcribed, saved on the message, and checked as speaking, source "voice").
 
+## Playtest 23 Oct 2026 (2.16.1, as a new A2 student, phone and computer)
+
+Fixed in 2.16.2: the town stopped building halfway on the first visit after creating a traveller (a stale caravanserai sprite from the scene restart), the reply goal showed twice in the game's Today plan, the 500-words list showed long first-sense dictionary text, the beta questions' "Yes" meant the opposite of the question, and the feed announced a "Warrior" class nobody picked.
+
+Bigger ideas, waiting for Sherif:
+
+- **Too many lists.** A new student meets four daily checklists (the app's Today plan, the road camps, 3 daily quests, the reply goal) and six community goals (weekly boss + shield, caravanserai, road group goal, clan race, party goal, Helper of the Week). Options: (a) one "Today" list in the game that merges road camps, plan steps and the reply goal, with daily quests folded in as rewards on those steps; (b) keep all lists but hide the weekly ones until stage 4; (c) leave as is. **Pick: (a)**, and one weekly community goal (the caravanserai, which already counts battles, cards and help) while the others become lines on it.
+- **The road strip mixes camps and other buttons.** "Today's road 0/4" sits above seven icons (chapter, 500 words, 4 camps, boss) plus three bonus ones, so it is hard to see which four count. Pick: put the 4 camps in one group with a line through them, and move 📜 and 📚 into the chapter panel.
+- **Work done twice with /app.** The road camps (video, story, cards, write) are the same tools as /app Learn, and the quest "Finish 3 skill-tree practice sets" sends students out of the game. Pick: keep the game as the place to do them, and have /app Today link "Do it in the Silk Road" for the same steps, so students choose one place and the other just shows ✓.
+- **Two class systems.** The tracker still has classes (Warrior, …) from before the game's roles (Guardian, Healer, Mage, Trickster). Pick: show the game role everywhere and retire the tracker classes (Warriors' +10 attack becomes the Guardian's).
+- **Dictionary senses (Sawa Lens).** The first sense of common words is often an unusual one ("even: divisible by two", "state: حكومي"). That needs a change in Sawa Lens's dictionary (most common sense first); the game now hides long English glosses meanwhile.
+- **New student's Home.** All-zero stat cards ("50% Habit health" on day 1) and "Log your day" first. Pick: hide the stats until day 2 and put the Today plan first.
+
 ## Comeback mode: Wounds without shame (planned 22 Oct 2026)
 
 Part of comeback mode from the learner research (see `../sawa-lens/ROADMAP.md`, "From the learner research"). Learners say missed days make them feel guilty, avoid tracking because it "reminds me of my weakness", and then restart from zero somewhere else. Wounds (`class-wounds.php`) currently take a quarter of the hero's health for each missed day, fell the hero after 4, and cost the clan a fight each day. That risks feeding the same guilt.

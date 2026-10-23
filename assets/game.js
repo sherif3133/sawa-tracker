@@ -359,7 +359,7 @@
       init: function (d) { this.spawn = d && d.spawn; this.pos = d && d.pos; },
       create: function () {
         var S = this, w = H.world(), t = w.at, th = THEMES[t] || THEMES[1];
-        S.frozen = false; S.fighting = null; S.leaving = false; S.cool = 0; // the scene object is reused on restart
+        S.frozen = false; S.fighting = null; S.leaving = false; S.cool = 0; S.seraiSpr = null; // the scene object is reused on restart
         S.t = t; S.th = th; S.lights = []; S.others = {}; S.labels = {}; S.notes = []; S.near = null; S.cool = 0; S.monsters = [];
         lightTex(S);
         // ground
@@ -1527,10 +1527,10 @@
     if (!H.lens) return H.go('today');
     var b = panel('sg-todayp', '📅 Today\'s plan', '<p class="sg-wait">…</p>');
     H.lens.api('today').then(function (d) {
-      var inGame = { review: 1, use: 1, log: 1 };
+      var inGame = { review: 1, use: 1, log: 1, reply: 1 };
       b.innerHTML = '<p class="small">Every step gives you one more fight today' + (d.perfect ? ' — and you had a perfect day! 🌟' : '.') + '</p><ul class="sg-plan">' + d.items.map(function (it) {
         return '<li class="' + (it.done ? 'done' : '') + '"><span>' + (it.done ? '✓' : '○') + '</span><div><b>' + esc(it.t) + '</b><small>' + esc(it.sub || '') + '</small></div>' + (it.done ? '' : '<button data-go="' + esc(it.k) + '" data-to="' + esc(it.go || '') + '"' + (inGame[it.k] ? ' class="pri"' : '') + '>' + (inGame[it.k] ? 'Do it here' : 'Go') + '</button>') + '</li>';
-      }).join('') + TODAY.replyRow() + '</ul>';
+      }).join('') + (d.items.some(function (it) { return it.k === 'reply'; }) ? '' : TODAY.replyRow()) + '</ul>'; // newer Sawa Lens sends the reply goal as a step itself
       b.querySelectorAll('[data-go]').forEach(function (x) { x.onclick = function () { var k = x.dataset.go; if (k === 'reply') CHAT.show(); else if (k === 'review') REV.show(); else if (k === 'use') CHAT.show(); else if (k === 'log') { closePanel(); H.log(); } else H.go(x.dataset.to || (k === 'collect' ? 'scan' : k)); }; });
     }, function (x) { b.innerHTML = '<p class="sg-err">' + esc(x.message) + '</p>'; });
   };
@@ -2217,7 +2217,7 @@
       b.innerHTML = '<p>These 500 words are about half of everything people say in English. Know them, and every video, song and story gets easier.</p>'
         + '<h4>' + d.known + ' of ' + d.to + ' words you know</h4><div class="sg-gbar"><i style="width:' + pct + '%"></i></div>'
         + '<p class="small">' + d.fromLevel + ' easy ones for your level (' + esc(d.level) + ') · ' + (d.known - d.fromLevel) + ' you marked as known or remember long-term · ' + d.learning + ' in your review cards now</p>'
-        + (d.today.length ? '<h4>Today\'s 10 words</h4><ul class="sg-tw">' + d.today.map(function (w, i) { var m = H.lens.meanings(H.lens.lemmaOf(w))[0] || {}; return '<li><b dir="ltr">' + esc(w) + ' <button class="sg-say" data-say="' + esc(w) + '" aria-label="Listen">🔊</button></b><small dir="ltr">' + esc(m.en || m.pos || '') + '</small><span dir="rtl">' + esc(m.ar || '') + '</span><button data-bw="' + i + '" aria-label="Add to review cards">＋</button></li>'; }).join('') + '</ul><div class="sg-opts"><button class="pri" data-ball>＋ Add all 10 to my cards</button></div><p class="small">Cards you add come back in your reviews, and monsters attack with them.</p>' : '<p><b>🎉 You know all 500!</b> The next 500 come soon.</p>');
+        + (d.today.length ? '<h4>Today\'s 10 words</h4><ul class="sg-tw">' + d.today.map(function (w, i) { var m = H.lens.meanings(H.lens.lemmaOf(w))[0] || {}; return '<li><b dir="ltr">' + esc(w) + ' <button class="sg-say" data-say="' + esc(w) + '" aria-label="Listen">🔊</button></b><small dir="ltr">' + esc(m.en && m.en.length <= 28 ? m.en : m.pos || '') + '</small><span dir="rtl">' + esc(m.ar || '') + '</span><button data-bw="' + i + '" aria-label="Add to review cards">＋</button></li>'; }).join('') + '</ul><div class="sg-opts"><button class="pri" data-ball>＋ Add all 10 to my cards</button></div><p class="small">Cards you add come back in your reviews, and monsters attack with them.</p>' : '<p><b>🎉 You know all 500!</b> The next 500 come soon.</p>');
       var add = function (x) { var w = d.today[+x.dataset.bw]; x.disabled = true; return H.lens.api('library/word', { body: { lemma: w, status: 'learning', sentence: '', title: 'Silk Road · the 500 most common words' } }).then(function () { x.textContent = '✓'; }, function (e) { x.disabled = false; say(e.message); }); };
       b.querySelectorAll('[data-bw]').forEach(function (x) { x.onclick = function () { add(x).then(function () { say('“' + d.today[+x.dataset.bw] + '” is now a review card.'); }); }; });
       var all = b.querySelector('[data-ball]'); if (all) all.onclick = function () { all.disabled = true; Promise.all([].map.call(b.querySelectorAll('[data-bw]:not(:disabled)'), add)).then(function () { all.textContent = '✓ Added'; say('10 new review cards. They come back in your reviews!', 4000); }); };
