@@ -546,7 +546,15 @@
   "<p class=\"muted small\">ملقيناش حاجة. جرّب اسم تاني أو الصق اللينك.</p>": "<p class=\"muted small\">Nothing found. Try another name or paste the link.</p>",
   "<p class=\"small boss-shield\">🛡 الوحش عليه درع: الضربات نصها بس، لحد ما ": "<p class=\"small boss-shield\">🛡 The boss has a shield: hits only do half damage until ",
   " طلاب يكسبوا معركة في طريق الحرير الأسبوع ده (": " students win a battle on the Silk Road this week (",
-  "<p class=\"small boss-shield\">🛡 الدرع اتكسر! كل دقيقة مذاكرة بقت ضربة كاملة.</p>": "<p class=\"small boss-shield\">🛡 The shield is broken! Every study minute is a full hit now.</p>"
+  "<p class=\"small boss-shield\">🛡 الدرع اتكسر! كل دقيقة مذاكرة بقت ضربة كاملة.</p>": "<p class=\"small boss-shield\">🛡 The shield is broken! Every study minute is a full hit now.</p>",
+  "<div class=\"seg\" role=\"tablist\"><button data-act=\"auth-tab\" data-tab=\"in\" aria-pressed=\"true\">تسجيل الدخول</button><button data-act=\"auth-tab\" data-tab=\"join\" aria-pressed=\"false\">": "<div class=\"seg\" role=\"tablist\"><button data-act=\"auth-tab\" data-tab=\"in\" aria-pressed=\"true\">Sign in</button><button data-act=\"auth-tab\" data-tab=\"join\" aria-pressed=\"false\">",
+  "حساب مجاني": "Free account",
+  "اطلب تدخل": "Ask to join",
+  "<p class=\"muted small\">حسابك المجاني بيفتح على طول، من غير موافقة. فيه المراجعة: كروت المراجعة والكلمات المحفوظة. باقي التطبيق للأعضاء.</p>": "<p class=\"muted small\">Your free account opens right away, no approval needed. It has Review: your review cards and saved words. The rest of the app is for members.</p>",
+  "اعمل حسابي": "Create my account",
+  "<h2>🔒 للأعضاء بس</h2><p class=\"muted\">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه المراجعة: كروت المراجعة والكلمات المحفوظة.</p>": "<h2>🔒 Members only</h2><p class=\"muted\">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has Review: your review cards and saved words.</p>",
+  "\" target=\"_blank\" rel=\"noopener\">ادخل سوا انجليش</a>": "\" target=\"_blank\" rel=\"noopener\">Join Sawa English</a>",
+  "#review\">روح للمراجعة</a>": "#review\">Go to Review</a>"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

@@ -49,7 +49,7 @@ final class Sawa_Tracker_Front {
 			$url = class_exists( 'Sawa_Lens_App' ) ? Sawa_Lens_App::url() : home_url( '/' );
 		}
 		$uid    = get_current_user_id();
-		$status = $uid ? ( Sawa_Tracker_Game::is_member( $uid ) ? 'approved' : ( 'denied' === Sawa_Tracker_Game::m( $uid, 'status' ) ? 'denied' : 'pending' ) ) : 'guest';
+		$status = $uid ? ( Sawa_Tracker_Game::is_member( $uid ) ? 'approved' : ( 'denied' === Sawa_Tracker_Game::m( $uid, 'status' ) ? 'denied' : ( class_exists( 'Sawa_Lens_Tiers' ) && Sawa_Lens_Tiers::active( $uid ) ? 'locked' : 'pending' ) ) ) : 'guest';
 		$acts   = array();
 		foreach ( Sawa_Tracker_Game::ACTIVITIES as $name => $a ) {
 			$acts[] = array( 'name' => $name ) + $a;

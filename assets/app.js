@@ -189,7 +189,7 @@
       + '<li>' + ico('boss') + '<span>حارب وحش الأسبوع مع المجتمع كله: كل دقيقة مذاكرة ضربة</span></li>'
       + '<li>' + ico('trophy') + '<span>اكسب أوسمة واطلع في ترتيب الاستمرارية</span></li></ul></section>'
       + '<section class="card auth-card">'
-      + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">تسجيل الدخول</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">اطلب تدخل</button></div>'
+      + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">تسجيل الدخول</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">' + (cfg.instant ? 'حساب مجاني' : 'اطلب تدخل') + '</button></div>'
       + '<form class="stack" id="f-in" method="post" action="' + esc(cfg.loginUrl) + '">'
       + '<label class="f">الإيميل أو اسم المستخدم<input name="log" autocomplete="username" required dir="ltr"></label>'
       + '<label class="f">الباسورد<input name="pwd" type="password" autocomplete="current-password" required dir="ltr"></label>'
@@ -198,14 +198,14 @@
       + '<button class="btn primary wide" type="submit">ادخل</button>'
       + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">نسيت الباسورد؟</a></form>'
       + '<form class="stack" id="f-join" hidden>'
-      + '<p class="muted small">التراكر لأعضاء مجتمع سوا انجليش. اطلب تدخل، وأول ما نوافق تقدر تدخل على طول.</p>'
+      + (cfg.instant ? '<p class="muted small">حسابك المجاني بيفتح على طول، من غير موافقة. فيه المراجعة: كروت المراجعة والكلمات المحفوظة. باقي التطبيق للأعضاء.</p>' : '<p class="muted small">التراكر لأعضاء مجتمع سوا انجليش. اطلب تدخل، وأول ما نوافق تقدر تدخل على طول.</p>')
       + '<label class="f">اسمك<input name="name" autocomplete="name" required dir="auto"></label>'
       + '<label class="f">الإيميل<input name="email" type="email" autocomplete="email" required dir="ltr"></label>'
       + '<label class="f">الباسورد <small>٨ حروف على الأقل</small><input name="password" type="password" autocomplete="new-password" minlength="8" required dir="ltr"></label>'
       + '<label class="f">اسمك في مجتمع Skool <small>عشان نلاقيك</small><input name="note" dir="auto"></label>'
       + '<input name="website" class="hpot" tabindex="-1" autocomplete="off" aria-hidden="true">'
       + '<p class="err" role="alert"></p>'
-      + '<button class="btn primary wide" type="submit">اطلب تدخل</button></form>'
+      + '<button class="btn primary wide" type="submit">' + (cfg.instant ? 'اعمل حسابي' : 'اطلب تدخل') + '</button></form>'
       + '</section></div>';
     $('#f-join').addEventListener('submit', function (e) {
       e.preventDefault();
@@ -216,6 +216,15 @@
       busy(btn, true, 'بيتبعت…');
       api('/request', { method: 'POST', body: body }).then(function () { location.reload(); }, function (x) { busy(btn, false); err.textContent = x.message; });
     });
+  }
+  /** A free account (Sawa Lens plans): the tracker, the game and the chat are for members. */
+  function renderLocked() {
+    var p = cfg.plan || {};
+    $('#app').innerHTML = '<div class="center-card card lock-card">'
+      + '<div class="big-ic">' + ico('lock') + '</div>'
+      + '<h2>🔒 للأعضاء بس</h2><p class="muted">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه المراجعة: كروت المراجعة والكلمات المحفوظة.</p>'
+      + '<a class="btn primary" href="' + esc(p.join || '#') + '" target="_blank" rel="noopener">ادخل سوا انجليش</a>'
+      + (EMB ? '' : '<a class="btn" href="' + esc(cfg.here) + '#review">روح للمراجعة</a>') + '</div>';
   }
   function renderWaiting(denied) {
     $('#app').innerHTML = '<div class="center-card card">'
@@ -2076,6 +2085,7 @@
   if (cfg.status === 'guest') renderGuest();
   else if (cfg.status === 'pending') renderWaiting(false);
   else if (cfg.status === 'denied') renderWaiting(true);
+  else if (cfg.status === 'locked') renderLocked();
   else api('/me').then(function (j) { S.data = j; start(); }, function (x) {
     $('#app').innerHTML = '<div class="center-card card"><div class="big-ic">' + ico('info') + '</div><h2>التراكر مش راضي يفتح</h2><p class="muted">' + esc(x.message) + '</p><button class="btn primary" onclick="location.reload()">جرب تاني</button></div>';
   });

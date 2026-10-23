@@ -244,8 +244,15 @@ final class Sawa_Tracker_Game {
 		update_user_meta( $uid, 'sawa_' . $key, $value );
 	}
 
+	/** Can use the tracker. With Sawa Lens 0.25.0+ a free account needs the tracker, game or chat unlocked (Settings → Free vs Member). */
 	public static function is_member( $uid ) {
-		return $uid && ( 'approved' === self::m( $uid, 'status' ) || user_can( $uid, 'manage_options' ) );
+		if ( ! $uid || ( 'approved' !== self::m( $uid, 'status' ) && ! user_can( $uid, 'manage_options' ) ) ) {
+			return false;
+		}
+		if ( ! class_exists( 'Sawa_Lens_Tiers' ) ) {
+			return true;
+		}
+		return (bool) array_intersect( array( 'tracker', 'game', 'community' ), Sawa_Lens_Tiers::allowed( $uid ) );
 	}
 
 	public static function goal( $uid ) {
@@ -416,7 +423,9 @@ final class Sawa_Tracker_Game {
 				'fields'   => 'ID',
 			)
 		);
-		return array_map( 'intval', array_unique( array_merge( $approved, $admins ) ) );
+		$ids = array_map( 'intval', array_unique( array_merge( $approved, $admins ) ) );
+		// Free accounts without the tracker don't show up on boards, in clans or in invites.
+		return class_exists( 'Sawa_Lens_Tiers' ) ? array_values( array_filter( $ids, array( __CLASS__, 'is_member' ) ) ) : $ids;
 	}
 
 	/* ------------------------------------------------------------------ current state */

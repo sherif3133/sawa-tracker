@@ -51,6 +51,9 @@ final class Sawa_Tracker_Rest {
 			return new WP_Error( 'signed_out', 'سجّل دخول تاني.', array( 'status' => 401 ) );
 		}
 		if ( ! Sawa_Tracker_Game::is_member( $uid ) ) {
+			if ( class_exists( 'Sawa_Lens_Tiers' ) && Sawa_Lens_Tiers::active( $uid ) ) {
+				return Sawa_Lens_Tiers::locked_error( 'tracker' ); // a free account: members only
+			}
 			return new WP_Error( 'pending', 'حسابك لسه مستني الموافقة.', array( 'status' => 403 ) );
 		}
 		return true;
@@ -470,6 +473,8 @@ final class Sawa_Tracker_Rest {
 			return array( 'ok' => true );
 		}
 		$ip  = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ?? ( $_SERVER['REMOTE_ADDR'] ?? '' ) ) );
+		$instant = class_exists( 'Sawa_Lens_Tiers' ) && Sawa_Lens_Tiers::instant(); // Sawa Lens 0.25.0+: a free account at once, no approval
+		$ar      = class_exists( 'Sawa_Lang' ) && Sawa_Lang::is_ar();
 		$key = 'sawa_tr_req_' . md5( $ip );
 		if ( (int) get_transient( $key ) >= 5 ) {
 			return $fail( 'طلبات كتير من نفس الاتصال. جرب تاني بعد شوية.' );
@@ -490,6 +495,12 @@ final class Sawa_Tracker_Rest {
 		if ( email_exists( $email ) ) {
 			return $fail( 'في حساب بالإيميل ده. سجّل دخول، أو غيّر الباسورد لو نسيته.' );
 		}
+		if ( $instant ) {
+			$no = Sawa_Lens_Tiers::signup_check( $email, $ip );
+			if ( $no ) {
+				return $fail( $ar ? $no[1] : $no[0] );
+			}
+		}
 		$login = sanitize_user( strtolower( strtok( $email, '@' ) ), true );
 		$base  = $login ? $login : 'student';
 		$i     = 1;
@@ -509,13 +520,19 @@ final class Sawa_Tracker_Rest {
 		if ( is_wp_error( $uid ) ) {
 			return $fail( $uid->get_error_message() );
 		}
-		Sawa_Tracker_Game::set( $uid, 'status', 'pending' );
+		if ( $instant ) {
+			update_user_meta( $uid, Sawa_Lens_Tiers::META, 'free' );
+			Sawa_Tracker_Game::set( $uid, 'status', 'approved' );
+			Sawa_Lens_Tiers::count_signup( $ip );
+		} else {
+			Sawa_Tracker_Game::set( $uid, 'status', 'pending' );
+		}
 		Sawa_Tracker_Game::set( $uid, 'requested', current_time( 'mysql' ) );
 		if ( $note ) {
 			Sawa_Tracker_Game::set( $uid, 'request_note', $note );
 		}
 		set_transient( $key, (int) get_transient( $key ) + 1, HOUR_IN_SECONDS );
-		if ( Sawa_Tracker_Game::settings()['notify_admin'] ) {
+		if ( ! $instant && Sawa_Tracker_Game::settings()['notify_admin'] ) {
 			wp_mail(
 				get_option( 'admin_email' ),
 				sprintf( 'Sawa Tracker: %s asked to join', $name ),
