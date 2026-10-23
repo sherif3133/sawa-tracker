@@ -1401,9 +1401,9 @@
 			"group": "",
 			"title": "Story seasons: 8-episode series with cliffhangers (The Interview A2, Night Shift B1)",
 			"desc": "Heroes aged 22-35 with job problems, one episode a day (+2 at weekends), \"Previously\" comeback box, light choices, words that come back, a phrase you can steal; design in sawa-lens/docs/stories-v2-design.md",
-			"status": "building",
+			"status": "live",
 			"note": "",
-			"ver": "",
+			"ver": "Sawa Lens 0.23.6",
 			"date": "2026-10-23",
 			"file": "sawa-lens/docs/stories-v2-design.md",
 			"audience": "all"
@@ -1512,9 +1512,9 @@
 			"app": "tracker",
 			"group": "The world",
 			"title": "Fixes from the 23 Oct playtest: the town loads fully the first time after you create your traveller (the boss and the rest of the town were missing until you came back), the reply goal shows once in Today's plan, the 500-words list shows short meanings instead of long dictionary text, the beta questions ask \"Was anything unclear?\" so Yes means yes, and the feed says \"joined us\" instead of a class nobody picked",
-			"status": "done",
+			"status": "live",
 			"note": "",
-			"ver": "Sawa Tracker 2.16.2",
+			"ver": "Sawa Tracker 2.16.3",
 			"date": "2026-10-23",
 			"file": "sawa-tracker assets/game.js, feedback.js, app.js",
 			"audience": "all"
@@ -1533,5 +1533,5 @@
 			"audience": "all"
 		}
 	],
-	"versions": "Sawa Lens 0.23.5 · Sawa Tracker 2.16.2 · Language Lens 0.6.3 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.23.6 · Sawa Tracker 2.16.3 · Language Lens 0.6.3 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
 }

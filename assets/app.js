@@ -639,7 +639,7 @@
   /* ------------------------------------------------------------ one new thing a day (guidance inside the app, never all at once) */
   // [key, stage it opens, title, what to try, button, where it goes]
   var NEW_THINGS = [
-    ['review', 1, '🃏 Review cards', 'Every word you save becomes a card. Five minutes a day, and the app shows each card just before you forget it.', 'Review now', 'review'],
+    ['review', 2, '🃏 Review cards', 'Every word you save becomes a card. Five minutes a day, and the app shows each card just before you forget it.', 'Review now', 'review'],
     ['read', 1, '📖 Read a text', 'Paste any English text (or a PDF): tap a word for its meaning, save the ones you want to learn.', 'Read a text', 'read'],
     ['lens', 1, '🔎 Language Lens on YouTube', 'On a computer, add Language Lens to Chrome: hover any word in a video for its meaning, and save it with one click.', 'See how', 'start'],
     ['write', 3, '✍ Check your writing', 'Write three sentences about your day. You get every correction, and your mistakes open points in your skill tree.', 'Write', 'write'],
