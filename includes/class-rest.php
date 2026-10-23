@@ -424,7 +424,8 @@ final class Sawa_Tracker_Rest {
 		}
 		$files = $r->get_file_params();
 		if ( ! empty( $files['avatar'] ) ) {
-			if ( 0 !== strpos( (string) $files['avatar']['type'], 'image/' ) ) {
+			// The browser's file type can be faked: check the file really is a picture, and not too big.
+			if ( ! empty( $files['avatar']['error'] ) || (int) $files['avatar']['size'] > 8 * MB_IN_BYTES || 0 !== strpos( (string) $files['avatar']['type'], 'image/' ) || ! wp_getimagesize( $files['avatar']['tmp_name'] ) ) {
 				return self::fail( new WP_Error( 'type', 'اختار صورة JPG أو PNG.' ) );
 			}
 			require_once ABSPATH . 'wp-admin/includes/file.php';
