@@ -1006,6 +1006,30 @@
 			"audience": "all"
 		},
 		{
+			"id": "extension-everyday-meanings-first",
+			"app": "extension",
+			"group": "Word card & popup",
+			"title": "Everyday meaning first on the word card (\"now: at the present moment\", not \"in the historical present\"); 371 meanings reordered in the 3,000 most-used words",
+			"status": "live",
+			"note": "",
+			"ver": "0.6.5",
+			"date": "2026-10-23",
+			"file": "tools/gloss/en-order.tsv, data/lexicon.json",
+			"audience": "all"
+		},
+		{
+			"id": "lens-everyday-meanings-first",
+			"app": "lens",
+			"group": "Reading, writing, speaking",
+			"title": "Everyday meaning first for word meanings in the app and the Silk Road game (same dictionary as Language Lens 0.6.5)",
+			"status": "live",
+			"note": "",
+			"ver": "0.23.7",
+			"date": "2026-10-23",
+			"file": "assets/lexicon.json",
+			"audience": "all"
+		},
+		{
 			"app": "extension",
 			"note": "",
 			"ver": "0.6.3",
@@ -1533,5 +1557,5 @@
 			"audience": "all"
 		}
 	],
-	"versions": "Sawa Lens 0.23.6 · Sawa Tracker 2.16.3 · Language Lens 0.6.3 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.23.7 · Sawa Tracker 2.16.3 · Language Lens 0.6.5 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
 }
