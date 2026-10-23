@@ -670,7 +670,7 @@
   function markHomeParts() {
     $('#app').setAttribute('part', 'home-root');
     $('#modal').setAttribute('part', 'home-layer');
-    [['.emb-bar', 'bar'], ['.hello', 'hello'], ['.hello .ring', 'ring'], ['.new-thing', 'new'], ['.stats', 'stats'], ['.board', 'board'], ['#hero-card', 'hero'], ['.quest', 'quest']].forEach(function (x) {
+    [['.emb-bar', 'bar'], ['.hello', 'hello'], ['.hello .ring', 'ring'], ['.new-thing', 'new'], ['.stats', 'stats'], ['.board', 'board'], ['#hero-card', 'hero'], ['.quest', 'quest'], ['#pt-slot', 'partners']].forEach(function (x) {
       var el = $(x[0]); if (el) el.setAttribute('part', 't-' + x[1]);
     });
   }
