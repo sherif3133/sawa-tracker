@@ -1481,7 +1481,32 @@
 			"date": "2026-10-23",
 			"file": "sawa-site/templates/lens.php, sawa-lens/includes/class-app.php",
 			"audience": "all"
+		},
+		{
+			"id": "lens-simpler-app",
+			"app": "lens",
+			"group": "Home and daily habit",
+			"title": "A simpler app: the stages screen has one name (\"Your stages\"), a locked tool tells you which stage opens it, Learn shows what you can use first, Arabic names under the tiles when العربية is on, Scan sits in Learn only, \"Writing progress\" is one name, the Level test tile always shows, clear step buttons, no \"tracker\" jargon, and no empty charts on a new student's Home",
+			"status": "progress",
+			"note": "Built and checked on phone and computer width; waiting for release.",
+			"ver": "Sawa Lens 0.23.5",
+			"date": "2026-10-23",
+			"file": "sawa-lens assets/app.js, app.css",
+			"audience": "all"
+		},
+		{
+			"id": "lens-simplify-next",
+			"app": "lens",
+			"group": "Home and daily habit",
+			"title": "Simplify more: today's plan first on phones, one way to log study, one daily guide card, Read + Scan as one tile, Watch back in Learn, the language question on day 1",
+			"desc": "",
+			"status": "planned",
+			"note": "Options and picks in sawa-lens/ROADMAP.md (\"Simplifying the app\"); waiting for Sherif.",
+			"ver": "",
+			"date": "2026-10-23",
+			"file": "sawa-lens ROADMAP.md",
+			"audience": "all"
 		}
 	],
-	"versions": "Sawa Lens 0.23.3 · Sawa Tracker 2.16.1 · Language Lens 0.6.3 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.23.5 · Sawa Tracker 2.16.1 · Language Lens 0.6.3 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
 }
