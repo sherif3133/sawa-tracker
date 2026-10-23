@@ -287,6 +287,30 @@
 			"audience": "all"
 		},
 		{
+			"id": "lens-vocab-profile-percent",
+			"app": "lens",
+			"group": "Reading, writing, speaking",
+			"title": "\"You know about N% of the words\" on YouTube and websites comes from your vocabulary profile (level check or placement test), and changes as soon as you take a test or mark words",
+			"status": "live",
+			"note": "Before any test it uses the usual profile of your level. Extension 0.9.0 (store upload pending).",
+			"ver": "0.28.0",
+			"date": "2026-10-23",
+			"file": "sawa-lens includes/class-store.php (vocab_profile), language-lens core/lens-core.js (chance, grade)",
+			"audience": "all"
+		},
+		{
+			"id": "lens-placement-scoring-v2",
+			"app": "lens",
+			"group": "Reading, writing, speaking",
+			"title": "Placement test scoring v2: vocabulary counted once, borderline note, levels never drop on one test, test history, no repeated questions for 90 days, weekly recalibration",
+			"status": "live",
+			"note": "Steps 3–5 (quick estimate, new item bank, full 40-minute test) wait on board answers.",
+			"ver": "0.28.0",
+			"date": "2026-10-23",
+			"file": "includes/class-placement.php, tools/placement-test.js",
+			"audience": "all"
+		},
+		{
 			"id": "lens-find-english-content-you-ll-love",
 			"app": "lens",
 			"group": "Content made for each student",
