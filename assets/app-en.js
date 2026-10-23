@@ -638,6 +638,15 @@
       + '<div class="ring" style="--p:' + goalPct + '" role="img" aria-label="Today ' + s.todayMinutes + ' of ' + s.goal + ' minutes"><span><b>' + s.todayMinutes + '</b> of ' + s.goal + ' min</span></div></section>'
       + newThingCard() + statCards(s) + boardCard(true) + '<div id="hero-card" dir="ltr"></div>' + questCard();
     loadHero(); paintBoard(); // your stats and the leaderboard come first on Home
+    if (EMB) markHomeParts();
+  }
+  /** In the one app, Home is one page grid: name each block (part="t-…") so sawa-lens app.css can place it with ::part(). Nothing changes here. */
+  function markHomeParts() {
+    $('#app').setAttribute('part', 'home-root');
+    $('#modal').setAttribute('part', 'home-layer');
+    [['.emb-bar', 'bar'], ['.hello', 'hello'], ['.hello .ring', 'ring'], ['.new-thing', 'new'], ['.stats', 'stats'], ['.board', 'board'], ['#hero-card', 'hero'], ['.quest', 'quest']].forEach(function (x) {
+      var el = $(x[0]); if (el) el.setAttribute('part', 't-' + x[1]);
+    });
   }
   /* ------------------------------------------------------------ one new thing a day (guidance inside the app, never all at once) */
   // [key, stage it opens, title, what to try, button, where it goes]
