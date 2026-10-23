@@ -1712,6 +1712,19 @@
 			"note": "Waiting for the Google Cloud OAuth client to connect YouTube. Instagram and Facebook come later through Meta (notes ready, nothing submitted).",
 			"ver": "0.1.0",
 			"file": "sawa-inbox/includes/class-inbox.php"
+		},
+		{
+			"desc": "A 💬 Send feedback link in the Language Lens popup (also when signed out) and in the word card. Pick Bug / Idea / Confusing / Like, write a note, optionally add the page address (on for bugs) and an email when signed out. Extension version, browser and phone/computer are attached. Works on phones. English, or Arabic for Arabic learners. 5 notes an hour per student or connection.",
+			"date": "2026-10-23",
+			"audience": "all",
+			"id": "lens-send-feedback",
+			"app": "lens",
+			"group": "Accounts",
+			"title": "Send feedback from inside Language Lens",
+			"status": "built",
+			"note": "Lands in the same inbox as the Sawa app Beta feedback, under the screen \"Language Lens\": wp-admin → Sawa Tracker → Beta feedback (filter by type, count badge for new notes).",
+			"ver": "Language Lens 0.8.0 + Sawa Lens 0.26.0",
+			"file": "language-lens extension/content/feedback.js; sawa-lens includes/class-feedback.php"
 		}
 	],
 	"versions": "Sawa Lens 0.25.2 · Sawa Tracker 2.16.5 · Language Lens 0.7.1 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
