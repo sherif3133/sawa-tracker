@@ -26,8 +26,8 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) bad++; 
 	const errs = [];
 	p.on('pageerror', (e) => errs.push(e.message + ' @ ' + String(e.stack || '').split(String.fromCharCode(10)).slice(1, 4).join(' | ')));
 	const api = (path, body) => p.evaluate((path, body) => fetch(SAWA_LENS.root + path, { method: body ? 'POST' : 'GET', credentials: 'same-origin', headers: { 'X-WP-Nonce': SAWA_LENS.nonce, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json()), path, body);
-	// First visit: make the traveller and click through the Elder's welcome, so nothing covers Rawi's dialog.
-	const clear = async () => { await sleep(4000); for (let i = 0; i < 12; i++) { const did = await p.evaluate(() => { const d = window.__q('.sg-dlg.on'); if (!d) return false; const b = d.querySelector('[data-o="save"]') || d.querySelector('[data-o="0"]') || d.querySelector('[data-o="x"]'); if (b) b.click(); return !!b; }); if (!did) return; await sleep(1500); } };
+	// First visit: make the traveller and close the Elder's welcome with “Bye” (his first button opens a camp and freezes the world).
+	const clear = async () => { await sleep(4000); for (let i = 0; i < 12; i++) { const did = await p.evaluate(() => { const d = window.__q('.sg-dlg.on'); if (!d) return false; const b = d.querySelector('[data-o="save"]') || d.querySelector('[data-o="x"]') || d.querySelector('[data-o="0"]'); if (b) b.click(); return !!b; }); if (!did) return; await sleep(1500); } };
 	const talk = async () => { await clear(); await p.evaluate(() => { const s = window.__pg.scene.getScene('World'); const t = s.npcs.find((n) => n.npc === 'teller'); s.near = { kind: 'npc', obj: t }; s.interact(); }); };
 	const dlg = async () => { await p.waitForFunction(() => { const d = window.__q('.sg-dlg.on'); return d && /Rawi/.test(d.innerText) && d.querySelector('[data-o]'); }, { timeout: 20000 }).catch(() => {}); await sleep(2500); return p.evaluate(() => { const d = window.__q('.sg-dlg.on'); return d ? d.innerText : ''; }); };
 
