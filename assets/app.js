@@ -181,20 +181,24 @@
   /* ------------------------------------------------------------ signed-out, pending */
   function brand(big) { return '<div class="brand' + (big ? ' big' : '') + '"><span class="wm">سوا</span><span class="wm-en">Tracker</span></div>'; }
   function renderGuest() {
+    var lens = /[?&]sawa_lens=connect/.test(cfg.here); // Language Lens sign-in: the form first, no tracker pitch
     $('#app').innerHTML = '<div class="auth">'
-      + '<section class="auth-hero">' + brand(true)
+      + (lens ? '' : '<section class="auth-hero">' + brand(true)
       + '<h1>اتعلم الانجليزي، <span class="red">سوا</span>.</h1>'
       + '<ul class="perks"><li>' + ico('flame') + '<span>ابني ستريك مذاكرة يومي وحافظ على صحة العادة عالية</span></li>'
       + '<li>' + ico('shield') + '<span>اختار كلاس واستخدم مهارات تحمي بيها زمايلك وتشدهم</span></li>'
       + '<li>' + ico('boss') + '<span>حارب وحش الأسبوع مع المجتمع كله: كل دقيقة مذاكرة ضربة</span></li>'
-      + '<li>' + ico('trophy') + '<span>اكسب أوسمة واطلع في ترتيب الاستمرارية</span></li></ul></section>'
+      + '<li>' + ico('trophy') + '<span>اكسب أوسمة واطلع في ترتيب الاستمرارية</span></li></ul></section>')
       + '<section class="card auth-card">'
+      + (/[?&]sawa_lens=connect/.test(cfg.here) ? '<p class="small"><b>Language Lens</b>: سجّل دخول أو اعمل حساب مجاني، وهيتربط على طول.</p>' : '')
+      + (cfg.google ? '<div class="g-wrap"><div class="g-btn"></div><p class="err" id="g-err" role="alert"></p><p class="or small muted">أو بالإيميل</p></div>' : '')
       + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">تسجيل الدخول</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">' + (cfg.instant ? 'حساب مجاني' : 'اطلب تدخل') + '</button></div>'
       + '<form class="stack" id="f-in" method="post" action="' + esc(cfg.loginUrl) + '">'
       + '<label class="f">الإيميل أو اسم المستخدم<input name="log" autocomplete="username" required dir="ltr"></label>'
       + '<label class="f">الباسورد<input name="pwd" type="password" autocomplete="current-password" required dir="ltr"></label>'
       + '<label class="chk"><input type="checkbox" name="rememberme" value="forever" checked> افتكرني</label>'
       + '<input type="hidden" name="redirect_to" value="' + esc(cfg.here) + '">'
+      + (cfg.loginFailed ? '<p class="err" role="alert">الإيميل أو الباسورد مش صح.</p>' : '')
       + '<button class="btn primary wide" type="submit">ادخل</button>'
       + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">نسيت الباسورد؟</a></form>'
       + '<form class="stack" id="f-join" hidden>'
@@ -207,6 +211,7 @@
       + '<p class="err" role="alert"></p>'
       + '<button class="btn primary wide" type="submit">' + (cfg.instant ? 'اعمل حسابي' : 'اطلب تدخل') + '</button></form>'
       + '</section></div>';
+    if (cfg.google) googleButton();
     $('#f-join').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, btn = f.querySelector('button[type=submit]'), err = f.querySelector('.err');
@@ -225,6 +230,20 @@
       + '<h2>🔒 للأعضاء بس</h2><p class="muted">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه المراجعة: كروت المراجعة والكلمات المحفوظة.</p>'
       + '<a class="btn primary" href="' + esc(p.join || '#') + '" target="_blank" rel="noopener">ادخل سوا انجليش</a>'
       + (EMB ? '' : '<a class="btn" href="' + esc(cfg.here) + '#review">روح للمراجعة</a>') + '</div>';
+  }
+  /** "Continue with Google" (Sawa Lens: Settings → Free vs Member → Google client ID): signs in or makes a free account. */
+  function googleButton() {
+    var done = function () {
+      window.google.accounts.id.initialize({ client_id: cfg.google, callback: function (r) {
+        var er = $('#g-err'); if (er) er.textContent = '';
+        fetch(cfg.googleUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: r.credential }) })
+          .then(function (x) { return x.json().catch(function () { return {}; }).then(function (j) { if (!x.ok) throw new Error(j.message || 'الدخول بجوجل منفعش. جرب تاني.'); location.href = cfg.here; }); })
+          .catch(function (x) { var er2 = $('#g-err'); if (er2) er2.textContent = x.message; });
+      } });
+      $$('.g-btn').forEach(function (el) { window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280, locale: document.documentElement.lang || 'en' }); });
+    };
+    if (window.google && window.google.accounts) return done();
+    var s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = done; document.head.appendChild(s);
   }
   function renderWaiting(denied) {
     $('#app').innerHTML = '<div class="center-card card">'

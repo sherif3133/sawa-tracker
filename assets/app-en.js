@@ -184,20 +184,24 @@
   /* ------------------------------------------------------------ signed-out, pending */
   function brand(big) { return '<div class="brand' + (big ? ' big' : '') + '"><span class="wm">Sawa</span><span class="wm-en">Tracker</span></div>'; }
   function renderGuest() {
+    var lens = /[?&]sawa_lens=connect/.test(cfg.here); // Language Lens sign-in: the form first, no tracker pitch
     $('#app').innerHTML = '<div class="auth">'
-      + '<section class="auth-hero">' + brand(true)
+      + (lens ? '' : '<section class="auth-hero">' + brand(true)
       + '<h1>Learn English, <span class="red">together</span>.</h1>'
       + '<ul class="perks"><li>' + ico('flame') + '<span>Build a daily study streak and keep your habit health high</span></li>'
       + '<li>' + ico('shield') + '<span>Pick a class and use skills to protect and lift your classmates</span></li>'
       + '<li>' + ico('boss') + '<span>Fight the weekly boss with the whole community: every study minute is a hit</span></li>'
-      + '<li>' + ico('trophy') + '<span>Earn badges and climb the streak leaderboard</span></li></ul></section>'
+      + '<li>' + ico('trophy') + '<span>Earn badges and climb the streak leaderboard</span></li></ul></section>')
       + '<section class="card auth-card">'
+      + (/[?&]sawa_lens=connect/.test(cfg.here) ? '<p class="small"><b>Language Lens</b>: sign in or make a free account, and it connects right away.</p>' : '')
+      + (cfg.google ? '<div class="g-wrap"><div class="g-btn"></div><p class="err" id="g-err" role="alert"></p><p class="or small muted">or with your email</p></div>' : '')
       + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">Sign in</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">' + (cfg.instant ? 'Free account' : 'Ask to join') + '</button></div>'
       + '<form class="stack" id="f-in" method="post" action="' + esc(cfg.loginUrl) + '">'
       + '<label class="f">Email or username<input name="log" autocomplete="username" required dir="ltr"></label>'
       + '<label class="f">Password<input name="pwd" type="password" autocomplete="current-password" required dir="ltr"></label>'
       + '<label class="chk"><input type="checkbox" name="rememberme" value="forever" checked> Remember me</label>'
       + '<input type="hidden" name="redirect_to" value="' + esc(cfg.here) + '">'
+      + (cfg.loginFailed ? '<p class="err" role="alert">The email or password is not right.</p>' : '')
       + '<button class="btn primary wide" type="submit">Log in</button>'
       + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">Forgot your password?</a></form>'
       + '<form class="stack" id="f-join" hidden>'
@@ -210,6 +214,7 @@
       + '<p class="err" role="alert"></p>'
       + '<button class="btn primary wide" type="submit">' + (cfg.instant ? 'Create my account' : 'Ask to join') + '</button></form>'
       + '</section></div>';
+    if (cfg.google) googleButton();
     $('#f-join').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, btn = f.querySelector('button[type=submit]'), err = f.querySelector('.err');
@@ -228,6 +233,20 @@
       + '<h2>🔒 Members only</h2><p class="muted">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has Review: your review cards and saved words.</p>'
       + '<a class="btn primary" href="' + esc(p.join || '#') + '" target="_blank" rel="noopener">Join Sawa English</a>'
       + (EMB ? '' : '<a class="btn" href="' + esc(cfg.here) + '#review">Go to Review</a>') + '</div>';
+  }
+  /** "Continue with Google" (Sawa Lens: Settings → Free vs Member → Google client ID): signs in or makes a free account. */
+  function googleButton() {
+    var done = function () {
+      window.google.accounts.id.initialize({ client_id: cfg.google, callback: function (r) {
+        var er = $('#g-err'); if (er) er.textContent = '';
+        fetch(cfg.googleUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: r.credential }) })
+          .then(function (x) { return x.json().catch(function () { return {}; }).then(function (j) { if (!x.ok) throw new Error(j.message || 'Google sign-in did not work. Please try again.'); location.href = cfg.here; }); })
+          .catch(function (x) { var er2 = $('#g-err'); if (er2) er2.textContent = x.message; });
+      } });
+      $$('.g-btn').forEach(function (el) { window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280, locale: document.documentElement.lang || 'en' }); });
+    };
+    if (window.google && window.google.accounts) return done();
+    var s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = done; document.head.appendChild(s);
   }
   function renderWaiting(denied) {
     $('#app').innerHTML = '<div class="center-card card">'

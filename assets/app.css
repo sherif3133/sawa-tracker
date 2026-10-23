@@ -342,6 +342,7 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .perks li > .ic { width: 38px; height: 38px; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
 .auth-card { display: grid; gap: 16px; }
 .auth-card .seg { display: flex; } .auth-card .seg button { flex: 1; }
+.g-wrap { display: grid; justify-items: center; gap: 6px; } .g-wrap .g-btn { min-height: 44px; } .g-wrap .or { margin: 0; } .g-wrap .err:empty { display: none; }
 .center-card { max-width: 520px; margin: 40px auto; text-align: center; display: grid; gap: 12px; justify-items: center; }
 .wide-card { max-width: 760px; }
 .classes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin: 6px 0; }

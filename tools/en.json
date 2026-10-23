@@ -554,7 +554,11 @@
   "اعمل حسابي": "Create my account",
   "<h2>🔒 للأعضاء بس</h2><p class=\"muted\">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه المراجعة: كروت المراجعة والكلمات المحفوظة.</p>": "<h2>🔒 Members only</h2><p class=\"muted\">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has Review: your review cards and saved words.</p>",
   "\" target=\"_blank\" rel=\"noopener\">ادخل سوا انجليش</a>": "\" target=\"_blank\" rel=\"noopener\">Join Sawa English</a>",
-  "#review\">روح للمراجعة</a>": "#review\">Go to Review</a>"
+  "#review\">روح للمراجعة</a>": "#review\">Go to Review</a>",
+  "<p class=\"small\"><b>Language Lens</b>: سجّل دخول أو اعمل حساب مجاني، وهيتربط على طول.</p>": "<p class=\"small\"><b>Language Lens</b>: sign in or make a free account, and it connects right away.</p>",
+  "<div class=\"g-wrap\"><div class=\"g-btn\"></div><p class=\"err\" id=\"g-err\" role=\"alert\"></p><p class=\"or small muted\">أو بالإيميل</p></div>": "<div class=\"g-wrap\"><div class=\"g-btn\"></div><p class=\"err\" id=\"g-err\" role=\"alert\"></p><p class=\"or small muted\">or with your email</p></div>",
+  "<p class=\"err\" role=\"alert\">الإيميل أو الباسورد مش صح.</p>": "<p class=\"err\" role=\"alert\">The email or password is not right.</p>",
+  "الدخول بجوجل منفعش. جرب تاني.": "Google sign-in did not work. Please try again."
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

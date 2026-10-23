@@ -472,7 +472,7 @@ final class Sawa_Tracker_Rest {
 		if ( '' !== trim( (string) $r->get_param( 'website' ) ) ) {
 			return array( 'ok' => true );
 		}
-		$ip  = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ?? ( $_SERVER['REMOTE_ADDR'] ?? '' ) ) );
+		$ip  = class_exists( 'Sawa_Lens_Tiers' ) ? Sawa_Lens_Tiers::client_ip() : sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ); // CF-Connecting-IP only from real Cloudflare addresses
 		$instant = class_exists( 'Sawa_Lens_Tiers' ) && Sawa_Lens_Tiers::instant(); // Sawa Lens 0.25.0+: a free account at once, no approval
 		$ar      = class_exists( 'Sawa_Lang' ) && Sawa_Lang::is_ar();
 		$key = 'sawa_tr_req_' . md5( $ip );
