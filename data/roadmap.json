@@ -1649,7 +1649,7 @@
 			"file": "language-lens"
 		},
 		{
-			"desc": "Anyone can sign up and use a free account at once (no approval). Free = Review (cards and saved words); everything else shows 🔒 Members only with a link to join. Sherif ticks Member (paid) in wp-admin → Users; Settings → Free vs Member picks what free accounts get.",
+			"desc": "Anyone can sign up (email or Google) and use a free account at once. During the Language Lens beta a free account gets all of Language Lens (meanings, AI, proofreader, saved words) and Review in the Sawa App; Home, the tracker, the game and the other app tools show 🔒 Members only. Sherif ticks Member (paid) in wp-admin → Users; Settings → Free vs Member picks what free accounts get.",
 			"date": "2026-10-23",
 			"audience": "all",
 			"id": "free-member-plans",
@@ -1658,7 +1658,7 @@
 			"title": "Free and Member accounts: instant free sign-up, members unlock everything",
 			"status": "built",
 			"note": "Locks are checked on the server too. Sign-up limits: 3 an hour and 6 a day per connection, 40 an hour site-wide, no throwaway emails.",
-			"ver": "0.25.0",
+			"ver": "0.26.1",
 			"file": "sawa-lens/includes/class-tiers.php"
 		},
 		{
@@ -1675,7 +1675,7 @@
 			"file": "sawa-tracker/assets/app.js"
 		},
 		{
-			"desc": "A free account can save words to Review; word meanings, AI explanations and the proofreader say 🔒 Members only with a join link.",
+			"desc": "During the beta a free account can use all of Language Lens; the popup says the account is free, with a link to join for the whole Sawa App.",
 			"date": "2026-10-23",
 			"audience": "all",
 			"id": "extension-free-lock",
@@ -1684,7 +1684,7 @@
 			"title": "Language Lens follows the free or member plan",
 			"status": "built",
 			"note": "",
-			"ver": "0.7.0",
+			"ver": "0.8.1",
 			"file": "language-lens/extension/background.js"
 		},
 		{

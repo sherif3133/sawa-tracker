@@ -205,7 +205,7 @@
       + '<button class="btn primary wide" type="submit">Log in</button>'
       + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">Forgot your password?</a></form>'
       + '<form class="stack" id="f-join" hidden>'
-      + (cfg.instant ? '<p class="muted small">Your free account opens right away, no approval needed. It has Review: your review cards and saved words. The rest of the app is for members.</p>' : '<p class="muted small">The tracker is for members of the Sawa English community. Request access, and as soon as we approve you, you can log in right away.</p>')
+      + (cfg.instant ? '<p class="muted small">Your free account opens right away, no approval needed. It has all of Language Lens and Review in the Sawa App. The rest of the app is for members.</p>' : '<p class="muted small">The tracker is for members of the Sawa English community. Request access, and as soon as we approve you, you can log in right away.</p>')
       + '<label class="f">Your name<input name="name" autocomplete="name" required dir="auto"></label>'
       + '<label class="f">Email<input name="email" type="email" autocomplete="email" required dir="ltr"></label>'
       + '<label class="f">Password <small>at least 8 characters</small><input name="password" type="password" autocomplete="new-password" minlength="8" required dir="ltr"></label>'
@@ -230,7 +230,7 @@
     var p = cfg.plan || {};
     $('#app').innerHTML = '<div class="center-card card lock-card">'
       + '<div class="big-ic">' + ico('lock') + '</div>'
-      + '<h2>🔒 Members only</h2><p class="muted">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has Review: your review cards and saved words.</p>'
+      + '<h2>🔒 Members only</h2><p class="muted">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has all of Language Lens and Review.</p>'
       + '<a class="btn primary" href="' + esc(p.join || '#') + '" target="_blank" rel="noopener">Join Sawa English</a>'
       + (EMB ? '' : '<a class="btn" href="' + esc(cfg.here) + '#review">Go to Review</a>') + '</div>';
   }

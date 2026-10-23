@@ -550,15 +550,15 @@
   "<div class=\"seg\" role=\"tablist\"><button data-act=\"auth-tab\" data-tab=\"in\" aria-pressed=\"true\">تسجيل الدخول</button><button data-act=\"auth-tab\" data-tab=\"join\" aria-pressed=\"false\">": "<div class=\"seg\" role=\"tablist\"><button data-act=\"auth-tab\" data-tab=\"in\" aria-pressed=\"true\">Sign in</button><button data-act=\"auth-tab\" data-tab=\"join\" aria-pressed=\"false\">",
   "حساب مجاني": "Free account",
   "اطلب تدخل": "Ask to join",
-  "<p class=\"muted small\">حسابك المجاني بيفتح على طول، من غير موافقة. فيه المراجعة: كروت المراجعة والكلمات المحفوظة. باقي التطبيق للأعضاء.</p>": "<p class=\"muted small\">Your free account opens right away, no approval needed. It has Review: your review cards and saved words. The rest of the app is for members.</p>",
   "اعمل حسابي": "Create my account",
-  "<h2>🔒 للأعضاء بس</h2><p class=\"muted\">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه المراجعة: كروت المراجعة والكلمات المحفوظة.</p>": "<h2>🔒 Members only</h2><p class=\"muted\">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has Review: your review cards and saved words.</p>",
   "\" target=\"_blank\" rel=\"noopener\">ادخل سوا انجليش</a>": "\" target=\"_blank\" rel=\"noopener\">Join Sawa English</a>",
   "#review\">روح للمراجعة</a>": "#review\">Go to Review</a>",
   "<p class=\"small\"><b>Language Lens</b>: سجّل دخول أو اعمل حساب مجاني، وهيتربط على طول.</p>": "<p class=\"small\"><b>Language Lens</b>: sign in or make a free account, and it connects right away.</p>",
   "<div class=\"g-wrap\"><div class=\"g-btn\"></div><p class=\"err\" id=\"g-err\" role=\"alert\"></p><p class=\"or small muted\">أو بالإيميل</p></div>": "<div class=\"g-wrap\"><div class=\"g-btn\"></div><p class=\"err\" id=\"g-err\" role=\"alert\"></p><p class=\"or small muted\">or with your email</p></div>",
   "<p class=\"err\" role=\"alert\">الإيميل أو الباسورد مش صح.</p>": "<p class=\"err\" role=\"alert\">The email or password is not right.</p>",
-  "الدخول بجوجل منفعش. جرب تاني.": "Google sign-in did not work. Please try again."
+  "الدخول بجوجل منفعش. جرب تاني.": "Google sign-in did not work. Please try again.",
+  "<p class=\"muted small\">حسابك المجاني بيفتح على طول، من غير موافقة. فيه Language Lens كله ومراجعة الكروت في التطبيق. باقي التطبيق للأعضاء.</p>": "<p class=\"muted small\">Your free account opens right away, no approval needed. It has all of Language Lens and Review in the Sawa App. The rest of the app is for members.</p>",
+  "<h2>🔒 للأعضاء بس</h2><p class=\"muted\">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه Language Lens كله ومراجعة الكروت.</p>": "<h2>🔒 Members only</h2><p class=\"muted\">The tracker, the Silk Road game and the chat are for Sawa English members. Your free account has all of Language Lens and Review.</p>"
  },
  "php": {
   "سجّل دخول تاني.": "Log in again.",

@@ -202,7 +202,7 @@
       + '<button class="btn primary wide" type="submit">ادخل</button>'
       + '<a class="muted small" href="' + esc(cfg.lostUrl) + '">نسيت الباسورد؟</a></form>'
       + '<form class="stack" id="f-join" hidden>'
-      + (cfg.instant ? '<p class="muted small">حسابك المجاني بيفتح على طول، من غير موافقة. فيه المراجعة: كروت المراجعة والكلمات المحفوظة. باقي التطبيق للأعضاء.</p>' : '<p class="muted small">التراكر لأعضاء مجتمع سوا انجليش. اطلب تدخل، وأول ما نوافق تقدر تدخل على طول.</p>')
+      + (cfg.instant ? '<p class="muted small">حسابك المجاني بيفتح على طول، من غير موافقة. فيه Language Lens كله ومراجعة الكروت في التطبيق. باقي التطبيق للأعضاء.</p>' : '<p class="muted small">التراكر لأعضاء مجتمع سوا انجليش. اطلب تدخل، وأول ما نوافق تقدر تدخل على طول.</p>')
       + '<label class="f">اسمك<input name="name" autocomplete="name" required dir="auto"></label>'
       + '<label class="f">الإيميل<input name="email" type="email" autocomplete="email" required dir="ltr"></label>'
       + '<label class="f">الباسورد <small>٨ حروف على الأقل</small><input name="password" type="password" autocomplete="new-password" minlength="8" required dir="ltr"></label>'
@@ -227,7 +227,7 @@
     var p = cfg.plan || {};
     $('#app').innerHTML = '<div class="center-card card lock-card">'
       + '<div class="big-ic">' + ico('lock') + '</div>'
-      + '<h2>🔒 للأعضاء بس</h2><p class="muted">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه المراجعة: كروت المراجعة والكلمات المحفوظة.</p>'
+      + '<h2>🔒 للأعضاء بس</h2><p class="muted">التراكر ولعبة طريق الحرير والشات لأعضاء سوا انجليش. حسابك المجاني فيه Language Lens كله ومراجعة الكروت.</p>'
       + '<a class="btn primary" href="' + esc(p.join || '#') + '" target="_blank" rel="noopener">ادخل سوا انجليش</a>'
       + (EMB ? '' : '<a class="btn" href="' + esc(cfg.here) + '#review">روح للمراجعة</a>') + '</div>';
   }
