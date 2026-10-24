@@ -1202,3 +1202,15 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 .pt-chk input { width: 20px; height: 20px; }
 #pt-q { width: 100%; min-height: 42px; }
 #pt-slot { display: grid; gap: 12px; margin-bottom: 12px; }
+
+/* 2.20.2: the chat inside the Sawa App popup (class "popup" is set on the host by sawa-lens): one column, list then thread */
+:host(.popup) .app { padding: 0; max-width: none; width: 100%; height: 100%; border-radius: 0; background: transparent; }
+:host(.popup) #view { height: 100%; }
+:host(.popup) .chat { grid-template-columns: minmax(0, 1fr); height: 100%; min-height: 0; border: 0; border-radius: 0; }
+:host(.popup) .chat .convo { display: none; }
+:host(.popup) .chat.has-room .rooms { display: none; }
+:host(.popup) .chat.has-room .convo { display: flex; }
+:host(.popup) .chat.has-thread { grid-template-columns: minmax(0, 1fr); }
+:host(.popup) .chat.has-thread .convo { display: none; }
+:host(.popup) .chat.has-thread .thread-pane { border: 0; }
+:host(.popup) .convo-goal { display: none; }
