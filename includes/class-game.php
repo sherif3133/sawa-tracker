@@ -647,7 +647,7 @@ final class Sawa_Tracker_Game {
 			self::reopen_yesterday( $uid );
 		}
 		// An auto entry (Language Lens study time) the student deletes is not made again that day.
-		if ( preg_match( '/^[auto:([a-z]+)]/', (string) $log['notes'], $am ) ) {
+		if ( preg_match( '/^\[auto:([a-z]+)\]/', (string) $log['notes'], $am ) ) {
 			$gone   = (array) get_user_meta( $uid, 'sawa_auto_deleted', true );
 			$gone[] = $log['day'] . ':' . $am[1];
 			update_user_meta( $uid, 'sawa_auto_deleted', array_slice( array_values( array_unique( $gone ) ), -30 ) );
