@@ -1795,8 +1795,8 @@
 			"app": "extension",
 			"group": "YouTube",
 			"title": "Caption controls and Shadow mode",
-			"status": "live",
-			"note": "Student feedback (compared with Language Reactor); our own design, on whole sentences (0.8.2).",
+			"status": "built",
+			"note": "Shelved in 0.10.0 (nobody asked for Loop / 0.75× / Shadow). The code is kept: ops/shelf.md.",
 			"ver": "0.9.3",
 			"file": "language-lens/extension/content/yt-controls.js"
 		},
@@ -1889,7 +1889,59 @@
 			"note": "",
 			"ver": "0.27.6",
 			"file": "sawa-lens/includes/class-tiers.php"
+		},
+		{
+			"desc": "Short menu (Transcript, Show controls, captions, More options), the lens icon in the player at native size, ◀ ⟲ ▶ ⏸ next to the caption only when you turn on Show controls (keys A S D Q always work), and ★ Save sentence next to the sentence.",
+			"date": "2026-10-24",
+			"audience": "all",
+			"id": "lens-simple-ui",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Simpler YouTube menu and side controls",
+			"status": "live",
+			"note": "Approved by Sherif from mockups.",
+			"ver": "0.10.0",
+			"file": "language-lens/extension/content/yt.js"
+		},
+		{
+			"desc": "Every menu item and caption button has a short tip in English and Arabic, with Don't show this again and a way to bring tips back (More options → Tips).",
+			"date": "2026-10-24",
+			"audience": "all",
+			"id": "lens-tips",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Tips on every button (English + Arabic)",
+			"status": "live",
+			"note": "Approved by Sherif from mockups.",
+			"ver": "0.10.0",
+			"file": "language-lens/extension/content/tips.js"
+		},
+		{
+			"desc": "Optional: tap the first row of sample words with words you do not know. Sets your known words and word colours. Replaces the long level test as the first step.",
+			"date": "2026-10-24",
+			"audience": "all",
+			"id": "lens-quick-level",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "30-second vocabulary level",
+			"status": "live",
+			"note": "Approved by Sherif from mockups.",
+			"ver": "0.10.0",
+			"file": "language-lens/extension/level/level.js"
+		},
+		{
+			"desc": "No more \"You are on the list\" page: free and member accounts use the whole app. The Silk Road game stays locked.",
+			"date": "2026-10-24",
+			"audience": "all",
+			"id": "app-open-all",
+			"app": "app",
+			"group": "Sawa App",
+			"title": "Sawa App open to every signed-in account",
+			"status": "live",
+			"note": "Approved by Sherif from mockups.",
+			"ver": "0.10.0",
+			"file": "sawa-lens/includes/class-app.php"
 		}
 	],
-	"versions": "Sawa Lens 0.25.2 · Sawa Tracker 2.18.3 · Language Lens 0.7.1 · Sawa Testimonials 1.9.1 · Sawa Site 1.3.0"
+	"versions": "Sawa Lens 0.33.0 · Sawa Tracker 2.20.1 · Language Lens 0.10.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.15"
 }
