@@ -192,7 +192,7 @@
       + '<li>' + ico('shield') + '<span>Pick a class and use skills to protect and lift your classmates</span></li>'
       + '<li>' + ico('boss') + '<span>Fight the weekly boss with the whole community: every study minute is a hit</span></li>'
       + '<li>' + ico('trophy') + '<span>Earn badges and climb the streak leaderboard</span></li></ul></section>')
-      + '<section class="card auth-card">'
+      + '<section class="card auth-card' + (cfg.google && !/[?&]email=1/.test(cfg.here) ? ' google-only' : '') + '">'
       + (/[?&]sawa_lens=connect/.test(cfg.here) ? '<p class="small"><b>Language Lens</b>: sign in or make a free account, and it connects right away.</p>' : '')
       + (cfg.google ? '<div class="g-wrap"><div class="g-btn"></div><p class="err" id="g-err" role="alert"></p><p class="or small muted">or with your email</p></div>' : '')
       + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">Sign in</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">' + (cfg.instant ? 'Free account' : 'Ask to join') + '</button></div>'

@@ -189,7 +189,7 @@
       + '<li>' + ico('shield') + '<span>اختار كلاس واستخدم مهارات تحمي بيها زمايلك وتشدهم</span></li>'
       + '<li>' + ico('boss') + '<span>حارب وحش الأسبوع مع المجتمع كله: كل دقيقة مذاكرة ضربة</span></li>'
       + '<li>' + ico('trophy') + '<span>اكسب أوسمة واطلع في ترتيب الاستمرارية</span></li></ul></section>')
-      + '<section class="card auth-card">'
+      + '<section class="card auth-card' + (cfg.google && !/[?&]email=1/.test(cfg.here) ? ' google-only' : '') + '">'
       + (/[?&]sawa_lens=connect/.test(cfg.here) ? '<p class="small"><b>Language Lens</b>: سجّل دخول أو اعمل حساب مجاني، وهيتربط على طول.</p>' : '')
       + (cfg.google ? '<div class="g-wrap"><div class="g-btn"></div><p class="err" id="g-err" role="alert"></p><p class="or small muted">أو بالإيميل</p></div>' : '')
       + '<div class="seg" role="tablist"><button data-act="auth-tab" data-tab="in" aria-pressed="true">تسجيل الدخول</button><button data-act="auth-tab" data-tab="join" aria-pressed="false">' + (cfg.instant ? 'حساب مجاني' : 'اطلب تدخل') + '</button></div>'
