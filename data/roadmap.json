@@ -1951,8 +1951,8 @@
 			"group": "YouTube",
 			"title": "Quiz Mode: study the video's words",
 			"status": "live",
-			"note": "Replaces the old pause-the-video quiz (shelved). Learn-tab count and first-learning-step credit still to build with the app.",
-			"ver": "0.11.0",
+			"note": "A right answer is the card's first learning step, a wrong answer brings the word back today (0.13.0). Learn-tab count: with the app team.",
+			"ver": "0.13.0",
 			"file": "language-lens/extension/content/quiz.js"
 		},
 		{
@@ -1969,5 +1969,5 @@
 			"file": "language-lens/extension/content/studytime.js"
 		}
 	],
-	"versions": "Sawa Lens 0.35.5 · Sawa Tracker 2.20.4 · Language Lens 0.12.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.19"
+	"versions": "Sawa Lens 0.36.0 · Sawa Tracker 2.20.4 · Language Lens 0.13.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.20"
 }
