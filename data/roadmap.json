@@ -1891,7 +1891,7 @@
 			"file": "sawa-lens/includes/class-tiers.php"
 		},
 		{
-			"desc": "Short menu (Transcript, Show controls, captions, More options), the lens icon in the player at native size, ◀ ⟲ ▶ ⏸ next to the caption only when you turn on Show controls (keys A S D Q always work), and ★ Save sentence next to the sentence.",
+			"desc": "Short YouTube menu: Show Tips pinned on top, Transcript, two switches for the caption buttons (Basic: ◀ left and ▶ before the ★; Repeat / Loop / Auto-pause on its own line), captions, Further Controls (pause on click or hover, Quiz Mode, music). Right-click a word to mark it Learn or Known. ★ Save sentence next to the sentence. The popup now holds only your words, level and other websites.",
 			"date": "2026-10-24",
 			"audience": "all",
 			"id": "lens-simple-ui",
@@ -1900,7 +1900,7 @@
 			"title": "Simpler YouTube menu and side controls",
 			"status": "live",
 			"note": "Approved by Sherif from mockups.",
-			"ver": "0.10.0",
+			"ver": "0.10.1",
 			"file": "language-lens/extension/content/yt.js"
 		},
 		{
@@ -1943,5 +1943,5 @@
 			"file": "sawa-lens/includes/class-app.php"
 		}
 	],
-	"versions": "Sawa Lens 0.33.0 · Sawa Tracker 2.20.1 · Language Lens 0.10.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.15"
+	"versions": "Sawa Lens 0.33.0 · Sawa Tracker 2.20.1 · Language Lens 0.10.1 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.16"
 }
