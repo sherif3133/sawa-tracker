@@ -1941,7 +1941,20 @@
 			"note": "Approved by Sherif from mockups.",
 			"ver": "0.10.0",
 			"file": "sawa-lens/includes/class-app.php"
+		},
+		{
+			"desc": "Before a YouTube video: pick 10, 15 or 20 of its most common words you do not know yet, tick the ones you already know (they become Known), the rest become Learn. No pauses while watching. At the end: a short listen-and-pick review. Skip on every step; switch in Further Controls.",
+			"date": "2026-10-24",
+			"audience": "all",
+			"id": "lens-quiz-mode",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Quiz Mode: study the video's words",
+			"status": "live",
+			"note": "Replaces the old pause-the-video quiz (shelved). Learn-tab count and first-learning-step credit still to build with the app.",
+			"ver": "0.11.0",
+			"file": "language-lens/extension/content/quiz.js"
 		}
 	],
-	"versions": "Sawa Lens 0.33.0 · Sawa Tracker 2.20.1 · Language Lens 0.10.1 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.16"
+	"versions": "Sawa Lens 0.34.0 · Sawa Tracker 2.20.1 · Language Lens 0.11.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.18"
 }
