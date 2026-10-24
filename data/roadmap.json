@@ -1632,16 +1632,17 @@
 			"file": "sawa-site includes/class-lang.php, sections.php, templates/*"
 		},
 		{
-			"desc": "The /lens page is now a step-by-step guide: choose Computer, Android or iPhone, then one small step per screen with Back / Next and a progress bar (the step is kept in the link, so you can come back to it). Android uses the Lemur browser; iPhone says honestly what works today. After setup, a 13-step tour shows every feature (meanings, saving, Review, captions, Shadow, transcript, quiz, music, lyrics game, Arabic to English, writing check, content check, settings and feedback), with mouse or finger wording. English and Arabic.",
+			"desc": "The /lens page is a step-by-step setup guide: choose Computer, Android or iPhone, then one small step per screen with Back / Next and a progress bar (the step is kept in the link). Download, install, sign in, first saved word, Review now. Android uses the Lemur browser; iPhone says honestly what works today. English and Arabic.",
 			"date": "2026-10-24",
 			"audience": "all",
 			"id": "site-lens-wizard",
 			"app": "site",
 			"group": "Pages",
-			"title": "Language Lens step-by-step guide on /lens (computer and phone)",
+			"title": "Language Lens step-by-step setup guide on /lens (computer and phone)",
 			"status": "live",
-			"ver": "1.5.12",
-			"file": "sawa-site/templates/lens.php"
+			"ver": "1.5.13",
+			"file": "sawa-site/templates/lens.php",
+			"note": "A 13-step feature tour is built but switched off until Sherif's final audit ($tour in templates/lens.php)."
 		},
 		{
 			"desc": "",
