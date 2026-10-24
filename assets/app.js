@@ -899,7 +899,7 @@
     if (!r.length) return '<section class="card"><h3>آخر الأنشطة</h3><p class="muted">لسه مفيش. دوس <b>نشاط</b> فوق وسجّل أول واحد.</p></section>';
     return '<section class="card"><h3>آخر الأنشطة</h3><ul class="recent">' + r.map(function (x) {
       var a = act(x.activity);
-      return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' كارت' : '') + (x.notes ? ' · <span dir="auto">' + esc(x.notes) + '</span>' : '') + '</small>'
+      return '<li><span class="r-ic">' + ico(a.ic) + '</span><div><b>' + esc(a.ar) + '</b><small>' + fmtDay(x.day, { weekday: 'short', day: 'numeric', month: 'short' }) + (x.cards ? ' · ' + x.cards + ' كارت' : '') + (x.notes ? ' · ' + (/^\[auto:/.test(x.notes) ? '<em class="auto-tag">Auto</em> ' : '') + '<span dir="auto">' + esc(String(x.notes).replace(/^\[auto:[a-z]+\]\s*/, '')) + '</span>' : '') + '</small>'
         + (x.links && x.links.length ? '<div class="r-links">' + x.links.map(function (l) { return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" dir="auto">' + (l.vid ? '▶ ' : '🔗 ') + esc(l.title || l.url) + '</a>'; }).join('') + '</div>' : '') + '</div>'
         + '<span class="r-min">' + hm(x.minutes) + '</span>' + (x.canDelete ? '<button class="icon-btn sm" data-act="del-log" data-id="' + x.id + '" aria-label="امسح النشاط ده" title="امسح">' + ico('x') + '</button>' : '<span class="icon-btn sm ghost"></span>') + '</li>';
     }).join('') + '</ul></section>';

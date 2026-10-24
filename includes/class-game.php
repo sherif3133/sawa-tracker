@@ -590,6 +590,47 @@ final class Sawa_Tracker_Game {
 		);
 	}
 
+	/**
+	 * Language Lens study time (0.12.0): ONE auto entry per student, day and source (youtube, reading, review, music) whose
+	 * minutes follow the day's total. Today only for updates; today or yesterday for a new entry. A deleted auto entry
+	 * stays deleted for that day. Returns the minutes now logged, or 0.
+	 */
+	public static function set_auto_log( $uid, $src, $activity, $minutes, $notes, $day ) {
+		$src = preg_replace( '/[^a-z]/', '', strtolower( (string) $src ) );
+		if ( ! $src || ! isset( self::ACTIVITIES[ $activity ] ) ) {
+			return 0;
+		}
+		$minutes = max( 0, min( 720, (int) $minutes ) );
+		$today   = self::today();
+		$yday    = self::add_days( $today, -1 );
+		if ( $minutes < 1 || ( $day !== $today && $day !== $yday ) ) {
+			return 0;
+		}
+		if ( in_array( $day . ':' . $src, (array) get_user_meta( $uid, 'sawa_auto_deleted', true ), true ) ) {
+			return 0;
+		}
+		global $wpdb;
+		$tag = '[auto:' . $src . '] ';
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table( 'logs' ) . ' WHERE user_id = %d AND day = %s AND notes LIKE %s LIMIT 1', $uid, $day, $wpdb->esc_like( $tag ) . '%' ), ARRAY_A ); // phpcs:ignore
+		$text = mb_substr( sanitize_text_field( $tag . $notes ), 0, 500 );
+		if ( ! $row ) {
+			$res = self::add_log( $uid, $activity, $minutes, 0, $text, $day, true );
+			return is_wp_error( $res ) ? 0 : $minutes;
+		}
+		if ( $day !== $today ) {
+			return (int) $row['minutes'];
+		}
+		$delta = $minutes - (int) $row['minutes'];
+		$wpdb->update( self::table( 'logs' ), array( 'minutes' => $minutes, 'notes' => $text ), array( 'id' => (int) $row['id'] ) ); // phpcs:ignore
+		if ( 0 !== $delta ) {
+			$d = self::day_row( $uid, $day );
+			self::upsert_day( $uid, $day, array( 'minutes' => max( 0, ( $d ? (int) $d['minutes'] : 0 ) + $delta ) ) );
+			self::process_user( $uid );
+			self::bust_boards();
+		}
+		return $minutes;
+	}
+
 	public static function delete_log( $uid, $id ) {
 		global $wpdb;
 		$log = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table( 'logs' ) . ' WHERE id = %d AND user_id = %d', $id, $uid ), ARRAY_A ); // phpcs:ignore
@@ -604,6 +645,12 @@ final class Sawa_Tracker_Game {
 		self::process_user( $uid );
 		if ( $log['day'] === $yday ) {
 			self::reopen_yesterday( $uid );
+		}
+		// An auto entry (Language Lens study time) the student deletes is not made again that day.
+		if ( preg_match( '/^[auto:([a-z]+)]/', (string) $log['notes'], $am ) ) {
+			$gone   = (array) get_user_meta( $uid, 'sawa_auto_deleted', true );
+			$gone[] = $log['day'] . ':' . $am[1];
+			update_user_meta( $uid, 'sawa_auto_deleted', array_slice( array_values( array_unique( $gone ) ), -30 ) );
 		}
 		$wpdb->delete( self::table( 'logs' ), array( 'id' => $id ) ); // phpcs:ignore
 		$row = self::day_row( $uid, $log['day'] );

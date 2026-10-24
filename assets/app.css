@@ -1214,3 +1214,5 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 4px 0; }
 :host(.popup) .chat.has-thread .convo { display: none; }
 :host(.popup) .chat.has-thread .thread-pane { border: 0; }
 :host(.popup) .convo-goal { display: none; }
+
+.auto-tag{font-style:normal;font-size:10px;background:#E7F5EC;color:#15803D;border-radius:4px;padding:1px 5px;margin-right:2px}

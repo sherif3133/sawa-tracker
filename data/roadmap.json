@@ -1954,7 +1954,20 @@
 			"note": "Replaces the old pause-the-video quiz (shelved). Learn-tab count and first-learning-step credit still to build with the app.",
 			"ver": "0.11.0",
 			"file": "language-lens/extension/content/quiz.js"
+		},
+		{
+			"desc": "Language Lens now counts the minutes you really study (video playing or you using the page; stops after about 60 seconds of nothing; a hidden tab does not count) and adds them to your study log as an Auto entry you can delete. Optional reading time on websites (minutes only, never the page). Today: N min in the popup.",
+			"date": "2026-10-24",
+			"audience": "all",
+			"id": "lens-study-time",
+			"app": "extension",
+			"group": "YouTube",
+			"title": "Auto-logged study time",
+			"status": "live",
+			"note": "Review and music time from the app: planned with the app team.",
+			"ver": "0.12.0",
+			"file": "language-lens/extension/content/studytime.js"
 		}
 	],
-	"versions": "Sawa Lens 0.34.0 · Sawa Tracker 2.20.1 · Language Lens 0.11.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.18"
+	"versions": "Sawa Lens 0.35.5 · Sawa Tracker 2.20.3 · Language Lens 0.12.0 · Sawa Testimonials 1.10.0 · Sawa Site 1.5.19"
 }
